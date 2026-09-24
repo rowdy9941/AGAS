@@ -1,0 +1,94 @@
+import { randomUUID } from "node:crypto";
+import { ControlPlane, DomainError } from "../../../packages/core/src/control-plane.js";
+
+const JSON_LIMIT = 256 * 1024;
+
+function send(response, status, body, requestId) {
+  const payload = JSON.stringify(body);
+  response.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "content-length": Buffer.byteLength(payload),
+    "x-request-id": requestId,
+    "cache-control": "no-store",
+  });
+  response.end(payload);
+}
+
+async function readJson(request) {
+  const contentType = request.headers["content-type"] ?? "";
+  if (!contentType.toLowerCase().startsWith("application/json")) {
+    throw new DomainError("JSON_CONTENT_TYPE_REQUIRED", "content-type must be application/json", 415);
+  }
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > JSON_LIMIT) throw new DomainError("BODY_TOO_LARGE", `JSON body exceeds ${JSON_LIMIT} bytes`, 413);
+    chunks.push(chunk);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+  } catch {
+    throw new DomainError("INVALID_JSON", "Request body is not valid JSON", 400);
+  }
+}
+
+export function createApp(controlPlane = new ControlPlane()) {
+  return async function app(request, response) {
+    const requestId = request.headers["x-request-id"]?.slice(0, 128) || randomUUID();
+    try {
+      const url = new URL(request.url, "http://agas.local");
+      const segments = url.pathname.split("/").filter(Boolean);
+
+      if (request.method === "GET" && url.pathname === "/healthz") {
+        return send(response, 200, controlPlane.health(), requestId);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/registry") {
+        return send(response, 200, controlPlane.registry.snapshot(), requestId);
+      }
+      if (request.method === "GET" && segments[0] === "v1" && segments[1] === "registry" && segments.length === 3) {
+        return send(response, 200, { items: controlPlane.registry.list(segments[2]) }, requestId);
+      }
+      if (request.method === "POST" && segments[0] === "v1" && segments[1] === "registry" && segments.length === 3) {
+        return send(response, 201, controlPlane.registry.register(segments[2], await readJson(request)), requestId);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/runtimes/detect") {
+        return send(response, 200, { runtimes: await controlPlane.detectRuntimes() }, requestId);
+      }
+      if (request.method === "POST" && segments[0] === "v1" && segments[1] === "hubs" && segments[3] === "plan" && segments.length === 4) {
+        return send(response, 200, controlPlane.planHub(segments[2], await readJson(request)), requestId);
+      }
+      if (request.method === "POST" && url.pathname === "/v1/memory") {
+        return send(response, 201, controlPlane.memory.append(await readJson(request)), requestId);
+      }
+      if (request.method === "POST" && url.pathname === "/v1/memory/search") {
+        return send(response, 200, { items: controlPlane.memory.search(await readJson(request)) }, requestId);
+      }
+      if (request.method === "POST" && url.pathname === "/v1/executions") {
+        return send(response, 201, controlPlane.proposeExecution(await readJson(request)), requestId);
+      }
+      if (request.method === "GET" && segments[0] === "v1" && segments[1] === "executions" && segments.length === 3) {
+        return send(response, 200, controlPlane.executions.get(segments[2]), requestId);
+      }
+      if (request.method === "POST" && segments[0] === "v1" && segments[1] === "executions" && segments[3] === "transitions" && segments.length === 4) {
+        return send(response, 200, controlPlane.executions.transition(segments[2], await readJson(request)), requestId);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/audit") {
+        return send(response, 200, { items: controlPlane.executions.audit() }, requestId);
+      }
+      throw new DomainError("ROUTE_NOT_FOUND", `${request.method} ${url.pathname} was not found`, 404);
+    } catch (error) {
+      const known = error instanceof DomainError;
+      const status = known ? error.status : 500;
+      if (!known) console.error(error);
+      return send(response, status, {
+        error: {
+          code: known ? error.code : "INTERNAL_ERROR",
+          message: known ? error.message : "An unexpected error occurred",
+          ...(known && error.details ? { details: error.details } : {}),
+        },
+        requestId,
+      }, requestId);
+    }
+  };
+}
