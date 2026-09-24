@@ -4,6 +4,8 @@ import { MemoryStore } from "./memory-store.js";
 import { ExecutionStore } from "./execution-store.js";
 import { detectRuntimes } from "./runtime-detector.js";
 import { planHub } from "./hub-planner.js";
+import { StateDatabase } from "./state-database.js";
+import { AuthService } from "./auth-service.js";
 
 export class ControlPlane {
   constructor({ registry, memory, executions } = {}) {
@@ -13,7 +15,7 @@ export class ControlPlane {
   }
 
   health() {
-    return { status: "ok", service: "agas-control-plane", version: "0.1.0", registry: this.registry.counts() };
+    return { status: "ok", service: "agas-control-plane", version: "0.2.0", registry: this.registry.counts() };
   }
 
   detectRuntimes(options) {
@@ -30,7 +32,34 @@ export class ControlPlane {
   }
 }
 
+export function createPersistentServices({ databasePath = "./data/agas.db", bootstrapToken } = {}) {
+  const database = new StateDatabase(databasePath);
+  const savedRegistry = database.read("registry", null);
+  const registrySeed = savedRegistry ?? initialCatalog;
+  const registry = new UniversalRegistry(registrySeed, { onChange: (state) => database.write("registry", state) });
+  if (!savedRegistry) database.write("registry", registry.snapshot());
+
+  const memory = new MemoryStore({
+    records: database.read("memory", []),
+    onChange: (state) => database.write("memory", state),
+  });
+  const executionState = database.read("executions", { executions: [], audit: [] });
+  const executions = new ExecutionStore({
+    ...executionState,
+    onChange: (state) => database.write("executions", state),
+  });
+  const auth = new AuthService({
+    keys: database.read("apiKeys", []),
+    bootstrapToken,
+    onChange: (state) => database.write("apiKeys", state),
+  });
+
+  return { controlPlane: new ControlPlane({ registry, memory, executions }), auth, database };
+}
+
 export { UniversalRegistry } from "./registry.js";
 export { MemoryStore } from "./memory-store.js";
 export { ExecutionStore } from "./execution-store.js";
 export { DomainError } from "./errors.js";
+export { StateDatabase } from "./state-database.js";
+export { AuthService, ROLE_PERMISSIONS } from "./auth-service.js";

@@ -27,11 +27,13 @@ function deepFreeze(value) {
 
 export class UniversalRegistry {
   #collections = new Map(REGISTRY_KINDS.map((kind) => [kind, new Map()]));
+  #onChange;
 
-  constructor(seed = {}) {
+  constructor(seed = {}, { onChange } = {}) {
     for (const [kind, entries] of Object.entries(seed)) {
       for (const entry of entries) this.register(kind, entry);
     }
+    this.#onChange = onChange;
   }
 
   register(kind, entry) {
@@ -41,6 +43,7 @@ export class UniversalRegistry {
     invariant(!collection.has(entry.id), "DUPLICATE_ENTRY", `${kind}/${entry.id} already exists`, 409);
     const stored = deepFreeze(clone(entry));
     collection.set(stored.id, stored);
+    this.#onChange?.(this.snapshot());
     return clone(stored);
   }
 
