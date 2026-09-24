@@ -1,7 +1,7 @@
 FROM node:24-alpine
 
 LABEL org.opencontainers.image.title="AGAS" \
-      org.opencontainers.image.version="1.0.0" \
+      org.opencontainers.image.version="1.0.1" \
       org.opencontainers.image.source="https://github.com/rowdy9941/AGAS" \
       org.opencontainers.image.licenses="MIT"
 

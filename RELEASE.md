@@ -1,6 +1,6 @@
-# AGAS 1.0.0
+# AGAS 1.0.1
 
-AGAS 1.0.0 is the public single-node MVP: a local-first governed operating
+AGAS 1.0.1 is the public single-node MVP: a local-first governed operating
 environment for composing specialist agents, approving their work, sharing
 evidence across runtimes, and verifying mission outcomes.
 

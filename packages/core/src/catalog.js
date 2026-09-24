@@ -1,6 +1,6 @@
 export const initialCatalog = Object.freeze({
   runtimes: [
-    { id: "agas-sim", name: "AGAS Simulator", builtin: true, version: "1.0.0", interfaces: ["internal"], distribution: "managed", capabilities: ["reasoning", "code", "tools", "simulation"] },
+    { id: "agas-sim", name: "AGAS Simulator", builtin: true, version: "1.0.1", interfaces: ["internal"], distribution: "managed", capabilities: ["reasoning", "code", "tools", "simulation"] },
     { id: "hermes", name: "Hermes", command: "hermes", versionArgs: ["--version"], interfaces: ["cli"], distribution: "external", capabilities: ["reasoning", "tools"] },
     { id: "openclaw", name: "OpenClaw", command: "openclaw", versionArgs: ["--version"], interfaces: ["cli"], distribution: "external", capabilities: ["reasoning", "tools"] },
     { id: "codex", name: "Codex", command: "codex", versionArgs: ["--version"], execution: { args: ["exec", "--skip-git-repo-check", "-"], input: "objective" }, interfaces: ["cli", "desktop"], distribution: "external", capabilities: ["reasoning", "code", "tools", "sandbox"] },
