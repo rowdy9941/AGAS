@@ -47,6 +47,16 @@ export class UniversalRegistry {
     return clone(stored);
   }
 
+  replace(kind, entry) {
+    const collection = this.#collection(kind);
+    invariant(entry && typeof entry === "object" && !Array.isArray(entry), "INVALID_ENTRY", "Registry entry must be an object");
+    invariant(typeof entry.id === "string" && /^[a-z0-9][a-z0-9._-]*$/.test(entry.id), "INVALID_ENTRY_ID", "Registry entry id must be a lowercase slug");
+    const stored = deepFreeze(clone(entry));
+    collection.set(stored.id, stored);
+    this.#onChange?.(this.snapshot());
+    return clone(stored);
+  }
+
   get(kind, id) {
     const entry = this.#collection(kind).get(id);
     invariant(entry, "ENTRY_NOT_FOUND", `${kind}/${id} was not found`, 404);

@@ -28,6 +28,7 @@ export class ExecutionStore {
       id: randomUUID(),
       status: "proposed",
       objective: input.objective.trim(),
+      workingDirectory: typeof input.workingDirectory === "string" && input.workingDirectory ? input.workingDirectory : ".",
       plan: structuredClone(plan),
       createdBy: plan.requestedBy,
       createdAt: now,

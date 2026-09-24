@@ -1,10 +1,11 @@
 export const initialCatalog = Object.freeze({
   runtimes: [
+    { id: "agas-sim", name: "AGAS Simulator", builtin: true, version: "1.0.0", interfaces: ["internal"], distribution: "managed", capabilities: ["reasoning", "code", "tools", "simulation"] },
     { id: "hermes", name: "Hermes", command: "hermes", versionArgs: ["--version"], interfaces: ["cli"], distribution: "external", capabilities: ["reasoning", "tools"] },
     { id: "openclaw", name: "OpenClaw", command: "openclaw", versionArgs: ["--version"], interfaces: ["cli"], distribution: "external", capabilities: ["reasoning", "tools"] },
-    { id: "codex", name: "Codex", command: "codex", versionArgs: ["--version"], interfaces: ["cli", "desktop"], distribution: "external", capabilities: ["reasoning", "code", "tools", "sandbox"] },
-    { id: "claude-code", name: "Claude Code", command: "claude", versionArgs: ["--version"], interfaces: ["cli"], distribution: "external", capabilities: ["reasoning", "code", "tools"] },
-    { id: "opencode", name: "OpenCode", command: "opencode", versionArgs: ["--version"], interfaces: ["cli", "desktop", "tui"], distribution: "external", capabilities: ["reasoning", "code", "tools"] },
+    { id: "codex", name: "Codex", command: "codex", versionArgs: ["--version"], execution: { args: ["exec", "--skip-git-repo-check", "-"], input: "objective" }, interfaces: ["cli", "desktop"], distribution: "external", capabilities: ["reasoning", "code", "tools", "sandbox"] },
+    { id: "claude-code", name: "Claude Code", command: "claude", versionArgs: ["--version"], execution: { args: ["-p", "{objective}"], input: "none" }, interfaces: ["cli"], distribution: "external", capabilities: ["reasoning", "code", "tools"] },
+    { id: "opencode", name: "OpenCode", command: "opencode", versionArgs: ["--version"], execution: { args: ["run", "{objective}"], input: "none" }, interfaces: ["cli", "desktop", "tui"], distribution: "external", capabilities: ["reasoning", "code", "tools"] },
   ],
   agents: [
     { id: "architect", personaId: "software-architect", mode: "on-demand" },
@@ -13,10 +14,10 @@ export const initialCatalog = Object.freeze({
     { id: "reality", personaId: "reality-checker", mode: "on-demand" },
   ],
   personas: [
-    { id: "software-architect", name: "Software Architect", compatibleRuntimes: ["hermes", "codex", "claude-code", "opencode"], permissions: ["workspace:read", "plan:write"] },
-    { id: "frontend-developer", name: "Frontend Developer", compatibleRuntimes: ["codex", "claude-code", "opencode"], permissions: ["workspace:read", "workspace:write", "process:test"] },
-    { id: "security-reviewer", name: "Security Reviewer", compatibleRuntimes: ["hermes", "codex", "claude-code"], permissions: ["workspace:read", "security:scan"] },
-    { id: "reality-checker", name: "Reality Checker", compatibleRuntimes: ["hermes", "codex", "claude-code", "opencode"], permissions: ["workspace:read", "process:test"] },
+    { id: "software-architect", name: "Software Architect", compatibleRuntimes: ["hermes", "codex", "claude-code", "opencode", "agas-sim"], permissions: ["workspace:read", "plan:write"] },
+    { id: "frontend-developer", name: "Frontend Developer", compatibleRuntimes: ["codex", "claude-code", "opencode", "agas-sim"], permissions: ["workspace:read", "workspace:write", "process:test"] },
+    { id: "security-reviewer", name: "Security Reviewer", compatibleRuntimes: ["hermes", "codex", "claude-code", "agas-sim"], permissions: ["workspace:read", "security:scan"] },
+    { id: "reality-checker", name: "Reality Checker", compatibleRuntimes: ["hermes", "codex", "claude-code", "opencode", "agas-sim"], permissions: ["workspace:read", "process:test"] },
   ],
   skills: [],
   tools: [],
@@ -30,7 +31,7 @@ export const initialCatalog = Object.freeze({
     {
       id: "engineering",
       name: "Engineering Hub",
-      runtimePreference: ["codex", "hermes", "opencode", "claude-code"],
+      runtimePreference: ["codex", "hermes", "opencode", "claude-code", "agas-sim"],
       roster: [
         { agentId: "architect", required: true },
         { agentId: "frontend", required: true },
