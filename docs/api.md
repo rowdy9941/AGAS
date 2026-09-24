@@ -7,7 +7,9 @@ All responses are JSON. Except for `/healthz`, requests require an
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/healthz` | Health and registry counts |
+| GET | `/readyz` | Readiness with database integrity/schema check |
 | GET | `/v1/session` | Current API-key principal and policy |
+| GET | `/v1/diagnostics` | Runtime, database, namespace, and record diagnostics |
 | GET | `/v1/registry` | Entire registry snapshot |
 | GET | `/v1/registry/:kind` | One registry collection |
 | POST | `/v1/registry/:kind` | Register an immutable entry |

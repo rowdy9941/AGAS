@@ -34,3 +34,13 @@ the local `workspace/` directory is the only runtime working tree.
 
 Never expose a local-mode node to untrusted users. Runtime CLIs retain their own
 provider credentials and terms; AGAS does not bundle them.
+
+## Readiness and diagnostics
+
+- `/healthz` reports process liveness.
+- `/readyz` verifies the database integrity and schema version.
+- Authenticated `/v1/diagnostics` reports bounded runtime and state metadata.
+
+The service emits structured JSON lifecycle and error logs. See
+[operations.md](operations.md) for backup, restore, restart recovery, and
+offline-mode procedures.

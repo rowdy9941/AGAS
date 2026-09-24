@@ -68,13 +68,22 @@ export function createApp(controlPlane = new ControlPlane(), { auth = new AuthSe
 
       if (request.method === "GET" && await sendStatic(response, url.pathname, requestId)) return;
 
-      if (request.method === "GET" && ["/healthz", "/readyz"].includes(url.pathname)) {
+      if (request.method === "GET" && url.pathname === "/healthz") {
         return send(response, 200, controlPlane.health(), requestId);
+      }
+      if (request.method === "GET" && url.pathname === "/readyz") {
+        const diagnostics = controlPlane.diagnostics();
+        const ready = diagnostics.database.integrity.ok;
+        return send(response, ready ? 200 : 503, { ...controlPlane.health(), status: ready ? "ready" : "not-ready", checks: { database: diagnostics.database.integrity } }, requestId);
       }
       const principal = auth.authenticateHeader(request.headers.authorization);
 
       if (request.method === "GET" && url.pathname === "/v1/session") {
         return send(response, 200, { principal }, requestId);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/diagnostics") {
+        auth.authorize(principal, "audit:read");
+        return send(response, 200, controlPlane.diagnostics(), requestId);
       }
       if (request.method === "GET" && url.pathname === "/v1/registry") {
         auth.authorize(principal, "registry:read");
@@ -358,7 +367,7 @@ export function createApp(controlPlane = new ControlPlane(), { auth = new AuthSe
     } catch (error) {
       const known = error instanceof DomainError;
       const status = known ? error.status : 500;
-      if (!known) console.error(error);
+      if (!known) console.error(JSON.stringify({ timestamp: new Date().toISOString(), level: "error", event: "http.request-failed", requestId, method: request.method, path: new URL(request.url, "http://agas.local").pathname, message: error instanceof Error ? error.message : "Unknown error" }));
       return send(response, status, {
         error: {
           code: known ? error.code : "INTERNAL_ERROR",

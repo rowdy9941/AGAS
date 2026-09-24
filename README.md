@@ -1,5 +1,7 @@
 # AGAS
 
+[![CI](https://github.com/rowdy9941/AGAS/actions/workflows/ci.yml/badge.svg)](https://github.com/rowdy9941/AGAS/actions/workflows/ci.yml)
+
 AGAS is an open control plane for governing, activating, and observing teams of
 AI agents across multiple runtimes. It keeps runtime discovery, agent identity,
 memory boundaries, hub composition, permissions, and execution state in one
@@ -25,7 +27,7 @@ Requirements: Node.js 22 or newer.
 
 ```bash
 npm install
-npm test
+npm run check
 npm start
 ```
 
@@ -51,6 +53,9 @@ curl -X POST http://127.0.0.1:4310/v1/hubs/engineering/plan \
 
 See [docs/api.md](docs/api.md) for the complete HTTP surface and
 [docs/architecture.md](docs/architecture.md) for boundaries and next phases.
+Operational recovery is documented in [docs/operations.md](docs/operations.md),
+and the security boundary is documented in
+[docs/threat-model.md](docs/threat-model.md).
 
 ## Safety model
 
@@ -70,7 +75,7 @@ See [docs/api.md](docs/api.md) for the complete HTTP surface and
 
 ## Project status
 
-Phases 1–6 are implemented. See the
+AGAS 1.0.0 implements all seven MVP phases. See the
 [master architecture plan](docs/AGAS_MASTER_ARCHITECTURE_PLAN.md) for the full
 MVP contract, [evaluation suites](docs/evaluations.md), and
 [deployment guide](docs/deployment.md) for Node and Docker use.

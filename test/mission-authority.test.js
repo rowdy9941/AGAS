@@ -90,3 +90,19 @@ test("research evaluation suite completes through the Command Hub", async () => 
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("Mission Authority stops work when the runtime budget expires", async () => {
+  const services = createPersistentServices({ databasePath: ":memory:", bootstrapToken: "root" });
+  try {
+    const mission = services.controlPlane.missions.create({ workspaceId: "default", type: "repository", objective: "Bounded work", budget: { maxTasks: 4, maxTotalAttempts: 8, maxRuntimeMs: 1 } }, "bootstrap");
+    services.controlPlane.missions.approve(mission.id, { reason: "Approve bounded mission" }, "bootstrap");
+    services.controlPlane.missions.start(mission.id, "bootstrap");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await services.controlPlane.missions.reconcile();
+    const failed = services.controlPlane.missions.get(mission.id);
+    assert.equal(failed.status, "failed");
+    assert.equal(failed.failure.code, "MISSION_RUNTIME_BUDGET_EXCEEDED");
+  } finally {
+    services.database.close();
+  }
+});

@@ -81,6 +81,12 @@ test("operator console and readiness endpoint are public and security-hardened",
     assert.match(script.headers.get("content-type"), /text\/javascript/);
     const ready = await fetch(`${baseUrl}/readyz`);
     assert.equal(ready.status, 200);
+    const readiness = await ready.json();
+    assert.equal(readiness.status, "ready");
+    assert.equal(readiness.checks.database.ok, true);
+    const diagnostics = await fetch(`${baseUrl}/v1/diagnostics`, { headers: authHeaders }).then((response) => response.json());
+    assert.match(diagnostics.process.node, /^v\d+/);
+    assert.equal(diagnostics.database.integrity.schemaVersion, 2);
   });
 });
 

@@ -205,6 +205,9 @@ usability, diagnostics, documentation, installers, and release artifacts.
 
 **Exit:** public MVP release candidate with measured reliability.
 
+Status: ✅ implemented and release-verified. Evidence is recorded in
+`docs/release-evidence.md`.
+
 ## 19. MVP acceptance scenario
 
 The MVP succeeds when a user can:
