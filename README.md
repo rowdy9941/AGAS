@@ -75,7 +75,7 @@ and the security boundary is documented in
 
 ## Project status
 
-AGAS 1.0.0 implements all seven MVP phases. See the
+AGAS 1.0.1 implements all seven MVP phases. See the
 [master architecture plan](docs/AGAS_MASTER_ARCHITECTURE_PLAN.md) for the full
 MVP contract, [evaluation suites](docs/evaluations.md), and
 [deployment guide](docs/deployment.md) for Node and Docker use.

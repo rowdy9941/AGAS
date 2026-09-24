@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1 - 2026-09-24
+
+- Prevent false runtime-version failures when external CLIs need a bounded cold start.
+- Add regression coverage for shim and snap-installed runtime launch latency.
+
 ## 1.0.0 - 2026-09-24
 
 - Shipped durable authenticated single-node control plane and operator console.

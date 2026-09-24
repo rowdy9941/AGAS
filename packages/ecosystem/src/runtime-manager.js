@@ -1,7 +1,7 @@
 import { invariant } from "../../core/src/errors.js";
 
 const MANAGED_PACKAGES = Object.freeze({
-  "agas-sim": { runtimeId: "agas-sim", version: "1.0.0", source: "bundled", checksum: "builtin:agas-sim-1.0.0" },
+  "agas-sim": { runtimeId: "agas-sim", version: "1.0.1", source: "bundled", checksum: "builtin:agas-sim-1.0.1" },
 });
 
 export class RuntimeManager {

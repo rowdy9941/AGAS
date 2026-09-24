@@ -30,7 +30,7 @@ export class ControlPlane {
   }
 
   health() {
-    return { status: "ok", service: "agas-control-plane", version: "1.0.0", uptimeSeconds: Math.floor(process.uptime()), registry: this.registry.counts(), missions: { total: this.missions.list().length, running: this.missions.list({ status: "running" }).length } };
+    return { status: "ok", service: "agas-control-plane", version: "1.0.1", uptimeSeconds: Math.floor(process.uptime()), registry: this.registry.counts(), missions: { total: this.missions.list().length, running: this.missions.list({ status: "running" }).length } };
   }
 
   diagnostics() {

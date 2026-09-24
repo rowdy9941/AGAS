@@ -1,10 +1,11 @@
-# 1.0.0 release evidence
+# 1.0.1 release evidence
 
 Verified on 2026-09-24 with Node.js 22.22.3 on Linux x64.
 
 | Check | Result |
 | --- | --- |
-| Syntax and automated suite | 34/34 tests passed locally |
+| Syntax and automated suite | 35/35 tests passed locally |
+| Runtime detection | Installed shim and snap CLIs passed a bounded cold-start regression and live version detection |
 | Full MVP scenario | Twelve-step offline scenario passed |
 | Crash recovery | Interrupted mission retried and completed after database reopen |
 | Backup/restore | Backup and restored copy both passed SQLite integrity checks |
