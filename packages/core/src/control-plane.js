@@ -6,16 +6,20 @@ import { detectRuntimes } from "./runtime-detector.js";
 import { planHub } from "./hub-planner.js";
 import { StateDatabase } from "./state-database.js";
 import { AuthService } from "./auth-service.js";
+import { CatalogService } from "../../ecosystem/src/catalog-service.js";
+import { RuntimeManager } from "../../ecosystem/src/runtime-manager.js";
 
 export class ControlPlane {
-  constructor({ registry, memory, executions } = {}) {
+  constructor({ registry, memory, executions, catalog, runtimeManager } = {}) {
     this.registry = registry ?? new UniversalRegistry(initialCatalog);
     this.memory = memory ?? new MemoryStore();
     this.executions = executions ?? new ExecutionStore();
+    this.catalog = catalog ?? new CatalogService(this.registry);
+    this.runtimeManager = runtimeManager ?? new RuntimeManager();
   }
 
   health() {
-    return { status: "ok", service: "agas-control-plane", version: "0.3.0", registry: this.registry.counts() };
+    return { status: "ok", service: "agas-control-plane", version: "0.4.0", registry: this.registry.counts() };
   }
 
   detectRuntimes(options) {
@@ -59,8 +63,12 @@ export function createPersistentServices({ databasePath = "./data/agas.db", boot
     bootstrapToken,
     onChange: (state) => database.write("apiKeys", state),
   });
+  const runtimeManager = new RuntimeManager({
+    installs: database.read("runtimeInstalls", []),
+    onChange: (state) => database.write("runtimeInstalls", state),
+  });
 
-  return { controlPlane: new ControlPlane({ registry, memory, executions }), auth, database };
+  return { controlPlane: new ControlPlane({ registry, memory, executions, runtimeManager }), auth, database };
 }
 
 export { UniversalRegistry } from "./registry.js";

@@ -8,6 +8,9 @@ explicit model.
 The control plane is dependency-free at runtime and stores its state in SQLite.
 It includes a recoverable background dispatcher, deterministic simulator, an
 opt-in local CLI adapter, and a responsive authenticated operator console.
+The console also includes a versioned Agency specialist catalog, Hermes/Codex/
+OpenCode persona projections, managed runtime activation, and a persistent Hub
+Builder with drag-and-drop and keyboard-equivalent controls.
 
 ## Run it
 
@@ -55,6 +58,6 @@ See [docs/api.md](docs/api.md) for the complete HTTP surface and
 
 ## Project status
 
-Phases 1–3 are implemented. See the
+Phases 1–4 are implemented. See the
 [master architecture plan](docs/AGAS_MASTER_ARCHITECTURE_PLAN.md) for the full
 MVP contract and [deployment guide](docs/deployment.md) for Node and Docker use.

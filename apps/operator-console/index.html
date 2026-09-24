@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="AGAS operator console">
     <title>AGAS Operator Console</title>
-    <link rel="stylesheet" href="/assets/styles.css?v=0.3.0">
+    <link rel="stylesheet" href="/assets/styles.css?v=0.4.0">
   </head>
   <body>
     <a class="skip-link" href="#content">Skip to content</a>
@@ -15,6 +15,8 @@
         <nav>
           <button class="nav-item active" data-view="overview">Overview</button>
           <button class="nav-item" data-view="runtimes">Runtimes</button>
+          <button class="nav-item" data-view="catalog">Catalog</button>
+          <button class="nav-item" data-view="hubs">Hub Builder</button>
           <button class="nav-item" data-view="executions">Executions</button>
           <button class="nav-item" data-view="audit">Audit</button>
         </nav>
@@ -47,6 +49,20 @@
 
           <section id="runtimes-view" class="view" hidden>
             <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Local-first runtime mesh</p><h2>Detected runtimes</h2></div><button id="detect-button" class="button primary">Detect now</button></div><div id="runtime-list" class="card-grid"></div></article>
+            <article class="panel spaced"><div class="panel-heading"><div><p class="eyebrow">Verified local packages</p><h2>Managed runtimes</h2></div></div><div id="managed-runtime-list" class="card-grid"></div></article>
+          </section>
+
+          <section id="catalog-view" class="view" hidden>
+            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Versioned Agency sources</p><h2>Specialist catalog</h2></div><input id="catalog-search" class="compact-input" type="search" placeholder="Search skills, tags, permissions" aria-label="Search specialist catalog"></div><div id="catalog-list" class="card-grid"></div></article>
+            <article id="projection-panel" class="panel spaced" hidden><div class="panel-heading"><div><p class="eyebrow">Runtime projection</p><h2 id="projection-title">Persona projection</h2></div></div><pre id="projection-output"></pre></article>
+          </section>
+
+          <section id="hubs-view" class="view" hidden>
+            <div class="builder-grid">
+              <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Agency specialists</p><h2>Drag or add roles</h2></div></div><div id="builder-personas" class="builder-personas"></div></article>
+              <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Stable team definition</p><h2>Compose a hub</h2></div></div><form id="hub-form" class="stack"><label for="hub-id">Hub ID</label><input id="hub-id" value="product-engineering" required pattern="[a-z0-9][a-z0-9._-]*"><label for="hub-name">Hub name</label><input id="hub-name" value="Product Engineering" required><label>Selected specialists</label><div id="hub-dropzone" class="dropzone" tabindex="0">Drop specialists here or use their Add buttons.</div><div id="selected-personas" class="selected-personas"></div><button class="button primary" type="submit">Save hub</button><p id="hub-message" class="form-message" role="status"></p></form></article>
+            </div>
+            <article class="panel spaced"><div class="panel-heading"><div><p class="eyebrow">Persistent hub registry</p><h2>Available hubs</h2></div></div><div id="hub-list" class="card-grid"></div></article>
           </section>
 
           <section id="executions-view" class="view" hidden>
@@ -59,6 +75,6 @@
         </div>
       </main>
     </div>
-    <script type="module" src="/assets/app.js?v=0.3.0"></script>
+    <script type="module" src="/assets/app.js?v=0.4.0"></script>
   </body>
 </html>
