@@ -15,7 +15,7 @@ export class ControlPlane {
   }
 
   health() {
-    return { status: "ok", service: "agas-control-plane", version: "0.2.0", registry: this.registry.counts() };
+    return { status: "ok", service: "agas-control-plane", version: "0.3.0", registry: this.registry.counts() };
   }
 
   detectRuntimes(options) {
@@ -37,7 +37,13 @@ export function createPersistentServices({ databasePath = "./data/agas.db", boot
   const savedRegistry = database.read("registry", null);
   const registrySeed = savedRegistry ?? initialCatalog;
   const registry = new UniversalRegistry(registrySeed, { onChange: (state) => database.write("registry", state) });
-  if (!savedRegistry) database.write("registry", registry.snapshot());
+  if (!savedRegistry) {
+    database.write("registry", registry.snapshot());
+  } else {
+    for (const [kind, entries] of Object.entries(initialCatalog)) {
+      for (const entry of entries) registry.replace(kind, entry);
+    }
+  }
 
   const memory = new MemoryStore({
     records: database.read("memory", []),

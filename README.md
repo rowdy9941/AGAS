@@ -6,8 +6,8 @@ memory boundaries, hub composition, permissions, and execution state in one
 explicit model.
 
 The control plane is dependency-free at runtime and stores its state in SQLite.
-It deliberately does not execute third-party agents yet: activation produces a
-validated plan, while execution changes require an explicit lifecycle transition.
+It includes a recoverable background dispatcher, deterministic simulator, an
+opt-in local CLI adapter, and a responsive authenticated operator console.
 
 ## Run it
 
@@ -24,6 +24,7 @@ The service listens on `http://127.0.0.1:4310` by default and persists state to
 `AGAS_BOOTSTRAP_TOKEN` before the first start for a private administrator token.
 Set `AGAS_HOST`, `AGAS_PORT`, or `AGAS_DB_PATH` to override other defaults. AGAS
 refuses a non-loopback bind unless an explicit bootstrap token is configured.
+Open the service URL in a browser to use the operator console.
 
 ```bash
 curl http://127.0.0.1:4310/healthz
@@ -48,9 +49,12 @@ See [docs/api.md](docs/api.md) for the complete HTTP surface and
 - API tokens are stored only as SHA-256 hashes and use role/workspace policy.
 - Hub plans select only compatible runtimes and expose their permission envelope.
 - Execution records use a strict state machine and append-only audit events.
+- Runtime commands use no shell, a scrubbed environment, bounded output and time,
+  and a working directory constrained beneath `AGAS_WORKSPACE_ROOT`.
 - JSON bodies are size-limited and errors are structured.
 
 ## Project status
 
-Durable storage and authentication are implemented. Governed runtime adapters,
-background scheduling, and the operator console are the next delivery phase.
+Phases 1–3 are implemented. See the
+[master architecture plan](docs/AGAS_MASTER_ARCHITECTURE_PLAN.md) for the full
+MVP contract and [deployment guide](docs/deployment.md) for Node and Docker use.

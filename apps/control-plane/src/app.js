@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { AuthService, ControlPlane, DomainError } from "../../../packages/core/src/control-plane.js";
 
 const JSON_LIMIT = 256 * 1024;
@@ -10,8 +11,33 @@ function send(response, status, body, requestId) {
     "content-length": Buffer.byteLength(payload),
     "x-request-id": requestId,
     "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
   });
   response.end(payload);
+}
+
+const staticFiles = new Map([
+  ["/", { url: new URL("../../operator-console/index.html", import.meta.url), type: "text/html; charset=utf-8" }],
+  ["/assets/app.js", { url: new URL("../../operator-console/app.js", import.meta.url), type: "text/javascript; charset=utf-8" }],
+  ["/assets/styles.css", { url: new URL("../../operator-console/styles.css", import.meta.url), type: "text/css; charset=utf-8" }],
+]);
+
+async function sendStatic(response, pathname, requestId) {
+  const asset = staticFiles.get(pathname);
+  if (!asset) return false;
+  const payload = await readFile(asset.url);
+  response.writeHead(200, {
+    "content-type": asset.type,
+    "content-length": payload.length,
+    "cache-control": "no-cache",
+    "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+    "x-request-id": requestId,
+  });
+  response.end(payload);
+  return true;
 }
 
 async function readJson(request) {
@@ -40,7 +66,9 @@ export function createApp(controlPlane = new ControlPlane(), { auth = new AuthSe
       const url = new URL(request.url, "http://agas.local");
       const segments = url.pathname.split("/").filter(Boolean);
 
-      if (request.method === "GET" && url.pathname === "/healthz") {
+      if (request.method === "GET" && await sendStatic(response, url.pathname, requestId)) return;
+
+      if (request.method === "GET" && ["/healthz", "/readyz"].includes(url.pathname)) {
         return send(response, 200, controlPlane.health(), requestId);
       }
       const principal = auth.authenticateHeader(request.headers.authorization);

@@ -15,6 +15,10 @@ system is split into services.
 6. **Hub Planner** maps the permanent hub roster to compatible available runtimes.
 7. **Execution Ledger** validates lifecycle transitions and emits audit events.
 8. **HTTP Control Plane** exposes these capabilities through versioned JSON APIs.
+9. **Runtime Executor** offers deterministic simulation and explicitly enabled,
+   constrained local CLI invocation.
+10. **Dispatcher** recovers interrupted work and claims approved executions.
+11. **Operator Console** exposes the governed workflow without bypassing the API.
 
 ## Trust boundary
 
@@ -27,6 +31,6 @@ every external side effect.
 
 - Phase 1: registry, detection, context, planning, execution ledger, HTTP API. ✅
 - Phase 2: durable SQLite storage, authentication, and policy evaluation. ✅
-- Phase 3: sandboxed runtime adapters and asynchronous dispatch.
+- Phase 3: runtime adapters, recoverable asynchronous dispatch, and console. ✅
 - Phase 4: operator console, telemetry, budgets, and approval workflows.
 - Phase 5: distributed workers, organization governance, and extension SDK.

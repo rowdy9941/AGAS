@@ -25,7 +25,7 @@ test("health, planning, execution, transitions, and audit work over HTTP", async
     assert.equal(healthResponse.status, 200);
     const health = await healthResponse.json();
     assert.equal(health.status, "ok");
-    assert.equal(health.registry.runtimes, 5);
+    assert.equal(health.registry.runtimes, 6);
 
     const executionResponse = await fetch(`${baseUrl}/v1/executions`, {
       method: "POST",
@@ -66,5 +66,19 @@ test("versioned APIs reject unauthenticated requests", async () => {
     const body = await response.json();
     assert.equal(response.status, 401);
     assert.equal(body.error.code, "AUTHENTICATION_REQUIRED");
+  });
+});
+
+test("operator console and readiness endpoint are public and security-hardened", async () => {
+  await withServer(async (baseUrl) => {
+    const page = await fetch(`${baseUrl}/`);
+    assert.equal(page.status, 200);
+    assert.match(page.headers.get("content-security-policy"), /default-src 'self'/);
+    assert.match(await page.text(), /AGAS Operator Console/);
+    const script = await fetch(`${baseUrl}/assets/app.js`);
+    assert.equal(script.status, 200);
+    assert.match(script.headers.get("content-type"), /text\/javascript/);
+    const ready = await fetch(`${baseUrl}/readyz`);
+    assert.equal(ready.status, 200);
   });
 });

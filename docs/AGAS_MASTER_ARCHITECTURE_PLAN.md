@@ -154,12 +154,16 @@ SQLite persistence, API-key authentication, roles, workspace policy, migrations.
 
 **Exit:** restart preserves authoritative state and unauthorized access fails.
 
+Status: ✅ implemented and verified.
+
 ### Phase 3 — Runtime execution and operator console
 
 Recoverable dispatcher, simulator and local CLI adapter, status streaming/polling,
 responsive operator console, deployment packaging.
 
 **Exit:** an approved execution completes end to end and is visible in the UI.
+
+Status: ✅ implemented and browser-verified.
 
 ### Phase 4 — Ecosystem catalog and Hub Builder
 
