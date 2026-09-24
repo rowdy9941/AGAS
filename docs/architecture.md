@@ -28,6 +28,10 @@ system is split into services.
     containing only explicitly granted tools and secret references.
 16. **Vault Projector** writes atomic Obsidian-compatible Markdown and validates
     imports before updating authoritative artifacts.
+17. **Organization Store** provides durable organizations, workspaces, projects,
+    teams, conversations, and message history.
+18. **Mission Authority** plans dependency graphs, enforces budgets and approval
+    gates, coordinates execution, verifies evidence, and produces final reports.
 
 ## Trust boundary
 
@@ -43,5 +47,5 @@ never enter registry, projection, or vault content as raw secrets.
 - Phase 3: runtime adapters, recoverable asynchronous dispatch, and console. ✅
 - Phase 4: ecosystem catalog, managed runtime, persona projections, Hub Builder. ✅
 - Phase 5: Context Fabric, MCP Gateway, and Obsidian vault projection. ✅
-- Phase 6: Mission Authority, durable organization records, and initial hubs.
+- Phase 6: Mission Authority, durable organization records, and initial hubs. ✅
 - Phase 7: recovery, security hardening, complete acceptance, and public release.

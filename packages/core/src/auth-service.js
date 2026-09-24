@@ -3,11 +3,11 @@ import { invariant } from "./errors.js";
 
 export const ROLE_PERMISSIONS = Object.freeze({
   viewer: Object.freeze([
-    "registry:read", "catalog:read", "runtime:read", "plan:read", "memory:read", "context:read", "mcp:read", "vault:read", "execution:read", "audit:read",
+    "registry:read", "catalog:read", "runtime:read", "plan:read", "memory:read", "context:read", "mcp:read", "vault:read", "organization:read", "mission:read", "execution:read", "audit:read",
   ]),
   operator: Object.freeze([
     "registry:read", "catalog:read", "runtime:read", "plan:read", "plan:create", "memory:read", "memory:write", "context:read", "context:write", "mcp:read", "vault:read", "vault:write",
-    "execution:read", "execution:create", "execution:transition", "audit:read",
+    "organization:read", "organization:write", "mission:read", "mission:create", "mission:start", "mission:cancel", "execution:read", "execution:create", "execution:transition", "audit:read",
   ]),
   admin: Object.freeze(["*"]),
 });

@@ -38,6 +38,19 @@ All responses are JSON. Except for `/healthz`, requests require an
 | GET | `/v1/mcp/projections/:runtimeId` | Render a runtime MCP projection |
 | POST | `/v1/vault/project` | Project workspace knowledge to Markdown |
 | POST | `/v1/vault/import` | Validate and import an artifact document |
+| GET/POST | `/v1/organizations` | List or create organizations |
+| GET/POST | `/v1/workspaces` | List or create workspaces |
+| GET/POST | `/v1/projects` | List or create projects |
+| GET/POST | `/v1/teams` | List or create teams |
+| GET/POST | `/v1/conversations` | List or create conversations |
+| POST | `/v1/conversations/:id/messages` | Append durable conversation context |
+| GET/POST | `/v1/missions` | List missions or create a structured plan |
+| GET | `/v1/missions/:id` | Read a mission, task graph, budget, and report |
+| POST | `/v1/missions/:id/approve` | Approve sensitive mission tasks (admin) |
+| POST | `/v1/missions/:id/start` | Start an approved mission |
+| POST | `/v1/missions/:id/cancel` | Cancel active mission work |
+| POST | `/v1/missions/:id/tasks/:taskId/retry` | Retry a failed task within budget |
+| GET | `/v1/mission-events` | Read the mission event stream |
 | POST | `/v1/executions` | Propose an execution from a hub plan |
 | GET | `/v1/executions` | List visible executions |
 | GET | `/v1/executions/:id` | Read an execution record |
@@ -63,3 +76,8 @@ artifact from the same workspace. MCP credentials must be references beginning
 with `env:` or `vault:`; raw tokens are rejected. Vault imports currently accept
 only artifact documents and require the document workspace to match the caller's
 authorized workspace.
+
+Mission types are `repository` and `research`. Creation returns a durable task
+dependency graph in `awaiting-approval`. Sensitive tasks must be approved by an
+administrator before the mission can start. Completion requires task evidence,
+verification, a final report, and a successful vault projection.

@@ -1,6 +1,6 @@
 {
   "name": "agas",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Agent Governance and Activation System control-plane foundation",
   "type": "module",
@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node apps/control-plane/src/server.js",
     "check": "npm run lint && npm test",
-    "lint": "node --check apps/control-plane/src/server.js && node --check apps/operator-console/app.js && node --check packages/core/src/control-plane.js && node --check packages/runtime/src/dispatcher.js && node --check packages/ecosystem/src/catalog-service.js && node --check packages/context/src/context-fabric.js && node --check packages/mcp/src/mcp-gateway.js && node --check packages/vault/src/vault-projector.js",
+    "lint": "node --check apps/control-plane/src/server.js && node --check apps/operator-console/app.js && node --check packages/core/src/control-plane.js && node --check packages/runtime/src/dispatcher.js && node --check packages/ecosystem/src/catalog-service.js && node --check packages/context/src/context-fabric.js && node --check packages/mcp/src/mcp-gateway.js && node --check packages/vault/src/vault-projector.js && node --check packages/organization/src/organization-store.js && node --check packages/mission/src/mission-authority.js",
     "test": "node --test --test-reporter=spec"
   }
 }

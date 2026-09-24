@@ -240,6 +240,76 @@ export function createApp(controlPlane = new ControlPlane(), { auth = new AuthSe
         auth.authorizeWorkspace(principal, input.workspaceId);
         return send(response, 200, controlPlane.vault.importMarkdown(input.markdown, { workspaceId: input.workspaceId, principalId: principal.id }), requestId);
       }
+      const organizationKind = ({ organizations: "organizations", workspaces: "workspaces", projects: "projects", teams: "teams", conversations: "conversations" })[segments[1]];
+      if (request.method === "GET" && segments[0] === "v1" && organizationKind && segments.length === 2) {
+        auth.authorize(principal, "organization:read");
+        const workspaceId = url.searchParams.get("workspaceId") ?? undefined;
+        if (workspaceId) auth.authorizeWorkspace(principal, workspaceId);
+        const items = controlPlane.organization.list(organizationKind, { workspaceId }).filter((item) => !item.workspaceId || principal.workspaceIds.includes("*") || principal.workspaceIds.includes(item.workspaceId));
+        return send(response, 200, { items }, requestId);
+      }
+      if (request.method === "POST" && segments[0] === "v1" && organizationKind && segments.length === 2) {
+        auth.authorize(principal, "organization:write");
+        const input = await readJson(request);
+        if (input.workspaceId) auth.authorizeWorkspace(principal, input.workspaceId);
+        return send(response, 201, controlPlane.organization.create(organizationKind, input, principal.id), requestId);
+      }
+      if (request.method === "POST" && segments[0] === "v1" && segments[1] === "conversations" && segments[3] === "messages" && segments.length === 4) {
+        auth.authorize(principal, "organization:write");
+        const conversation = controlPlane.organization.get("conversations", segments[2]);
+        auth.authorizeWorkspace(principal, conversation.workspaceId);
+        return send(response, 201, controlPlane.organization.appendMessage(segments[2], await readJson(request), principal.id), requestId);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/missions") {
+        auth.authorize(principal, "mission:read");
+        const workspaceId = url.searchParams.get("workspaceId") ?? undefined;
+        if (workspaceId) auth.authorizeWorkspace(principal, workspaceId);
+        const items = controlPlane.missions.list({ workspaceId, status: url.searchParams.get("status") ?? undefined })
+          .filter((mission) => principal.workspaceIds.includes("*") || principal.workspaceIds.includes(mission.workspaceId));
+        return send(response, 200, { items }, requestId);
+      }
+      if (request.method === "POST" && url.pathname === "/v1/missions") {
+        auth.authorize(principal, "mission:create");
+        const input = await readJson(request);
+        auth.authorizeWorkspace(principal, input.workspaceId);
+        return send(response, 201, controlPlane.missions.create(input, principal.id), requestId);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/mission-events") {
+        auth.authorize(principal, "mission:read");
+        const workspaceId = url.searchParams.get("workspaceId");
+        auth.authorizeWorkspace(principal, workspaceId);
+        return send(response, 200, { items: controlPlane.missions.events({ workspaceId }) }, requestId);
+      }
+      if (request.method === "GET" && segments[0] === "v1" && segments[1] === "missions" && segments.length === 3) {
+        auth.authorize(principal, "mission:read");
+        const mission = controlPlane.missions.get(segments[2]);
+        auth.authorizeWorkspace(principal, mission.workspaceId);
+        return send(response, 200, mission, requestId);
+      }
+      if (request.method === "POST" && segments[0] === "v1" && segments[1] === "missions" && segments[3] === "approve" && segments.length === 4) {
+        auth.authorize(principal, "mission:approve");
+        const mission = controlPlane.missions.get(segments[2]);
+        auth.authorizeWorkspace(principal, mission.workspaceId);
+        return send(response, 200, controlPlane.missions.approve(segments[2], await readJson(request), principal.id), requestId);
+      }
+      if (request.method === "POST" && segments[0] === "v1" && segments[1] === "missions" && segments[3] === "start" && segments.length === 4) {
+        auth.authorize(principal, "mission:start");
+        const mission = controlPlane.missions.get(segments[2]);
+        auth.authorizeWorkspace(principal, mission.workspaceId);
+        return send(response, 200, controlPlane.missions.start(segments[2], principal.id), requestId);
+      }
+      if (request.method === "POST" && segments[0] === "v1" && segments[1] === "missions" && segments[3] === "cancel" && segments.length === 4) {
+        auth.authorize(principal, "mission:cancel");
+        const mission = controlPlane.missions.get(segments[2]);
+        auth.authorizeWorkspace(principal, mission.workspaceId);
+        return send(response, 200, controlPlane.missions.cancel(segments[2], principal.id, (await readJson(request)).reason), requestId);
+      }
+      if (request.method === "POST" && segments[0] === "v1" && segments[1] === "missions" && segments[3] === "tasks" && segments[5] === "retry" && segments.length === 6) {
+        auth.authorize(principal, "mission:start");
+        const mission = controlPlane.missions.get(segments[2]);
+        auth.authorizeWorkspace(principal, mission.workspaceId);
+        return send(response, 200, controlPlane.missions.retryTask(segments[2], segments[4], principal.id), requestId);
+      }
       if (request.method === "POST" && url.pathname === "/v1/executions") {
         auth.authorize(principal, "execution:create");
         const input = await readJson(request);
