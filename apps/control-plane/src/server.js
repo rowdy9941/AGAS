@@ -15,6 +15,11 @@ const runtimeMode = process.env.AGAS_RUNTIME_EXECUTION ?? "simulator";
 const workspaceRoot = process.env.AGAS_WORKSPACE_ROOT ?? process.cwd();
 const vaultPath = process.env.AGAS_VAULT_PATH ?? "./data/vault";
 
+function log(level, event, data = {}) {
+  const entry = JSON.stringify({ timestamp: new Date().toISOString(), level, event, ...data });
+  (level === "error" ? console.error : level === "warn" ? console.warn : console.log)(entry);
+}
+
 if (!Number.isInteger(port) || port < 0 || port > 65535) {
   throw new Error("AGAS_PORT must be an integer between 0 and 65535");
 }
@@ -30,10 +35,8 @@ const server = createServer(createApp(controlPlane, { auth }));
 server.listen(port, host, () => {
   const address = server.address();
   const actualPort = typeof address === "object" && address ? address.port : port;
-  console.log(`AGAS control plane listening on http://${host}:${actualPort}`);
-  console.log(`Persistent state: ${databasePath}`);
-  console.log(`Runtime execution: ${runtimeMode}`);
-  if (!configuredToken) console.warn("Development authentication enabled; use Bearer agas-dev-token");
+  log("info", "server.started", { host, port: actualPort, databasePath, runtimeMode, schemaVersion: database.schemaVersion() });
+  if (!configuredToken) log("warn", "auth.development-token-enabled", { loopbackOnly: isLoopback });
   dispatcher.start();
   missionCoordinator.start();
 });
@@ -49,8 +52,10 @@ function shutdown(signal) {
     }
   });
   setTimeout(() => process.exit(1), 5_000).unref();
-  console.log(`Received ${signal}; shutting down`);
+  log("info", "server.shutdown-requested", { signal });
 }
 
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("unhandledRejection", (error) => log("error", "process.unhandled-rejection", { message: error instanceof Error ? error.message : String(error) }));
+process.on("uncaughtExceptionMonitor", (error) => log("error", "process.uncaught-exception", { message: error.message }));

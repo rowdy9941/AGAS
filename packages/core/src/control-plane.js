@@ -4,7 +4,7 @@ import { MemoryStore } from "./memory-store.js";
 import { ExecutionStore } from "./execution-store.js";
 import { detectRuntimes } from "./runtime-detector.js";
 import { planHub } from "./hub-planner.js";
-import { StateDatabase } from "./state-database.js";
+import { CURRENT_SCHEMA_VERSION, StateDatabase } from "./state-database.js";
 import { AuthService } from "./auth-service.js";
 import { CatalogService } from "../../ecosystem/src/catalog-service.js";
 import { RuntimeManager } from "../../ecosystem/src/runtime-manager.js";
@@ -15,7 +15,7 @@ import { OrganizationStore } from "../../organization/src/organization-store.js"
 import { MissionAuthority } from "../../mission/src/mission-authority.js";
 
 export class ControlPlane {
-  constructor({ registry, memory, executions, catalog, runtimeManager, contextFabric, mcpGateway, vault, organization, missions } = {}) {
+  constructor({ registry, memory, executions, catalog, runtimeManager, contextFabric, mcpGateway, vault, organization, missions, database } = {}) {
     this.registry = registry ?? new UniversalRegistry(initialCatalog);
     this.memory = memory ?? new MemoryStore();
     this.executions = executions ?? new ExecutionStore();
@@ -26,10 +26,26 @@ export class ControlPlane {
     this.vault = vault ?? new VaultProjector({ contextFabric: this.context, memory: this.memory });
     this.organization = organization ?? new OrganizationStore();
     this.missions = missions ?? new MissionAuthority({ registry: this.registry, executions: this.executions, context: this.context, vault: this.vault, organization: this.organization });
+    this.database = database ?? null;
   }
 
   health() {
-    return { status: "ok", service: "agas-control-plane", version: "0.6.0", registry: this.registry.counts(), missions: { total: this.missions.list().length, running: this.missions.list({ status: "running" }).length } };
+    return { status: "ok", service: "agas-control-plane", version: "1.0.0", uptimeSeconds: Math.floor(process.uptime()), registry: this.registry.counts(), missions: { total: this.missions.list().length, running: this.missions.list({ status: "running" }).length } };
+  }
+
+  diagnostics() {
+    return {
+      generatedAt: new Date().toISOString(),
+      process: { node: process.version, platform: process.platform, architecture: process.arch, uptimeSeconds: Math.floor(process.uptime()), memory: process.memoryUsage() },
+      database: this.database?.diagnostics() ?? { path: ":memory:", integrity: { ok: true, result: "ok", schemaVersion: CURRENT_SCHEMA_VERSION }, namespaces: [] },
+      registry: this.registry.counts(),
+      records: {
+        missions: this.missions.list().length,
+        executions: this.executions.list({ limit: 500 }).length,
+        artifacts: this.context.listArtifacts().length,
+        handoffs: this.context.listHandoffs().length,
+      },
+    };
   }
 
   detectRuntimes(options) {
@@ -98,7 +114,7 @@ export function createPersistentServices({ databasePath = "./data/agas.db", boot
     onChange: (state) => database.write("missions", state),
   });
 
-  return { controlPlane: new ControlPlane({ registry, memory, executions, runtimeManager, contextFabric, mcpGateway, vault, organization, missions }), auth, database };
+  return { controlPlane: new ControlPlane({ registry, memory, executions, runtimeManager, contextFabric, mcpGateway, vault, organization, missions, database }), auth, database };
 }
 
 export { UniversalRegistry } from "./registry.js";

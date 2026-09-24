@@ -1,5 +1,10 @@
 FROM node:24-alpine
 
+LABEL org.opencontainers.image.title="AGAS" \
+      org.opencontainers.image.version="1.0.0" \
+      org.opencontainers.image.source="https://github.com/rowdy9941/AGAS" \
+      org.opencontainers.image.licenses="MIT"
+
 WORKDIR /app
 COPY --chown=node:node package.json package-lock.json ./
 RUN npm ci --omit=dev

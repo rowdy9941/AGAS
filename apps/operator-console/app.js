@@ -1,4 +1,4 @@
-const state = { token: sessionStorage.getItem("agas-token") ?? "", session: null, health: null, executions: [], missions: [], missionEvents: [], organizations: [], workspaces: [], projects: [], teams: [], conversations: [], runtimes: [], managedRuntimes: [], personas: [], hubs: [], selectedPersonas: [], artifacts: [], handoffs: [], mcpServices: [], mcpGrants: [], audit: [], view: "overview" };
+const state = { token: sessionStorage.getItem("agas-token") ?? "", session: null, health: null, diagnostics: null, executions: [], missions: [], missionEvents: [], organizations: [], workspaces: [], projects: [], teams: [], conversations: [], runtimes: [], managedRuntimes: [], personas: [], hubs: [], selectedPersonas: [], artifacts: [], handoffs: [], mcpServices: [], mcpGrants: [], audit: [], view: "overview" };
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -304,7 +304,7 @@ function render() {
   renderMissions();
   renderOrganization();
   renderConversations();
-  $("#settings-details").replaceChildren(...[["Version", state.health.version], ["Role", state.session.principal.role], ["Workspace", state.workspaces[0]?.name ?? "default"], ["Mission events", String(state.missionEvents.length)]].flatMap(([term, description]) => {
+  $("#settings-details").replaceChildren(...[["Version", state.health.version], ["Role", state.session.principal.role], ["Workspace", state.workspaces[0]?.name ?? "default"], ["Database", state.diagnostics?.database.integrity.ok ? `healthy · schema v${state.diagnostics.database.integrity.schemaVersion}` : "unavailable"], ["Mission events", String(state.missionEvents.length)]].flatMap(([term, description]) => {
     const wrapper = document.createElement("div"); const dt = document.createElement("dt"); const dd = document.createElement("dd");
     dt.textContent = term; dd.textContent = description; wrapper.append(dt, dd); return wrapper;
   }));
@@ -321,16 +321,16 @@ function render() {
 async function refresh() {
   if (!state.token) return;
   try {
-    const [health, session, executions, missions, missionEvents, organizations, workspaces, projects, teams, conversations, runtimes, managedRuntimes, personas, hubs, artifacts, handoffs, mcpServices, mcpGrants, audit] = await Promise.all([
+    const [health, session, diagnostics, executions, missions, missionEvents, organizations, workspaces, projects, teams, conversations, runtimes, managedRuntimes, personas, hubs, artifacts, handoffs, mcpServices, mcpGrants, audit] = await Promise.all([
       fetch("/healthz").then((response) => response.json()),
-      api("/v1/session"), api("/v1/executions"), api("/v1/missions?workspaceId=default"), api("/v1/mission-events?workspaceId=default"),
+      api("/v1/session"), api("/v1/diagnostics"), api("/v1/executions"), api("/v1/missions?workspaceId=default"), api("/v1/mission-events?workspaceId=default"),
       api("/v1/organizations"), api("/v1/workspaces?workspaceId=default"), api("/v1/projects?workspaceId=default"), api("/v1/teams?workspaceId=default"), api("/v1/conversations?workspaceId=default"),
       api("/v1/runtimes/detect"), api("/v1/runtimes/managed"),
       api("/v1/catalog/search?kind=personas&limit=500"), api("/v1/hubs"),
       api("/v1/context/artifacts?workspaceId=default"), api("/v1/context/handoffs?workspaceId=default"),
       api("/v1/registry/mcpServers"), api("/v1/mcp/grants?workspaceId=default"), api("/v1/audit"),
     ]);
-    Object.assign(state, { health, session, executions: executions.items, missions: missions.items, missionEvents: missionEvents.items, organizations: organizations.items, workspaces: workspaces.items, projects: projects.items, teams: teams.items, conversations: conversations.items, runtimes: runtimes.runtimes, managedRuntimes: managedRuntimes.items, personas: personas.items, hubs: hubs.items, artifacts: artifacts.items, handoffs: handoffs.items, mcpServices: mcpServices.items, mcpGrants: mcpGrants.items, audit: audit.items.reverse() });
+    Object.assign(state, { health, session, diagnostics, executions: executions.items, missions: missions.items, missionEvents: missionEvents.items, organizations: organizations.items, workspaces: workspaces.items, projects: projects.items, teams: teams.items, conversations: conversations.items, runtimes: runtimes.runtimes, managedRuntimes: managedRuntimes.items, personas: personas.items, hubs: hubs.items, artifacts: artifacts.items, handoffs: handoffs.items, mcpServices: mcpServices.items, mcpGrants: mcpGrants.items, audit: audit.items.reverse() });
     render();
   } catch (error) {
     state.session = null;
