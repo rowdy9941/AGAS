@@ -7,11 +7,14 @@ system is split into services.
 
 1. **Universal Registry** stores immutable runtime, persona, skill, tool, MCP,
    plugin, workflow, model, and hub definitions.
-2. **Runtime Detector** performs local, read-only availability checks.
-3. **Context Fabric** stores scoped memory and enforces visibility at query time.
-4. **Hub Planner** maps the permanent hub roster to compatible available runtimes.
-5. **Execution Ledger** validates lifecycle transitions and emits audit events.
-6. **HTTP Control Plane** exposes these capabilities through versioned JSON APIs.
+2. **State Database** atomically persists registry, memory, executions, audit,
+   and API-key metadata in SQLite with WAL enabled.
+3. **Authentication and Policy** hashes tokens and enforces role/workspace grants.
+4. **Runtime Detector** performs local, read-only availability checks.
+5. **Context Fabric** stores scoped memory and enforces visibility at query time.
+6. **Hub Planner** maps the permanent hub roster to compatible available runtimes.
+7. **Execution Ledger** validates lifecycle transitions and emits audit events.
+8. **HTTP Control Plane** exposes these capabilities through versioned JSON APIs.
 
 ## Trust boundary
 
@@ -22,8 +25,8 @@ every external side effect.
 
 ## Delivery phases
 
-- Phase 1: registry, detection, context, planning, execution ledger, HTTP API.
-- Phase 2: durable SQLite storage, authentication, and policy evaluation.
+- Phase 1: registry, detection, context, planning, execution ledger, HTTP API. ✅
+- Phase 2: durable SQLite storage, authentication, and policy evaluation. ✅
 - Phase 3: sandboxed runtime adapters and asynchronous dispatch.
 - Phase 4: operator console, telemetry, budgets, and approval workflows.
 - Phase 5: distributed workers, organization governance, and extension SDK.

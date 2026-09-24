@@ -6,6 +6,12 @@ export const MEMORY_VISIBILITIES = Object.freeze(["private", "workspace", "hub",
 
 export class MemoryStore {
   #records = [];
+  #onChange;
+
+  constructor({ records = [], onChange } = {}) {
+    this.#records = structuredClone(records);
+    this.#onChange = onChange;
+  }
 
   append(input) {
     invariant(input && typeof input === "object", "INVALID_MEMORY", "Memory input must be an object");
@@ -30,7 +36,12 @@ export class MemoryStore {
       createdAt: new Date().toISOString(),
     });
     this.#records.push(record);
+    this.#onChange?.(this.snapshot());
     return structuredClone(record);
+  }
+
+  snapshot() {
+    return this.#records.map((record) => structuredClone(record));
   }
 
   search(context) {
