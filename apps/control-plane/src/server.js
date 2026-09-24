@@ -3,6 +3,7 @@ import { createApp } from "./app.js";
 import { createPersistentServices } from "../../../packages/core/src/control-plane.js";
 import { RuntimeExecutor } from "../../../packages/runtime/src/runtime-executor.js";
 import { Dispatcher } from "../../../packages/runtime/src/dispatcher.js";
+import { MissionCoordinator } from "../../../packages/mission/src/mission-authority.js";
 
 const host = process.env.AGAS_HOST ?? "127.0.0.1";
 const port = Number.parseInt(process.env.AGAS_PORT ?? "4310", 10);
@@ -24,6 +25,7 @@ if (!configuredToken && !isLoopback) {
 const { controlPlane, auth, database } = createPersistentServices({ databasePath, bootstrapToken, vaultPath });
 const executor = new RuntimeExecutor({ registry: controlPlane.registry, mode: runtimeMode, workspaceRoot });
 const dispatcher = new Dispatcher({ executions: controlPlane.executions, executor });
+const missionCoordinator = new MissionCoordinator({ missions: controlPlane.missions });
 const server = createServer(createApp(controlPlane, { auth }));
 server.listen(port, host, () => {
   const address = server.address();
@@ -33,10 +35,12 @@ server.listen(port, host, () => {
   console.log(`Runtime execution: ${runtimeMode}`);
   if (!configuredToken) console.warn("Development authentication enabled; use Bearer agas-dev-token");
   dispatcher.start();
+  missionCoordinator.start();
 });
 
 function shutdown(signal) {
   dispatcher.stop();
+  missionCoordinator.stop();
   server.close((error) => {
     database.close();
     if (error) {

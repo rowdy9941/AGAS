@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="AGAS operator console">
     <title>AGAS Operator Console</title>
-    <link rel="stylesheet" href="/assets/styles.css?v=0.5.0">
+    <link rel="stylesheet" href="/assets/styles.css?v=0.6.0">
   </head>
   <body>
     <a class="skip-link" href="#content">Skip to content</a>
@@ -14,6 +14,9 @@
         <div class="brand"><span class="brand-mark">A</span><div><strong>AGAS</strong><small>Operator Console</small></div></div>
         <nav>
           <button class="nav-item active" data-view="overview">Overview</button>
+          <button class="nav-item" data-view="missions">Missions</button>
+          <button class="nav-item" data-view="projects">Projects & Teams</button>
+          <button class="nav-item" data-view="conversations">Conversations</button>
           <button class="nav-item" data-view="runtimes">Runtimes</button>
           <button class="nav-item" data-view="catalog">Catalog</button>
           <button class="nav-item" data-view="hubs">Hub Builder</button>
@@ -21,6 +24,7 @@
           <button class="nav-item" data-view="mcp">MCP & Vault</button>
           <button class="nav-item" data-view="executions">Executions</button>
           <button class="nav-item" data-view="audit">Audit</button>
+          <button class="nav-item" data-view="settings">Settings</button>
         </nav>
         <div class="connection"><span id="connection-dot" class="dot"></span><span id="connection-label">Disconnected</span></div>
       </aside>
@@ -47,6 +51,23 @@
               <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Engineering Hub</p><h2>Start governed work</h2></div></div><form id="execution-form" class="stack"><label for="workspace">Workspace</label><input id="workspace" value="default" required pattern="[A-Za-z0-9._-]+"><label for="objective">Objective</label><textarea id="objective" rows="4" required placeholder="Describe the outcome and acceptance criteria"></textarea><label for="working-directory">Working directory (inside workspace root)</label><input id="working-directory" value="."><button class="button primary" type="submit">Propose execution</button><p id="execution-message" class="form-message" role="status"></p></form></article>
             </div>
             <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Recent work</p><h2>Execution timeline</h2></div><button class="link-button" data-jump="executions">View all</button></div><div id="recent-executions" class="table-wrap"></div></article>
+          </section>
+
+          <section id="missions-view" class="view" hidden>
+            <div class="grid two">
+              <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Mission Authority</p><h2>Plan governed work</h2></div></div><form id="mission-form" class="stack"><label for="mission-type">Evaluation suite</label><select id="mission-type"><option value="repository">Repository mission</option><option value="research">Research mission</option></select><label for="mission-objective">Objective and acceptance criteria</label><textarea id="mission-objective" rows="6" required placeholder="Describe the outcome, constraints, and evidence required"></textarea><button class="button primary" type="submit">Create structured plan</button><p id="mission-message" class="form-message" role="status"></p></form></article>
+              <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Approval policy</p><h2>Governed lifecycle</h2></div></div><ol class="task-list"><li>Mission Authority creates a dependency graph and budget.</li><li>An administrator reviews sensitive tasks before execution.</li><li>Runtime work is dispatched, retried, and audited.</li><li>Completion requires evidence, verification, and a vault-backed report.</li></ol></article>
+            </div>
+            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Durable mission ledger</p><h2>Mission plans and reports</h2></div></div><div id="mission-list" class="card-grid"></div></article>
+          </section>
+
+          <section id="projects-view" class="view" hidden>
+            <div class="grid two"><article class="panel"><div class="panel-heading"><div><p class="eyebrow">Paperclip responsibility</p><h2>Create project</h2></div></div><form id="project-form" class="stack"><label for="project-id">Project ID</label><input id="project-id" required pattern="[a-z0-9][a-z0-9._-]*" value="product-work"><label for="project-name">Project name</label><input id="project-name" required value="Product work"><label for="project-description">Description</label><textarea id="project-description" rows="3">Governed AGAS project</textarea><button class="button primary" type="submit">Create project</button><p id="project-message" class="form-message" role="status"></p></form></article><article class="panel"><div class="panel-heading"><div><p class="eyebrow">Durable organization model</p><h2>Workspaces and teams</h2></div></div><div id="organization-list" class="card-grid"></div></article></div>
+            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Workspace portfolio</p><h2>Projects</h2></div></div><div id="project-list" class="card-grid"></div></article>
+          </section>
+
+          <section id="conversations-view" class="view" hidden>
+            <div class="grid two"><article class="panel"><div class="panel-heading"><div><p class="eyebrow">Mission context</p><h2>Add conversation message</h2></div></div><form id="conversation-form" class="stack"><label for="conversation-id">Conversation</label><select id="conversation-id"></select><label for="conversation-content">Message</label><textarea id="conversation-content" rows="5" required placeholder="Add durable mission context"></textarea><button class="button primary" type="submit">Add message</button><p id="conversation-message" class="form-message" role="status"></p></form></article><article class="panel"><div class="panel-heading"><div><p class="eyebrow">Durable history</p><h2>Conversations</h2></div></div><div id="conversation-list" class="card-grid"></div></article></div>
           </section>
 
           <section id="runtimes-view" class="view" hidden>
@@ -90,9 +111,13 @@
           <section id="audit-view" class="view" hidden>
             <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Immutable evidence</p><h2>Audit stream</h2></div></div><ol id="audit-list" class="timeline"></ol></article>
           </section>
+
+          <section id="settings-view" class="view" hidden>
+            <div class="grid two"><article class="panel"><div class="panel-heading"><div><p class="eyebrow">Node configuration</p><h2>Runtime and storage</h2></div></div><dl id="settings-details" class="details"></dl></article><article class="panel"><div class="panel-heading"><div><p class="eyebrow">Security posture</p><h2>Policy defaults</h2></div></div><ul class="task-list"><li>API keys are hashed at rest and workspace scoped.</li><li>Sensitive mission tasks require administrator approval.</li><li>Local runtime execution is opt-in and shell-free.</li><li>MCP secrets remain external references.</li></ul></article></div>
+          </section>
         </div>
       </main>
     </div>
-    <script type="module" src="/assets/app.js?v=0.5.0"></script>
+    <script type="module" src="/assets/app.js?v=0.6.0"></script>
   </body>
 </html>

@@ -75,8 +75,8 @@ td { font-size: 14px; }
 .actions { display: flex; gap: 6px; }
 .view { margin-top: 28px; }
 .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 22px; }
-.runtime-card, .catalog-card, .hub-card { border: 1px solid var(--line); border-radius: 12px; padding: 18px; background: rgba(8, 20, 17, .55); }
-.runtime-card p, .catalog-card p, .hub-card p { color: var(--muted); font-size: 13px; margin: 10px 0; }
+.runtime-card, .catalog-card, .hub-card, .mission-card { border: 1px solid var(--line); border-radius: 12px; padding: 18px; background: rgba(8, 20, 17, .55); }
+.runtime-card p, .catalog-card p, .hub-card p, .mission-card p { color: var(--muted); font-size: 13px; margin: 10px 0; }
 .catalog-card[draggable="true"] { cursor: grab; }
 .catalog-card[draggable="true"]:active { cursor: grabbing; }
 .card-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 13px; }
@@ -96,6 +96,10 @@ pre { overflow: auto; white-space: pre-wrap; border: 1px solid var(--line); back
 .timeline li { border-left: 2px solid var(--line); padding: 0 0 22px 18px; position: relative; }
 .timeline li::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); position: absolute; left: -5px; top: 5px; }
 .timeline time, .muted { color: var(--muted); font-size: 12px; }
+.task-list { color: var(--muted); display: grid; gap: 13px; margin: 22px 0 0; padding-left: 22px; }
+.task-list.compact { list-style: none; padding: 0; gap: 8px; }
+.task-list.compact li { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.verified-report { border-left: 3px solid var(--accent); padding-left: 10px; color: var(--accent) !important; overflow-wrap: anywhere; }
 .error { color: var(--danger); min-height: 20px; }
 .form-message { color: var(--accent); min-height: 20px; }
 code { color: var(--accent); }

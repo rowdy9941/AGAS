@@ -12,6 +12,10 @@ export const initialCatalog = Object.freeze({
     { id: "frontend", personaId: "frontend-developer", mode: "on-demand" },
     { id: "security", personaId: "security-reviewer", mode: "on-demand" },
     { id: "reality", personaId: "reality-checker", mode: "on-demand" },
+    { id: "coordinator", personaId: "software-architect", mode: "on-demand" },
+    { id: "backend", personaId: "backend-engineer", mode: "on-demand" },
+    { id: "researcher", personaId: "research-analyst", mode: "on-demand" },
+    { id: "qa", personaId: "qa-engineer", mode: "on-demand" },
   ],
   personas: [
     { id: "software-architect", name: "Software Architect", description: "Designs boundaries, interfaces, tradeoffs, and delivery plans.", systemPrompt: "Design a coherent system, make tradeoffs explicit, and produce verifiable architecture decisions.", tags: ["architecture", "engineering"], compatibleRuntimes: ["hermes", "codex", "claude-code", "opencode", "agas-sim"], permissions: ["workspace:read", "plan:write"], version: "1.0.0", provenance: { sourceId: "agas-agency-starter", sourceVersion: "1.0.0", license: "MIT" } },
@@ -32,6 +36,16 @@ export const initialCatalog = Object.freeze({
   ],
   models: [],
   hubs: [
+    {
+      id: "command",
+      name: "Command Hub",
+      runtimePreference: ["hermes", "codex", "opencode", "agas-sim"],
+      roster: [
+        { agentId: "coordinator", required: true },
+        { agentId: "researcher", required: true },
+        { agentId: "reality", required: true },
+      ],
+    },
     {
       id: "engineering",
       name: "Engineering Hub",

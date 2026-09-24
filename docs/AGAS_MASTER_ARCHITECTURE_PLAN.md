@@ -194,6 +194,9 @@ hubs and evaluation suites for repository and research missions.
 
 **Exit:** AGAS completes a multi-agent software mission end to end.
 
+Status: ✅ implemented and browser-verified with repository and research
+evaluation suites.
+
 ### Phase 7 — Hardening and release
 
 Crash recovery, migrations, backup/restore, offline behavior, threat modeling,

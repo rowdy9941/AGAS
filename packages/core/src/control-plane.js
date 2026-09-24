@@ -11,9 +11,11 @@ import { RuntimeManager } from "../../ecosystem/src/runtime-manager.js";
 import { ContextFabric } from "../../context/src/context-fabric.js";
 import { McpGateway } from "../../mcp/src/mcp-gateway.js";
 import { VaultProjector } from "../../vault/src/vault-projector.js";
+import { OrganizationStore } from "../../organization/src/organization-store.js";
+import { MissionAuthority } from "../../mission/src/mission-authority.js";
 
 export class ControlPlane {
-  constructor({ registry, memory, executions, catalog, runtimeManager, contextFabric, mcpGateway, vault } = {}) {
+  constructor({ registry, memory, executions, catalog, runtimeManager, contextFabric, mcpGateway, vault, organization, missions } = {}) {
     this.registry = registry ?? new UniversalRegistry(initialCatalog);
     this.memory = memory ?? new MemoryStore();
     this.executions = executions ?? new ExecutionStore();
@@ -22,10 +24,12 @@ export class ControlPlane {
     this.context = contextFabric ?? new ContextFabric({ registry: this.registry });
     this.mcp = mcpGateway ?? new McpGateway({ registry: this.registry });
     this.vault = vault ?? new VaultProjector({ contextFabric: this.context, memory: this.memory });
+    this.organization = organization ?? new OrganizationStore();
+    this.missions = missions ?? new MissionAuthority({ registry: this.registry, executions: this.executions, context: this.context, vault: this.vault, organization: this.organization });
   }
 
   health() {
-    return { status: "ok", service: "agas-control-plane", version: "0.5.0", registry: this.registry.counts() };
+    return { status: "ok", service: "agas-control-plane", version: "0.6.0", registry: this.registry.counts(), missions: { total: this.missions.list().length, running: this.missions.list({ status: "running" }).length } };
   }
 
   detectRuntimes(options) {
@@ -84,8 +88,17 @@ export function createPersistentServices({ databasePath = "./data/agas.db", boot
     onChange: (state) => database.write("mcpGrants", state),
   });
   const vault = new VaultProjector({ rootPath: vaultPath, contextFabric, memory });
+  const organization = new OrganizationStore({
+    state: database.read("organization", null) ?? undefined,
+    onChange: (state) => database.write("organization", state),
+  });
+  if (database.read("organization", null) == null) database.write("organization", organization.snapshot());
+  const missions = new MissionAuthority({
+    state: database.read("missions", {}), registry, executions, context: contextFabric, vault, organization,
+    onChange: (state) => database.write("missions", state),
+  });
 
-  return { controlPlane: new ControlPlane({ registry, memory, executions, runtimeManager, contextFabric, mcpGateway, vault }), auth, database };
+  return { controlPlane: new ControlPlane({ registry, memory, executions, runtimeManager, contextFabric, mcpGateway, vault, organization, missions }), auth, database };
 }
 
 export { UniversalRegistry } from "./registry.js";
@@ -94,3 +107,5 @@ export { ExecutionStore } from "./execution-store.js";
 export { DomainError } from "./errors.js";
 export { StateDatabase } from "./state-database.js";
 export { AuthService, ROLE_PERMISSIONS } from "./auth-service.js";
+export { OrganizationStore } from "../../organization/src/organization-store.js";
+export { MissionAuthority, MissionCoordinator } from "../../mission/src/mission-authority.js";

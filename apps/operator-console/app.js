@@ -1,4 +1,4 @@
-const state = { token: sessionStorage.getItem("agas-token") ?? "", session: null, health: null, executions: [], runtimes: [], managedRuntimes: [], personas: [], hubs: [], selectedPersonas: [], artifacts: [], handoffs: [], mcpServices: [], mcpGrants: [], audit: [], view: "overview" };
+const state = { token: sessionStorage.getItem("agas-token") ?? "", session: null, health: null, executions: [], missions: [], missionEvents: [], organizations: [], workspaces: [], projects: [], teams: [], conversations: [], runtimes: [], managedRuntimes: [], personas: [], hubs: [], selectedPersonas: [], artifacts: [], handoffs: [], mcpServices: [], mcpGrants: [], audit: [], view: "overview" };
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -175,6 +175,77 @@ function renderMcp() {
   }));
 }
 
+async function missionAction(id, action) {
+  try {
+    const mission = await api(`/v1/missions/${id}/${action}`, { method: "POST", body: JSON.stringify(action === "approve" ? { reason: "Plan and sensitive tasks approved in operator console" } : {}) });
+    $("#mission-message").textContent = `${mission.objective.slice(0, 48)} is ${mission.status}.`;
+    await refresh();
+  } catch (error) { $("#mission-message").textContent = error.message; }
+}
+
+function renderMissions() {
+  const nodes = state.missions.map((mission) => {
+    const card = document.createElement("article"); card.className = "mission-card";
+    const heading = document.createElement("div"); heading.className = "panel-heading";
+    const title = document.createElement("strong"); title.textContent = mission.objective;
+    heading.append(title, badge(mission.status));
+    const summary = document.createElement("p");
+    const completed = mission.tasks.filter((item) => item.status === "completed").length;
+    summary.textContent = `${mission.type} · ${completed}/${mission.tasks.length} tasks · ${mission.budget.usedAttempts}/${mission.budget.maxTotalAttempts} attempts`;
+    const tasks = document.createElement("ol"); tasks.className = "task-list compact";
+    for (const plannedTask of mission.tasks) {
+      const item = document.createElement("li");
+      const label = document.createElement("span"); label.textContent = plannedTask.title;
+      item.append(label, badge(plannedTask.status === "pending" && plannedTask.approvalStatus === "pending" ? "approval required" : plannedTask.status));
+      tasks.append(item);
+    }
+    const actions = document.createElement("div"); actions.className = "card-actions";
+    if (mission.status === "awaiting-approval" && state.session?.principal.role === "admin") actions.append(actionButton("Approve sensitive tasks", () => missionAction(mission.id, "approve"), "primary"));
+    if (mission.status === "approved") actions.append(actionButton("Start mission", () => missionAction(mission.id, "start"), "primary"));
+    if (["awaiting-approval", "approved", "running"].includes(mission.status)) actions.append(actionButton("Cancel", () => missionAction(mission.id, "cancel"), "danger"));
+    if (mission.status === "completed") {
+      const report = document.createElement("p"); report.className = "verified-report";
+      report.textContent = `Verified report ${mission.finalReportId} · ${mission.vaultProjection?.files.length ?? 0} vault files`;
+      card.append(heading, summary, tasks, report, actions);
+    } else card.append(heading, summary, tasks, actions);
+    return card;
+  });
+  if (!nodes.length) {
+    const empty = document.createElement("p"); empty.className = "muted"; empty.textContent = "No missions yet."; nodes.push(empty);
+  }
+  $("#mission-list").replaceChildren(...nodes);
+}
+
+function renderOrganization() {
+  $("#organization-list").replaceChildren(...[...state.workspaces, ...state.teams].map((record) => {
+    const card = document.createElement("div"); card.className = "runtime-card";
+    const title = document.createElement("strong"); title.textContent = record.name;
+    const details = document.createElement("p"); details.textContent = `${record.canonicalId}${record.hubIds ? ` · ${record.hubIds.join(", ")}` : ""}`;
+    card.append(title, details); return card;
+  }));
+  $("#project-list").replaceChildren(...state.projects.map((project) => {
+    const card = document.createElement("div"); card.className = "catalog-card";
+    const title = document.createElement("strong"); title.textContent = project.name;
+    const details = document.createElement("p"); details.textContent = `${project.id} · ${project.description ?? "No description"}`;
+    card.append(title, details); return card;
+  }));
+}
+
+function renderConversations() {
+  const select = $("#conversation-id"); const previous = select.value;
+  select.replaceChildren(...state.conversations.map((conversation) => {
+    const option = document.createElement("option"); option.value = conversation.id; option.textContent = conversation.title ?? conversation.name; return option;
+  }));
+  if (state.conversations.some((conversation) => conversation.id === previous)) select.value = previous;
+  $("#conversation-list").replaceChildren(...state.conversations.map((conversation) => {
+    const card = document.createElement("div"); card.className = "catalog-card";
+    const title = document.createElement("strong"); title.textContent = conversation.title ?? conversation.name;
+    const details = document.createElement("p"); details.textContent = `${conversation.messages.length} messages · ${conversation.projectId ?? "No project"}`;
+    const latest = document.createElement("p"); latest.textContent = conversation.messages.at(-1)?.content ?? "No messages yet.";
+    card.append(title, details, latest); return card;
+  }));
+}
+
 async function transition(id, status) {
   await api(`/v1/executions/${id}/transitions`, { method: "POST", body: JSON.stringify({ status, reason: `${status} from operator console` }) });
   await refresh();
@@ -188,7 +259,7 @@ function render() {
   if (!state.session) return;
 
   const counts = state.health.registry;
-  const cards = [["Runtimes", counts.runtimes], ["Specialists", counts.personas], ["Executions", state.executions.length], ["Active", state.executions.filter((item) => ["approved", "running"].includes(item.status)).length]];
+  const cards = [["Runtimes", counts.runtimes], ["Specialists", counts.personas], ["Missions", state.missions.length], ["Active", state.missions.filter((item) => item.status === "running").length]];
   $("#stats").replaceChildren(...cards.map(([label, value]) => {
     const node = document.createElement("div"); node.className = "stat";
     const span = document.createElement("span"); span.textContent = label;
@@ -230,6 +301,13 @@ function render() {
   renderHubBuilder();
   renderContext();
   renderMcp();
+  renderMissions();
+  renderOrganization();
+  renderConversations();
+  $("#settings-details").replaceChildren(...[["Version", state.health.version], ["Role", state.session.principal.role], ["Workspace", state.workspaces[0]?.name ?? "default"], ["Mission events", String(state.missionEvents.length)]].flatMap(([term, description]) => {
+    const wrapper = document.createElement("div"); const dt = document.createElement("dt"); const dd = document.createElement("dd");
+    dt.textContent = term; dd.textContent = description; wrapper.append(dt, dd); return wrapper;
+  }));
 
   $("#audit-list").replaceChildren(...state.audit.map((event) => {
     const item = document.createElement("li");
@@ -243,14 +321,16 @@ function render() {
 async function refresh() {
   if (!state.token) return;
   try {
-    const [health, session, executions, runtimes, managedRuntimes, personas, hubs, artifacts, handoffs, mcpServices, mcpGrants, audit] = await Promise.all([
+    const [health, session, executions, missions, missionEvents, organizations, workspaces, projects, teams, conversations, runtimes, managedRuntimes, personas, hubs, artifacts, handoffs, mcpServices, mcpGrants, audit] = await Promise.all([
       fetch("/healthz").then((response) => response.json()),
-      api("/v1/session"), api("/v1/executions"), api("/v1/runtimes/detect"), api("/v1/runtimes/managed"),
+      api("/v1/session"), api("/v1/executions"), api("/v1/missions?workspaceId=default"), api("/v1/mission-events?workspaceId=default"),
+      api("/v1/organizations"), api("/v1/workspaces?workspaceId=default"), api("/v1/projects?workspaceId=default"), api("/v1/teams?workspaceId=default"), api("/v1/conversations?workspaceId=default"),
+      api("/v1/runtimes/detect"), api("/v1/runtimes/managed"),
       api("/v1/catalog/search?kind=personas&limit=500"), api("/v1/hubs"),
       api("/v1/context/artifacts?workspaceId=default"), api("/v1/context/handoffs?workspaceId=default"),
       api("/v1/registry/mcpServers"), api("/v1/mcp/grants?workspaceId=default"), api("/v1/audit"),
     ]);
-    Object.assign(state, { health, session, executions: executions.items, runtimes: runtimes.runtimes, managedRuntimes: managedRuntimes.items, personas: personas.items, hubs: hubs.items, artifacts: artifacts.items, handoffs: handoffs.items, mcpServices: mcpServices.items, mcpGrants: mcpGrants.items, audit: audit.items.reverse() });
+    Object.assign(state, { health, session, executions: executions.items, missions: missions.items, missionEvents: missionEvents.items, organizations: organizations.items, workspaces: workspaces.items, projects: projects.items, teams: teams.items, conversations: conversations.items, runtimes: runtimes.runtimes, managedRuntimes: managedRuntimes.items, personas: personas.items, hubs: hubs.items, artifacts: artifacts.items, handoffs: handoffs.items, mcpServices: mcpServices.items, mcpGrants: mcpGrants.items, audit: audit.items.reverse() });
     render();
   } catch (error) {
     state.session = null;
@@ -263,12 +343,38 @@ function showView(view) {
   state.view = view;
   $$(".view").forEach((element) => { element.hidden = element.id !== `${view}-view`; });
   $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === view));
-  const titles = { overview: "Overview", runtimes: "Runtimes", catalog: "Catalog", hubs: "Hub Builder", context: "Context Fabric", mcp: "MCP & Vault", executions: "Executions", audit: "Audit" };
+  const titles = { overview: "Overview", missions: "Missions", projects: "Projects & Teams", conversations: "Conversations", runtimes: "Runtimes", catalog: "Catalog", hubs: "Hub Builder", context: "Context Fabric", mcp: "MCP & Vault", executions: "Executions", audit: "Audit", settings: "Settings" };
   $("#page-title").textContent = titles[view] ?? view;
 }
 
 $("#login-form").addEventListener("submit", async (event) => {
   event.preventDefault(); state.token = $("#token").value; sessionStorage.setItem("agas-token", state.token); $("#login-error").textContent = ""; await refresh();
+});
+$("#mission-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    const mission = await api("/v1/missions", { method: "POST", body: JSON.stringify({
+      workspaceId: "default", organizationId: "default-org", projectId: "default-project", teamId: "engineering-team", conversationId: "default-conversation",
+      type: $("#mission-type").value, objective: $("#mission-objective").value,
+      acceptanceCriteria: ["Planned tasks complete", "Evidence and handoffs recorded", "Verification report passes"],
+    }) });
+    $("#mission-message").textContent = `Created ${mission.tasks.length}-task plan. Review and approve the sensitive task.`;
+    $("#mission-objective").value = ""; await refresh();
+  } catch (error) { $("#mission-message").textContent = error.message; }
+});
+$("#project-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    const project = await api("/v1/projects", { method: "POST", body: JSON.stringify({ id: $("#project-id").value, name: $("#project-name").value, description: $("#project-description").value, workspaceId: "default" }) });
+    $("#project-message").textContent = `Created ${project.name}.`; await refresh();
+  } catch (error) { $("#project-message").textContent = error.message; }
+});
+$("#conversation-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    await api(`/v1/conversations/${$("#conversation-id").value}/messages`, { method: "POST", body: JSON.stringify({ role: "user", content: $("#conversation-content").value }) });
+    $("#conversation-message").textContent = "Message added to durable context."; $("#conversation-content").value = ""; await refresh();
+  } catch (error) { $("#conversation-message").textContent = error.message; }
 });
 $("#execution-form").addEventListener("submit", async (event) => {
   event.preventDefault();

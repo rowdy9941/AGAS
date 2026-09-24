@@ -3,11 +3,12 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { createApp } from "../apps/control-plane/src/app.js";
+import { ControlPlane } from "../packages/core/src/control-plane.js";
 
 const authHeaders = { authorization: "Bearer agas-dev-token" };
 
-async function withServer(callback) {
-  const server = createServer(createApp());
+async function withServer(callback, controlPlane) {
+  const server = createServer(createApp(controlPlane));
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const { port } = server.address();
@@ -81,4 +82,32 @@ test("operator console and readiness endpoint are public and security-hardened",
     const ready = await fetch(`${baseUrl}/readyz`);
     assert.equal(ready.status, 200);
   });
+});
+
+test("organization and mission APIs expose an approval-gated structured plan", async () => {
+  const controlPlane = new ControlPlane();
+  await withServer(async (baseUrl) => {
+    const projects = await fetch(`${baseUrl}/v1/projects?workspaceId=default`, { headers: authHeaders }).then((response) => response.json());
+    assert.equal(projects.items[0].id, "default-project");
+
+    const createdResponse = await fetch(`${baseUrl}/v1/missions`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...authHeaders },
+      body: JSON.stringify({ workspaceId: "default", projectId: "default-project", teamId: "engineering-team", type: "repository", objective: "Ship a governed API change" }),
+    });
+    assert.equal(createdResponse.status, 201);
+    const mission = await createdResponse.json();
+    assert.equal(mission.status, "awaiting-approval");
+    assert.equal(mission.tasks.some((item) => item.sensitive && item.approvalStatus === "pending"), true);
+
+    const approvalResponse = await fetch(`${baseUrl}/v1/missions/${mission.id}/approve`, {
+      method: "POST", headers: { "content-type": "application/json", ...authHeaders }, body: JSON.stringify({ reason: "Plan reviewed" }),
+    });
+    assert.equal(approvalResponse.status, 200);
+    const startResponse = await fetch(`${baseUrl}/v1/missions/${mission.id}/start`, {
+      method: "POST", headers: { "content-type": "application/json", ...authHeaders }, body: "{}",
+    });
+    assert.equal(startResponse.status, 200);
+    assert.equal((await startResponse.json()).status, "running");
+  }, controlPlane);
 });

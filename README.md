@@ -14,6 +14,10 @@ Builder with drag-and-drop and keyboard-equivalent controls. Context Fabric adds
 typed artifacts, cross-runtime handoffs, checkpoints, and rollback. The MCP
 Gateway projects least-privilege tool grants per runtime, while the vault
 projector produces deterministic Obsidian-compatible Markdown.
+Mission Authority adds approval-gated repository and research plans, dependency-
+aware background dispatch, task budgets, retries, cancellation, evidence-backed
+verification, and final reports. Durable organizations, projects, teams, and
+conversations implement the MVP's Paperclip responsibility.
 
 ## Run it
 
@@ -66,6 +70,7 @@ See [docs/api.md](docs/api.md) for the complete HTTP surface and
 
 ## Project status
 
-Phases 1–5 are implemented. See the
+Phases 1–6 are implemented. See the
 [master architecture plan](docs/AGAS_MASTER_ARCHITECTURE_PLAN.md) for the full
-MVP contract and [deployment guide](docs/deployment.md) for Node and Docker use.
+MVP contract, [evaluation suites](docs/evaluations.md), and
+[deployment guide](docs/deployment.md) for Node and Docker use.
