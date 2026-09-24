@@ -6,9 +6,9 @@ export function planHub(registry, hubId, input = {}) {
   invariant(typeof input.principalId === "string" && input.principalId, "PRINCIPAL_REQUIRED", "principalId is required");
   const available = input.availableRuntimeIds ? new Set(input.availableRuntimeIds) : null;
 
-  const assignments = hub.roster.map(({ agentId, required }) => {
-    const agent = registry.get("agents", agentId);
-    const persona = registry.get("personas", agent.personaId);
+  const assignments = hub.roster.map(({ agentId, personaId: directPersonaId, required }) => {
+    const agent = agentId ? registry.get("agents", agentId) : null;
+    const persona = registry.get("personas", directPersonaId ?? agent.personaId);
     const runtimeId = hub.runtimePreference.find((candidate) =>
       registry.has("runtimes", candidate)
       && persona.compatibleRuntimes.includes(candidate)
@@ -16,7 +16,7 @@ export function planHub(registry, hubId, input = {}) {
     );
     invariant(runtimeId || !required, "NO_COMPATIBLE_RUNTIME", `No compatible runtime is available for ${agentId}`, 422);
     return {
-      agentId,
+      agentId: agentId ?? `${hub.id}-${persona.id}`,
       personaId: persona.id,
       runtimeId: runtimeId ?? null,
       required,

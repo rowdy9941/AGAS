@@ -92,6 +92,46 @@ export function createApp(controlPlane = new ControlPlane(), { auth = new AuthSe
         auth.authorize(principal, "runtime:read");
         return send(response, 200, { runtimes: await controlPlane.detectRuntimes() }, requestId);
       }
+      if (request.method === "GET" && url.pathname === "/v1/runtimes/managed") {
+        auth.authorize(principal, "runtime:read");
+        return send(response, 200, { items: controlPlane.runtimeManager.packages() }, requestId);
+      }
+      if (request.method === "POST" && segments[0] === "v1" && segments[1] === "runtimes" && segments[3] === "install" && segments.length === 4) {
+        auth.authorize(principal, "runtime:install");
+        return send(response, 201, controlPlane.runtimeManager.install(segments[2], principal.id), requestId);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/catalog/search") {
+        auth.authorize(principal, "catalog:read");
+        return send(response, 200, { items: controlPlane.catalog.search({
+          query: url.searchParams.get("q") ?? "",
+          kind: url.searchParams.get("kind") ?? undefined,
+          runtimeId: url.searchParams.get("runtimeId") ?? undefined,
+          permission: url.searchParams.get("permission") ?? undefined,
+          limit: Number.parseInt(url.searchParams.get("limit") ?? "100", 10),
+        }) }, requestId);
+      }
+      if (request.method === "POST" && url.pathname === "/v1/catalog/import/agency") {
+        auth.authorize(principal, "registry:write");
+        return send(response, 201, controlPlane.catalog.importAgency(await readJson(request)), requestId);
+      }
+      if (request.method === "GET" && segments[0] === "v1" && segments[1] === "personas" && segments[3] === "projections" && segments.length === 5) {
+        auth.authorize(principal, "catalog:read");
+        return send(response, 200, controlPlane.catalog.projectPersona(segments[2], segments[4]), requestId);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/hubs") {
+        auth.authorize(principal, "registry:read");
+        return send(response, 200, { items: controlPlane.registry.list("hubs") }, requestId);
+      }
+      if (request.method === "POST" && url.pathname === "/v1/hubs") {
+        auth.authorize(principal, "registry:write");
+        return send(response, 201, controlPlane.catalog.saveHub({ ...(await readJson(request)), principalId: principal.id }), requestId);
+      }
+      if (request.method === "POST" && segments[0] === "v1" && segments[1] === "hubs" && segments[3] === "activate" && segments.length === 4) {
+        auth.authorize(principal, "plan:create");
+        const input = await readJson(request);
+        auth.authorizeWorkspace(principal, input.workspaceId);
+        return send(response, 200, controlPlane.planHub(segments[2], { ...input, principalId: principal.id }), requestId);
+      }
       if (request.method === "POST" && segments[0] === "v1" && segments[1] === "hubs" && segments[3] === "plan" && segments.length === 4) {
         auth.authorize(principal, "plan:create");
         const input = await readJson(request);

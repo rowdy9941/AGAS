@@ -12,6 +12,14 @@ All responses are JSON. Except for `/healthz`, requests require an
 | GET | `/v1/registry/:kind` | One registry collection |
 | POST | `/v1/registry/:kind` | Register an immutable entry |
 | GET | `/v1/runtimes/detect` | Read-only local runtime detection |
+| GET | `/v1/runtimes/managed` | List allowlisted managed packages |
+| POST | `/v1/runtimes/:id/install` | Activate a managed runtime (admin) |
+| GET | `/v1/catalog/search` | Search catalog with compatibility filters |
+| POST | `/v1/catalog/import/agency` | Import a versioned Agency source (admin) |
+| GET | `/v1/personas/:id/projections/:runtimeId` | Render a runtime persona projection |
+| GET | `/v1/hubs` | List stable hub definitions |
+| POST | `/v1/hubs` | Create or update a hub (admin) |
+| POST | `/v1/hubs/:id/activate` | Activate a compatible hub plan |
 | POST | `/v1/hubs/:id/plan` | Plan a compatible hub roster |
 | POST | `/v1/memory` | Append a scoped memory record |
 | POST | `/v1/memory/search` | Search visible memory records |

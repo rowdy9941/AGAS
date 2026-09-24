@@ -173,6 +173,8 @@ Install Hermes routing and runtime-specific persona projections.
 
 **Exit:** users can define a stable hub and activate selected specialists.
 
+Status: ✅ implemented and browser-verified.
+
 ### Phase 5 — Context Fabric, MCP Gateway, and vault
 
 Implement canonical IDs, typed memories, provenance, permissions, registry-to-

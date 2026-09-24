@@ -19,6 +19,9 @@ system is split into services.
    constrained local CLI invocation.
 10. **Dispatcher** recovers interrupted work and claims approved executions.
 11. **Operator Console** exposes the governed workflow without bypassing the API.
+12. **Ecosystem Catalog** imports versioned Agency personas, tracks provenance,
+    searches compatibility, and projects personas into native runtime formats.
+13. **Hub Builder** persists stable, compatible specialist rosters.
 
 ## Trust boundary
 
@@ -32,5 +35,5 @@ every external side effect.
 - Phase 1: registry, detection, context, planning, execution ledger, HTTP API. ✅
 - Phase 2: durable SQLite storage, authentication, and policy evaluation. ✅
 - Phase 3: runtime adapters, recoverable asynchronous dispatch, and console. ✅
-- Phase 4: operator console, telemetry, budgets, and approval workflows.
+- Phase 4: ecosystem catalog, managed runtime, persona projections, Hub Builder. ✅
 - Phase 5: distributed workers, organization governance, and extension SDK.

@@ -1,4 +1,4 @@
-const state = { token: sessionStorage.getItem("agas-token") ?? "", session: null, health: null, executions: [], runtimes: [], audit: [], view: "overview" };
+const state = { token: sessionStorage.getItem("agas-token") ?? "", session: null, health: null, executions: [], runtimes: [], managedRuntimes: [], personas: [], hubs: [], selectedPersonas: [], audit: [], view: "overview" };
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -64,6 +64,74 @@ function actionButton(label, handler, type = "secondary") {
   return button;
 }
 
+function addPersona(personaId) {
+  if (state.personas.some((persona) => persona.id === personaId) && !state.selectedPersonas.includes(personaId)) state.selectedPersonas.push(personaId);
+  renderHubBuilder();
+}
+
+function removePersona(personaId) {
+  state.selectedPersonas = state.selectedPersonas.filter((id) => id !== personaId);
+  renderHubBuilder();
+}
+
+function personaCard(persona, { builder = false } = {}) {
+  const card = document.createElement("div");
+  card.className = builder ? "builder-persona" : "catalog-card";
+  card.draggable = true;
+  card.addEventListener("dragstart", (event) => event.dataTransfer.setData("text/plain", persona.id));
+  const copy = document.createElement("div");
+  const name = document.createElement("strong"); name.textContent = persona.name;
+  const details = document.createElement(builder ? "small" : "p"); details.textContent = builder ? persona.tags?.join(" · ") : persona.description;
+  copy.append(name, details); card.append(copy);
+  const actions = document.createElement("div"); actions.className = "card-actions";
+  actions.append(actionButton("Add", () => addPersona(persona.id), "secondary"));
+  if (!builder) actions.append(actionButton("Hermes projection", () => showProjection(persona), "secondary"));
+  card.append(actions);
+  return card;
+}
+
+async function showProjection(persona) {
+  try {
+    const projection = await api(`/v1/personas/${persona.id}/projections/hermes`);
+    $("#projection-title").textContent = `${persona.name} → Hermes`;
+    $("#projection-output").textContent = JSON.stringify(projection, null, 2);
+    $("#projection-panel").hidden = false;
+  } catch (error) {
+    $("#projection-title").textContent = "Projection failed";
+    $("#projection-output").textContent = error.message;
+    $("#projection-panel").hidden = false;
+  }
+}
+
+function renderHubBuilder() {
+  if (!state.session) return;
+  $("#builder-personas").replaceChildren(...state.personas.map((persona) => personaCard(persona, { builder: true })));
+  $("#selected-personas").replaceChildren(...state.selectedPersonas.map((personaId) => {
+    const persona = state.personas.find((item) => item.id === personaId);
+    const chip = document.createElement("span"); chip.className = "selected-persona";
+    const label = document.createElement("span"); label.textContent = persona?.name ?? personaId;
+    const remove = document.createElement("button"); remove.type = "button"; remove.setAttribute("aria-label", `Remove ${label.textContent}`); remove.textContent = "×"; remove.addEventListener("click", () => removePersona(personaId));
+    chip.append(label, remove); return chip;
+  }));
+  $("#hub-list").replaceChildren(...state.hubs.map((hub) => {
+    const card = document.createElement("div"); card.className = "hub-card";
+    const heading = document.createElement("strong"); heading.textContent = hub.name;
+    const details = document.createElement("p"); details.textContent = `${hub.roster.length} specialists · ${hub.runtimePreference.join(" → ")}`;
+    const activate = actionButton("Activate plan", async () => {
+      try {
+        const plan = await api(`/v1/hubs/${hub.id}/activate`, { method: "POST", body: JSON.stringify({ workspaceId: $("#workspace").value || "default" }) });
+        $("#hub-message").textContent = `${hub.name} activated with ${plan.assignments.length} compatible assignments.`;
+      } catch (error) { $("#hub-message").textContent = error.message; }
+    }, "primary");
+    card.append(heading, details, activate); return card;
+  }));
+}
+
+async function installRuntime(runtimeId) {
+  await api(`/v1/runtimes/${runtimeId}/install`, { method: "POST", body: "{}" });
+  await refresh();
+}
+
 async function transition(id, status) {
   await api(`/v1/executions/${id}/transitions`, { method: "POST", body: JSON.stringify({ status, reason: `${status} from operator console` }) });
   await refresh();
@@ -102,6 +170,21 @@ function render() {
     const version = document.createElement("p"); version.textContent = runtime.installed ? (runtime.version ?? runtime.diagnostic ?? "Detected") : "Not found on PATH";
     card.append(heading, version); return card;
   }));
+  $("#managed-runtime-list").replaceChildren(...state.managedRuntimes.map((runtime) => {
+    const card = document.createElement("div"); card.className = "runtime-card";
+    const heading = document.createElement("div"); heading.className = "panel-heading";
+    const name = document.createElement("strong"); name.textContent = `${runtime.runtimeId} ${runtime.version}`;
+    heading.append(name, badge(runtime.installed ? "installed" : "available"));
+    const details = document.createElement("p"); details.textContent = `${runtime.source} · ${runtime.checksum}`;
+    card.append(heading, details);
+    if (!runtime.installed && state.session.principal.role === "admin") card.append(actionButton("Install", () => installRuntime(runtime.runtimeId), "primary"));
+    return card;
+  }));
+
+  const catalogQuery = $("#catalog-search").value.trim().toLowerCase();
+  const filteredPersonas = state.personas.filter((persona) => !catalogQuery || JSON.stringify(persona).toLowerCase().includes(catalogQuery));
+  $("#catalog-list").replaceChildren(...filteredPersonas.map((persona) => personaCard(persona)));
+  renderHubBuilder();
 
   $("#audit-list").replaceChildren(...state.audit.map((event) => {
     const item = document.createElement("li");
@@ -115,11 +198,12 @@ function render() {
 async function refresh() {
   if (!state.token) return;
   try {
-    const [health, session, executions, runtimes, audit] = await Promise.all([
+    const [health, session, executions, runtimes, managedRuntimes, personas, hubs, audit] = await Promise.all([
       fetch("/healthz").then((response) => response.json()),
-      api("/v1/session"), api("/v1/executions"), api("/v1/runtimes/detect"), api("/v1/audit"),
+      api("/v1/session"), api("/v1/executions"), api("/v1/runtimes/detect"), api("/v1/runtimes/managed"),
+      api("/v1/catalog/search?kind=personas&limit=500"), api("/v1/hubs"), api("/v1/audit"),
     ]);
-    Object.assign(state, { health, session, executions: executions.items, runtimes: runtimes.runtimes, audit: audit.items.reverse() });
+    Object.assign(state, { health, session, executions: executions.items, runtimes: runtimes.runtimes, managedRuntimes: managedRuntimes.items, personas: personas.items, hubs: hubs.items, audit: audit.items.reverse() });
     render();
   } catch (error) {
     state.session = null;
@@ -132,7 +216,8 @@ function showView(view) {
   state.view = view;
   $$(".view").forEach((element) => { element.hidden = element.id !== `${view}-view`; });
   $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === view));
-  $("#page-title").textContent = view.charAt(0).toUpperCase() + view.slice(1);
+  const titles = { overview: "Overview", runtimes: "Runtimes", catalog: "Catalog", hubs: "Hub Builder", executions: "Executions", audit: "Audit" };
+  $("#page-title").textContent = titles[view] ?? view;
 }
 
 $("#login-form").addEventListener("submit", async (event) => {
@@ -146,11 +231,31 @@ $("#execution-form").addEventListener("submit", async (event) => {
     $("#objective").value = ""; await refresh();
   } catch (error) { $("#execution-message").textContent = error.message; }
 });
+$("#hub-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    const hub = await api("/v1/hubs", { method: "POST", body: JSON.stringify({
+      id: $("#hub-id").value,
+      name: $("#hub-name").value,
+      personaIds: state.selectedPersonas,
+      runtimePreference: ["hermes", "codex", "opencode", "agas-sim"],
+    }) });
+    $("#hub-message").textContent = `Saved ${hub.name} with ${hub.roster.length} specialists.`;
+    await refresh();
+  } catch (error) { $("#hub-message").textContent = error.message; }
+});
+const dropzone = $("#hub-dropzone");
+dropzone.addEventListener("dragover", (event) => { event.preventDefault(); dropzone.classList.add("dragging"); });
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragging"));
+dropzone.addEventListener("drop", (event) => { event.preventDefault(); dropzone.classList.remove("dragging"); addPersona(event.dataTransfer.getData("text/plain")); });
 $("#refresh-button").addEventListener("click", refresh);
 $("#detect-button").addEventListener("click", refresh);
 $("#status-filter").addEventListener("change", render);
+$("#catalog-search").addEventListener("input", render);
 $$(".nav-item").forEach((button) => button.addEventListener("click", () => showView(button.dataset.view)));
 $$('[data-jump]').forEach((button) => button.addEventListener("click", () => showView(button.dataset.jump)));
 
 if (state.token) refresh(); else render();
-setInterval(() => { if (state.session) void refresh(); }, 3_000);
+setInterval(() => {
+  if (state.session && ["overview", "executions", "audit"].includes(state.view)) void refresh();
+}, 3_000);
