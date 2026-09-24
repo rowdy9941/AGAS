@@ -10,7 +10,10 @@ It includes a recoverable background dispatcher, deterministic simulator, an
 opt-in local CLI adapter, and a responsive authenticated operator console.
 The console also includes a versioned Agency specialist catalog, Hermes/Codex/
 OpenCode persona projections, managed runtime activation, and a persistent Hub
-Builder with drag-and-drop and keyboard-equivalent controls.
+Builder with drag-and-drop and keyboard-equivalent controls. Context Fabric adds
+typed artifacts, cross-runtime handoffs, checkpoints, and rollback. The MCP
+Gateway projects least-privilege tool grants per runtime, while the vault
+projector produces deterministic Obsidian-compatible Markdown.
 
 ## Run it
 
@@ -25,9 +28,10 @@ npm start
 The service listens on `http://127.0.0.1:4310` by default and persists state to
 `./data/agas.db`. Local development uses the token `agas-dev-token`. Set
 `AGAS_BOOTSTRAP_TOKEN` before the first start for a private administrator token.
-Set `AGAS_HOST`, `AGAS_PORT`, or `AGAS_DB_PATH` to override other defaults. AGAS
-refuses a non-loopback bind unless an explicit bootstrap token is configured.
-Open the service URL in a browser to use the operator console.
+Set `AGAS_HOST`, `AGAS_PORT`, or `AGAS_DB_PATH` to override other defaults. Set
+`AGAS_VAULT_PATH` to choose the Markdown projection directory. AGAS refuses a
+non-loopback bind unless an explicit bootstrap token is configured. Open the
+service URL in a browser to use the operator console.
 
 ```bash
 curl http://127.0.0.1:4310/healthz
@@ -54,10 +58,14 @@ See [docs/api.md](docs/api.md) for the complete HTTP surface and
 - Execution records use a strict state machine and append-only audit events.
 - Runtime commands use no shell, a scrubbed environment, bounded output and time,
   and a working directory constrained beneath `AGAS_WORKSPACE_ROOT`.
+- MCP records contain only `env:` or `vault:` secret references and every
+  runtime projection is constrained to explicitly granted tools.
+- Context handoffs require artifact evidence, and checkpoint rollback is
+  recorded in the workspace event stream.
 - JSON bodies are size-limited and errors are structured.
 
 ## Project status
 
-Phases 1–4 are implemented. See the
+Phases 1–5 are implemented. See the
 [master architecture plan](docs/AGAS_MASTER_ARCHITECTURE_PLAN.md) for the full
 MVP contract and [deployment guide](docs/deployment.md) for Node and Docker use.

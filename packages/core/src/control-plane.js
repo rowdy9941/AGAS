@@ -8,18 +8,24 @@ import { StateDatabase } from "./state-database.js";
 import { AuthService } from "./auth-service.js";
 import { CatalogService } from "../../ecosystem/src/catalog-service.js";
 import { RuntimeManager } from "../../ecosystem/src/runtime-manager.js";
+import { ContextFabric } from "../../context/src/context-fabric.js";
+import { McpGateway } from "../../mcp/src/mcp-gateway.js";
+import { VaultProjector } from "../../vault/src/vault-projector.js";
 
 export class ControlPlane {
-  constructor({ registry, memory, executions, catalog, runtimeManager } = {}) {
+  constructor({ registry, memory, executions, catalog, runtimeManager, contextFabric, mcpGateway, vault } = {}) {
     this.registry = registry ?? new UniversalRegistry(initialCatalog);
     this.memory = memory ?? new MemoryStore();
     this.executions = executions ?? new ExecutionStore();
     this.catalog = catalog ?? new CatalogService(this.registry);
     this.runtimeManager = runtimeManager ?? new RuntimeManager();
+    this.context = contextFabric ?? new ContextFabric({ registry: this.registry });
+    this.mcp = mcpGateway ?? new McpGateway({ registry: this.registry });
+    this.vault = vault ?? new VaultProjector({ contextFabric: this.context, memory: this.memory });
   }
 
   health() {
-    return { status: "ok", service: "agas-control-plane", version: "0.4.0", registry: this.registry.counts() };
+    return { status: "ok", service: "agas-control-plane", version: "0.5.0", registry: this.registry.counts() };
   }
 
   detectRuntimes(options) {
@@ -36,7 +42,7 @@ export class ControlPlane {
   }
 }
 
-export function createPersistentServices({ databasePath = "./data/agas.db", bootstrapToken } = {}) {
+export function createPersistentServices({ databasePath = "./data/agas.db", bootstrapToken, vaultPath = "./data/vault" } = {}) {
   const database = new StateDatabase(databasePath);
   const savedRegistry = database.read("registry", null);
   const registrySeed = savedRegistry ?? initialCatalog;
@@ -67,8 +73,19 @@ export function createPersistentServices({ databasePath = "./data/agas.db", boot
     installs: database.read("runtimeInstalls", []),
     onChange: (state) => database.write("runtimeInstalls", state),
   });
+  const contextFabric = new ContextFabric({
+    registry,
+    state: database.read("contextFabric", {}),
+    onChange: (state) => database.write("contextFabric", state),
+  });
+  const mcpGateway = new McpGateway({
+    registry,
+    grants: database.read("mcpGrants", []),
+    onChange: (state) => database.write("mcpGrants", state),
+  });
+  const vault = new VaultProjector({ rootPath: vaultPath, contextFabric, memory });
 
-  return { controlPlane: new ControlPlane({ registry, memory, executions, runtimeManager }), auth, database };
+  return { controlPlane: new ControlPlane({ registry, memory, executions, runtimeManager, contextFabric, mcpGateway, vault }), auth, database };
 }
 
 export { UniversalRegistry } from "./registry.js";

@@ -150,6 +150,96 @@ export function createApp(controlPlane = new ControlPlane(), { auth = new AuthSe
         auth.authorizeWorkspace(principal, input.workspaceId);
         return send(response, 200, { items: controlPlane.memory.search({ ...input, principalId: principal.id }) }, requestId);
       }
+      if (request.method === "GET" && url.pathname === "/v1/context/artifacts") {
+        auth.authorize(principal, "context:read");
+        const workspaceId = url.searchParams.get("workspaceId");
+        auth.authorizeWorkspace(principal, workspaceId);
+        return send(response, 200, { items: controlPlane.context.listArtifacts({ workspaceId }) }, requestId);
+      }
+      if (request.method === "POST" && url.pathname === "/v1/context/artifacts") {
+        auth.authorize(principal, "context:write");
+        const input = await readJson(request);
+        auth.authorizeWorkspace(principal, input.workspaceId);
+        return send(response, 201, controlPlane.context.createArtifact({ ...input, principalId: principal.id }), requestId);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/context/events") {
+        auth.authorize(principal, "context:read");
+        const workspaceId = url.searchParams.get("workspaceId");
+        auth.authorizeWorkspace(principal, workspaceId);
+        return send(response, 200, { items: controlPlane.context.listEvents({ workspaceId }) }, requestId);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/context/handoffs") {
+        auth.authorize(principal, "context:read");
+        const workspaceId = url.searchParams.get("workspaceId");
+        auth.authorizeWorkspace(principal, workspaceId);
+        return send(response, 200, { items: controlPlane.context.listHandoffs({ workspaceId }) }, requestId);
+      }
+      if (request.method === "POST" && url.pathname === "/v1/context/handoffs") {
+        auth.authorize(principal, "context:write");
+        const input = await readJson(request);
+        auth.authorizeWorkspace(principal, input.workspaceId);
+        return send(response, 201, controlPlane.context.createHandoff({ ...input, principalId: principal.id }), requestId);
+      }
+      if (request.method === "POST" && segments[0] === "v1" && segments[1] === "context" && segments[2] === "handoffs" && segments[4] === "resolve" && segments.length === 5) {
+        auth.authorize(principal, "context:write");
+        const handoff = controlPlane.context.listHandoffs().find((item) => item.id === segments[3] || item.canonicalId === segments[3]);
+        if (!handoff) throw new DomainError("HANDOFF_NOT_FOUND", `Handoff ${segments[3]} was not found`, 404);
+        auth.authorizeWorkspace(principal, handoff.workspaceId);
+        return send(response, 200, controlPlane.context.resolveHandoff(segments[3], { ...(await readJson(request)), principalId: principal.id }), requestId);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/context/checkpoints") {
+        auth.authorize(principal, "context:read");
+        const workspaceId = url.searchParams.get("workspaceId");
+        auth.authorizeWorkspace(principal, workspaceId);
+        return send(response, 200, { items: controlPlane.context.listCheckpoints({ workspaceId }) }, requestId);
+      }
+      if (request.method === "POST" && url.pathname === "/v1/context/checkpoints") {
+        auth.authorize(principal, "context:write");
+        const input = await readJson(request);
+        auth.authorizeWorkspace(principal, input.workspaceId);
+        return send(response, 201, controlPlane.context.createCheckpoint({ ...input, principalId: principal.id }), requestId);
+      }
+      if (request.method === "POST" && segments[0] === "v1" && segments[1] === "context" && segments[2] === "checkpoints" && segments[4] === "rollback" && segments.length === 5) {
+        auth.authorize(principal, "context:write");
+        const checkpoint = controlPlane.context.listCheckpoints().find((item) => item.id === segments[3] || item.canonicalId === segments[3]);
+        if (!checkpoint) throw new DomainError("CHECKPOINT_NOT_FOUND", `Checkpoint ${segments[3]} was not found`, 404);
+        auth.authorizeWorkspace(principal, checkpoint.workspaceId);
+        return send(response, 200, controlPlane.context.rollback(segments[3], { ...(await readJson(request)), principalId: principal.id }), requestId);
+      }
+      if (request.method === "POST" && url.pathname === "/v1/mcp/services") {
+        auth.authorize(principal, "mcp:write");
+        return send(response, 201, controlPlane.mcp.registerService(await readJson(request), principal.id), requestId);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/mcp/grants") {
+        auth.authorize(principal, "mcp:read");
+        const workspaceId = url.searchParams.get("workspaceId");
+        auth.authorizeWorkspace(principal, workspaceId);
+        return send(response, 200, { items: controlPlane.mcp.listGrants({ workspaceId }) }, requestId);
+      }
+      if (request.method === "POST" && url.pathname === "/v1/mcp/grants") {
+        auth.authorize(principal, "mcp:write");
+        const input = await readJson(request);
+        auth.authorizeWorkspace(principal, input.workspaceId);
+        return send(response, 201, controlPlane.mcp.grant(input, principal.id), requestId);
+      }
+      if (request.method === "GET" && segments[0] === "v1" && segments[1] === "mcp" && segments[2] === "projections" && segments.length === 4) {
+        auth.authorize(principal, "mcp:read");
+        const workspaceId = url.searchParams.get("workspaceId");
+        auth.authorizeWorkspace(principal, workspaceId);
+        return send(response, 200, controlPlane.mcp.project(segments[3], { workspaceId }), requestId);
+      }
+      if (request.method === "POST" && url.pathname === "/v1/vault/project") {
+        auth.authorize(principal, "vault:write");
+        const input = await readJson(request);
+        auth.authorizeWorkspace(principal, input.workspaceId);
+        return send(response, 200, await controlPlane.vault.project({ workspaceId: input.workspaceId, principalId: principal.id }), requestId);
+      }
+      if (request.method === "POST" && url.pathname === "/v1/vault/import") {
+        auth.authorize(principal, "vault:write");
+        const input = await readJson(request);
+        auth.authorizeWorkspace(principal, input.workspaceId);
+        return send(response, 200, controlPlane.vault.importMarkdown(input.markdown, { workspaceId: input.workspaceId, principalId: principal.id }), requestId);
+      }
       if (request.method === "POST" && url.pathname === "/v1/executions") {
         auth.authorize(principal, "execution:create");
         const input = await readJson(request);
