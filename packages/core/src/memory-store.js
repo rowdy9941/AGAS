@@ -25,6 +25,8 @@ export class MemoryStore {
 
     const record = Object.freeze({
       id: randomUUID(),
+      canonicalId: input.canonicalId ?? `urn:agas:memory:${randomUUID()}`,
+      type: typeof input.type === "string" && input.type ? input.type : "note",
       scope: input.scope,
       visibility: input.visibility,
       workspaceId: input.workspaceId,
@@ -34,6 +36,7 @@ export class MemoryStore {
       content: input.content.trim(),
       tags: [...new Set(Array.isArray(input.tags) ? input.tags.filter((tag) => typeof tag === "string" && tag) : [])],
       createdAt: new Date().toISOString(),
+      provenance: structuredClone(input.provenance ?? { source: "operator", actorId: input.principalId }),
     });
     this.#records.push(record);
     this.#onChange?.(this.snapshot());

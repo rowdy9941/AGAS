@@ -1,4 +1,4 @@
-const state = { token: sessionStorage.getItem("agas-token") ?? "", session: null, health: null, executions: [], runtimes: [], managedRuntimes: [], personas: [], hubs: [], selectedPersonas: [], audit: [], view: "overview" };
+const state = { token: sessionStorage.getItem("agas-token") ?? "", session: null, health: null, executions: [], runtimes: [], managedRuntimes: [], personas: [], hubs: [], selectedPersonas: [], artifacts: [], handoffs: [], mcpServices: [], mcpGrants: [], audit: [], view: "overview" };
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -132,6 +132,49 @@ async function installRuntime(runtimeId) {
   await refresh();
 }
 
+function renderContext() {
+  $("#artifact-list").replaceChildren(...state.artifacts.map((artifact) => {
+    const card = document.createElement("div"); card.className = "catalog-card";
+    const name = document.createElement("strong"); name.textContent = artifact.name;
+    const details = document.createElement("p"); details.textContent = `${artifact.type} · v${artifact.version} · ${artifact.canonicalId}`;
+    card.append(name, details); return card;
+  }));
+  const artifactSelect = $("#handoff-artifact");
+  const selectedArtifact = artifactSelect.value;
+  artifactSelect.replaceChildren(...state.artifacts.map((artifact) => {
+    const option = document.createElement("option"); option.value = artifact.id; option.textContent = artifact.name; return option;
+  }));
+  if (state.artifacts.some((artifact) => artifact.id === selectedArtifact)) artifactSelect.value = selectedArtifact;
+
+  $("#handoff-list").replaceChildren(...state.handoffs.map((handoff) => {
+    const card = document.createElement("div"); card.className = "catalog-card";
+    const heading = document.createElement("div"); heading.className = "panel-heading";
+    const name = document.createElement("strong"); name.textContent = `${handoff.fromRuntimeId} → ${handoff.toRuntimeId}`;
+    heading.append(name, badge(handoff.status));
+    const details = document.createElement("p"); details.textContent = handoff.summary;
+    card.append(heading, details);
+    if (handoff.status === "pending") card.append(actionButton("Accept", async () => {
+      await api(`/v1/context/handoffs/${handoff.id}/resolve`, { method: "POST", body: JSON.stringify({ status: "accepted", resolution: "Accepted from operator console" }) }); await refresh();
+    }, "primary"));
+    return card;
+  }));
+}
+
+function renderMcp() {
+  const serviceSelect = $("#mcp-service");
+  const selectedService = serviceSelect.value;
+  serviceSelect.replaceChildren(...state.mcpServices.map((service) => {
+    const option = document.createElement("option"); option.value = service.id; option.textContent = service.name; return option;
+  }));
+  if (state.mcpServices.some((service) => service.id === selectedService)) serviceSelect.value = selectedService;
+  $("#mcp-grant-list").replaceChildren(...state.mcpGrants.map((grant) => {
+    const card = document.createElement("div"); card.className = "runtime-card";
+    const title = document.createElement("strong"); title.textContent = `${grant.serviceId} → ${grant.runtimeId}`;
+    const details = document.createElement("p"); details.textContent = grant.allowedTools.join(", ");
+    card.append(title, details); return card;
+  }));
+}
+
 async function transition(id, status) {
   await api(`/v1/executions/${id}/transitions`, { method: "POST", body: JSON.stringify({ status, reason: `${status} from operator console` }) });
   await refresh();
@@ -185,6 +228,8 @@ function render() {
   const filteredPersonas = state.personas.filter((persona) => !catalogQuery || JSON.stringify(persona).toLowerCase().includes(catalogQuery));
   $("#catalog-list").replaceChildren(...filteredPersonas.map((persona) => personaCard(persona)));
   renderHubBuilder();
+  renderContext();
+  renderMcp();
 
   $("#audit-list").replaceChildren(...state.audit.map((event) => {
     const item = document.createElement("li");
@@ -198,12 +243,14 @@ function render() {
 async function refresh() {
   if (!state.token) return;
   try {
-    const [health, session, executions, runtimes, managedRuntimes, personas, hubs, audit] = await Promise.all([
+    const [health, session, executions, runtimes, managedRuntimes, personas, hubs, artifacts, handoffs, mcpServices, mcpGrants, audit] = await Promise.all([
       fetch("/healthz").then((response) => response.json()),
       api("/v1/session"), api("/v1/executions"), api("/v1/runtimes/detect"), api("/v1/runtimes/managed"),
-      api("/v1/catalog/search?kind=personas&limit=500"), api("/v1/hubs"), api("/v1/audit"),
+      api("/v1/catalog/search?kind=personas&limit=500"), api("/v1/hubs"),
+      api("/v1/context/artifacts?workspaceId=default"), api("/v1/context/handoffs?workspaceId=default"),
+      api("/v1/registry/mcpServers"), api("/v1/mcp/grants?workspaceId=default"), api("/v1/audit"),
     ]);
-    Object.assign(state, { health, session, executions: executions.items, runtimes: runtimes.runtimes, managedRuntimes: managedRuntimes.items, personas: personas.items, hubs: hubs.items, audit: audit.items.reverse() });
+    Object.assign(state, { health, session, executions: executions.items, runtimes: runtimes.runtimes, managedRuntimes: managedRuntimes.items, personas: personas.items, hubs: hubs.items, artifacts: artifacts.items, handoffs: handoffs.items, mcpServices: mcpServices.items, mcpGrants: mcpGrants.items, audit: audit.items.reverse() });
     render();
   } catch (error) {
     state.session = null;
@@ -216,7 +263,7 @@ function showView(view) {
   state.view = view;
   $$(".view").forEach((element) => { element.hidden = element.id !== `${view}-view`; });
   $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === view));
-  const titles = { overview: "Overview", runtimes: "Runtimes", catalog: "Catalog", hubs: "Hub Builder", executions: "Executions", audit: "Audit" };
+  const titles = { overview: "Overview", runtimes: "Runtimes", catalog: "Catalog", hubs: "Hub Builder", context: "Context Fabric", mcp: "MCP & Vault", executions: "Executions", audit: "Audit" };
   $("#page-title").textContent = titles[view] ?? view;
 }
 
@@ -243,6 +290,51 @@ $("#hub-form").addEventListener("submit", async (event) => {
     $("#hub-message").textContent = `Saved ${hub.name} with ${hub.roster.length} specialists.`;
     await refresh();
   } catch (error) { $("#hub-message").textContent = error.message; }
+});
+$("#artifact-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    const artifact = await api("/v1/context/artifacts", { method: "POST", body: JSON.stringify({ workspaceId: "default", name: $("#artifact-name").value, type: "document", content: $("#artifact-content").value }) });
+    $("#artifact-message").textContent = `Created ${artifact.canonicalId}.`;
+    $("#artifact-content").value = ""; await refresh();
+  } catch (error) { $("#artifact-message").textContent = error.message; }
+});
+$("#handoff-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    const handoff = await api("/v1/context/handoffs", { method: "POST", body: JSON.stringify({
+      workspaceId: "default", fromRuntimeId: $("#handoff-from").value, toRuntimeId: $("#handoff-to").value,
+      fromAgentId: "architect", toAgentId: "implementer", summary: $("#handoff-summary").value,
+      acceptanceCriteria: ["Evidence accepted"], artifactIds: [$("#handoff-artifact").value],
+    }) });
+    $("#handoff-message").textContent = `Created ${handoff.canonicalId}.`; await refresh();
+  } catch (error) { $("#handoff-message").textContent = error.message; }
+});
+$("#mcp-service-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    const service = await api("/v1/mcp/services", { method: "POST", body: JSON.stringify({
+      id: $("#mcp-id").value, name: $("#mcp-name").value, transport: "http", endpoint: $("#mcp-endpoint").value,
+      tools: $("#mcp-tools").value.split(",").map((item) => item.trim()).filter(Boolean), secretRef: $("#mcp-secret-ref").value || null,
+    }) });
+    $("#mcp-service-message").textContent = `Registered ${service.id}.`; await refresh();
+  } catch (error) { $("#mcp-service-message").textContent = error.message; }
+});
+$("#mcp-grant-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    const grant = await api("/v1/mcp/grants", { method: "POST", body: JSON.stringify({
+      serviceId: $("#mcp-service").value, runtimeId: $("#mcp-runtime").value, workspaceId: "default",
+      allowedTools: $("#mcp-allowed-tools").value.split(",").map((item) => item.trim()).filter(Boolean),
+    }) });
+    $("#mcp-grant-message").textContent = `Granted ${grant.allowedTools.join(", ")} to ${grant.runtimeId}.`; await refresh();
+  } catch (error) { $("#mcp-grant-message").textContent = error.message; }
+});
+$("#vault-project-button").addEventListener("click", async () => {
+  try {
+    const projection = await api("/v1/vault/project", { method: "POST", body: JSON.stringify({ workspaceId: "default" }) });
+    $("#vault-output").textContent = JSON.stringify(projection, null, 2);
+  } catch (error) { $("#vault-output").textContent = error.message; }
 });
 const dropzone = $("#hub-dropzone");
 dropzone.addEventListener("dragover", (event) => { event.preventDefault(); dropzone.classList.add("dragging"); });

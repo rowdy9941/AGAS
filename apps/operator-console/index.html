@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="AGAS operator console">
     <title>AGAS Operator Console</title>
-    <link rel="stylesheet" href="/assets/styles.css?v=0.4.0">
+    <link rel="stylesheet" href="/assets/styles.css?v=0.5.0">
   </head>
   <body>
     <a class="skip-link" href="#content">Skip to content</a>
@@ -17,6 +17,8 @@
           <button class="nav-item" data-view="runtimes">Runtimes</button>
           <button class="nav-item" data-view="catalog">Catalog</button>
           <button class="nav-item" data-view="hubs">Hub Builder</button>
+          <button class="nav-item" data-view="context">Context</button>
+          <button class="nav-item" data-view="mcp">MCP & Vault</button>
           <button class="nav-item" data-view="executions">Executions</button>
           <button class="nav-item" data-view="audit">Audit</button>
         </nav>
@@ -65,6 +67,22 @@
             <article class="panel spaced"><div class="panel-heading"><div><p class="eyebrow">Persistent hub registry</p><h2>Available hubs</h2></div></div><div id="hub-list" class="card-grid"></div></article>
           </section>
 
+          <section id="context-view" class="view" hidden>
+            <div class="grid two">
+              <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Typed evidence</p><h2>Create artifact</h2></div></div><form id="artifact-form" class="stack"><label for="artifact-name">Name</label><input id="artifact-name" required value="Architecture evidence"><label for="artifact-content">Content</label><textarea id="artifact-content" rows="5" required placeholder="Evidence shared between agents"></textarea><button class="button primary" type="submit">Create artifact</button><p id="artifact-message" class="form-message" role="status"></p></form></article>
+              <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Cross-runtime transfer</p><h2>Create handoff</h2></div></div><form id="handoff-form" class="stack"><label for="handoff-from">From runtime</label><select id="handoff-from"><option>codex</option><option>hermes</option><option>opencode</option></select><label for="handoff-to">To runtime</label><select id="handoff-to"><option>opencode</option><option>codex</option><option>hermes</option></select><label for="handoff-artifact">Evidence artifact</label><select id="handoff-artifact" required></select><label for="handoff-summary">Summary</label><textarea id="handoff-summary" rows="3" required>Implement and verify the approved evidence.</textarea><button class="button primary" type="submit">Create handoff</button><p id="handoff-message" class="form-message" role="status"></p></form></article>
+            </div>
+            <div class="grid two"><article class="panel"><div class="panel-heading"><div><p class="eyebrow">Canonical records</p><h2>Artifacts</h2></div></div><div id="artifact-list" class="card-grid"></div></article><article class="panel"><div class="panel-heading"><div><p class="eyebrow">Acceptance evidence</p><h2>Handoffs</h2></div></div><div id="handoff-list" class="card-grid"></div></article></div>
+          </section>
+
+          <section id="mcp-view" class="view" hidden>
+            <div class="grid two">
+              <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Central tool registry</p><h2>Register MCP service</h2></div></div><form id="mcp-service-form" class="stack"><label for="mcp-id">Service ID</label><input id="mcp-id" value="knowledge" required pattern="[a-z0-9][a-z0-9._-]*"><label for="mcp-name">Name</label><input id="mcp-name" value="Knowledge MCP" required><label for="mcp-endpoint">HTTP endpoint</label><input id="mcp-endpoint" type="url" value="https://mcp.example.test" required><label for="mcp-tools">Tools (comma separated)</label><input id="mcp-tools" value="search,read,write" required><label for="mcp-secret-ref">Secret reference</label><input id="mcp-secret-ref" value="env:KNOWLEDGE_TOKEN"><button class="button primary" type="submit">Register service</button><p id="mcp-service-message" class="form-message" role="status"></p></form></article>
+              <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Runtime permission projection</p><h2>Grant MCP tools</h2></div></div><form id="mcp-grant-form" class="stack"><label for="mcp-service">Service</label><select id="mcp-service" required></select><label for="mcp-runtime">Runtime</label><select id="mcp-runtime"><option>codex</option><option>opencode</option><option>hermes</option></select><label for="mcp-allowed-tools">Allowed tools</label><input id="mcp-allowed-tools" value="read" required><button class="button primary" type="submit">Save grant</button><p id="mcp-grant-message" class="form-message" role="status"></p></form><div id="mcp-grant-list" class="card-grid"></div></article>
+            </div>
+            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Obsidian-compatible projection</p><h2>Human-readable vault</h2></div><button id="vault-project-button" class="button primary">Project default workspace</button></div><pre id="vault-output">No projection created in this session.</pre></article>
+          </section>
+
           <section id="executions-view" class="view" hidden>
             <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Mission execution ledger</p><h2>All executions</h2></div><select id="status-filter" aria-label="Filter by status"><option value="">All states</option><option>proposed</option><option>approved</option><option>running</option><option>completed</option><option>failed</option><option>cancelled</option></select></div><div id="execution-list" class="table-wrap"></div></article>
           </section>
@@ -75,6 +93,6 @@
         </div>
       </main>
     </div>
-    <script type="module" src="/assets/app.js?v=0.4.0"></script>
+    <script type="module" src="/assets/app.js?v=0.5.0"></script>
   </body>
 </html>

@@ -13,6 +13,9 @@ test("registry, memory, executions, audit, and API keys survive restart", async 
     const admin = services.auth.authenticateHeader("Bearer root-token");
     const issued = services.auth.createKey({ name: "Viewer", role: "viewer", workspaceIds: ["demo"] }, admin);
     services.controlPlane.runtimeManager.install("agas-sim", admin.id);
+    const contextArtifact = services.controlPlane.context.createArtifact({ workspaceId: "demo", principalId: admin.id, name: "Persistent context", type: "document", content: "evidence" });
+    services.controlPlane.mcp.registerService({ id: "persistent-mcp", name: "Persistent MCP", transport: "http", endpoint: "https://mcp.example.test", tools: ["read"] }, admin.id);
+    services.controlPlane.mcp.grant({ serviceId: "persistent-mcp", runtimeId: "codex", workspaceId: "demo", allowedTools: ["read"] }, admin.id);
     services.controlPlane.registry.register("skills", { id: "persistent-skill", name: "Persistent Skill" });
     services.controlPlane.memory.append({ scope: "workspace", visibility: "workspace", workspaceId: "demo", principalId: "bootstrap", content: "remember me" });
     const execution = services.controlPlane.proposeExecution({ hubId: "engineering", workspaceId: "demo", principalId: "bootstrap", objective: "Persist this execution" });
@@ -25,6 +28,8 @@ test("registry, memory, executions, audit, and API keys survive restart", async 
     assert.equal(services.controlPlane.executions.audit().length, 1);
     assert.equal(services.auth.authenticateHeader(`Bearer ${issued.token}`).role, "viewer");
     assert.equal(services.controlPlane.runtimeManager.packages()[0].installed, true);
+    assert.equal(services.controlPlane.context.listArtifacts({ workspaceId: "demo" })[0].id, contextArtifact.id);
+    assert.equal(services.controlPlane.mcp.project("codex", { workspaceId: "demo" }).services.length, 1);
     assert.throws(() => services.auth.authenticateHeader("Bearer ignored-after-initialization"), (error) => error.code === "INVALID_API_TOKEN");
     services.database.close();
   } finally {

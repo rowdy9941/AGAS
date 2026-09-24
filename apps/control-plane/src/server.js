@@ -12,6 +12,7 @@ const isLoopback = ["127.0.0.1", "::1", "localhost"].includes(host);
 const bootstrapToken = configuredToken ?? "agas-dev-token";
 const runtimeMode = process.env.AGAS_RUNTIME_EXECUTION ?? "simulator";
 const workspaceRoot = process.env.AGAS_WORKSPACE_ROOT ?? process.cwd();
+const vaultPath = process.env.AGAS_VAULT_PATH ?? "./data/vault";
 
 if (!Number.isInteger(port) || port < 0 || port > 65535) {
   throw new Error("AGAS_PORT must be an integer between 0 and 65535");
@@ -20,7 +21,7 @@ if (!configuredToken && !isLoopback) {
   throw new Error("AGAS_BOOTSTRAP_TOKEN is required when AGAS_HOST is not loopback");
 }
 
-const { controlPlane, auth, database } = createPersistentServices({ databasePath, bootstrapToken });
+const { controlPlane, auth, database } = createPersistentServices({ databasePath, bootstrapToken, vaultPath });
 const executor = new RuntimeExecutor({ registry: controlPlane.registry, mode: runtimeMode, workspaceRoot });
 const dispatcher = new Dispatcher({ executions: controlPlane.executions, executor });
 const server = createServer(createApp(controlPlane, { auth }));

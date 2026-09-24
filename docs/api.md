@@ -23,6 +23,21 @@ All responses are JSON. Except for `/healthz`, requests require an
 | POST | `/v1/hubs/:id/plan` | Plan a compatible hub roster |
 | POST | `/v1/memory` | Append a scoped memory record |
 | POST | `/v1/memory/search` | Search visible memory records |
+| GET | `/v1/context/artifacts` | List workspace artifacts |
+| POST | `/v1/context/artifacts` | Create a typed artifact |
+| GET | `/v1/context/events` | Read workspace context events |
+| GET | `/v1/context/handoffs` | List cross-runtime handoffs |
+| POST | `/v1/context/handoffs` | Create an evidence-backed handoff |
+| POST | `/v1/context/handoffs/:id/resolve` | Accept or reject a handoff |
+| GET | `/v1/context/checkpoints` | List context checkpoints |
+| POST | `/v1/context/checkpoints` | Capture a context checkpoint |
+| POST | `/v1/context/checkpoints/:id/rollback` | Restore checkpointed context |
+| POST | `/v1/mcp/services` | Register or update an MCP service (admin) |
+| GET | `/v1/mcp/grants` | List workspace MCP grants |
+| POST | `/v1/mcp/grants` | Grant service tools to a runtime (admin) |
+| GET | `/v1/mcp/projections/:runtimeId` | Render a runtime MCP projection |
+| POST | `/v1/vault/project` | Project workspace knowledge to Markdown |
+| POST | `/v1/vault/import` | Validate and import an artifact document |
 | POST | `/v1/executions` | Propose an execution from a hub plan |
 | GET | `/v1/executions` | List visible executions |
 | GET | `/v1/executions/:id` | Read an execution record |
@@ -42,3 +57,9 @@ and `cancelled`. Only valid forward transitions are accepted.
 Roles are `viewer`, `operator`, and `admin`. Keys can be constrained to named
 workspaces. Only administrators can mutate the registry, approve executions, or
 manage keys; operators can propose and run work; viewers are read-only.
+
+Artifacts use canonical `urn:agas:*` identifiers. Handoffs require at least one
+artifact from the same workspace. MCP credentials must be references beginning
+with `env:` or `vault:`; raw tokens are rejected. Vault imports currently accept
+only artifact documents and require the document workspace to match the caller's
+authorized workspace.

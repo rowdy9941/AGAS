@@ -22,13 +22,19 @@ system is split into services.
 12. **Ecosystem Catalog** imports versioned Agency personas, tracks provenance,
     searches compatibility, and projects personas into native runtime formats.
 13. **Hub Builder** persists stable, compatible specialist rosters.
+14. **Context Fabric** owns canonical artifacts, events, handoffs, checkpoints,
+    and auditable rollback inside workspace boundaries.
+15. **MCP Gateway** registers a service once and emits per-runtime projections
+    containing only explicitly granted tools and secret references.
+16. **Vault Projector** writes atomic Obsidian-compatible Markdown and validates
+    imports before updating authoritative artifacts.
 
 ## Trust boundary
 
-Phase 1 never invokes an agent runtime. A hub plan is data, not permission to
-execute. Later runtime adapters must preserve that separation by requiring an
+A hub plan is data, not permission to execute. Runtime adapters require an
 approved execution record, a bounded permission grant, and an audit event for
-every external side effect.
+every external side effect. MCP credentials remain external references and
+never enter registry, projection, or vault content as raw secrets.
 
 ## Delivery phases
 
@@ -36,4 +42,6 @@ every external side effect.
 - Phase 2: durable SQLite storage, authentication, and policy evaluation. ✅
 - Phase 3: runtime adapters, recoverable asynchronous dispatch, and console. ✅
 - Phase 4: ecosystem catalog, managed runtime, persona projections, Hub Builder. ✅
-- Phase 5: distributed workers, organization governance, and extension SDK.
+- Phase 5: Context Fabric, MCP Gateway, and Obsidian vault projection. ✅
+- Phase 6: Mission Authority, durable organization records, and initial hubs.
+- Phase 7: recovery, security hardening, complete acceptance, and public release.

@@ -10,6 +10,7 @@ ENV NODE_ENV=production \
     AGAS_HOST=0.0.0.0 \
     AGAS_PORT=4310 \
     AGAS_DB_PATH=/data/agas.db \
+    AGAS_VAULT_PATH=/data/vault \
     AGAS_WORKSPACE_ROOT=/workspace \
     AGAS_RUNTIME_EXECUTION=simulator
 
