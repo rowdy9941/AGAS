@@ -21,7 +21,10 @@ async function resolveExecutable(command, pathValue = process.env.PATH ?? "") {
 
 export async function detectRuntimes(runtimes, options = {}) {
   const pathValue = options.pathValue ?? process.env.PATH;
-  const timeout = options.timeout ?? 1500;
+  // External CLIs can take a few seconds to initialize on their first run,
+  // especially when installed through a shim or snap package. Keep detection
+  // bounded without incorrectly reporting a healthy runtime as broken.
+  const timeout = options.timeout ?? 5000;
   return Promise.all(runtimes.map(async (runtime) => {
     if (runtime.builtin) return { runtimeId: runtime.id, installed: true, managed: true, version: runtime.version };
     const executable = await resolveExecutable(runtime.command, pathValue);
