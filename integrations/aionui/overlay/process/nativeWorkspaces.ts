@@ -2,6 +2,7 @@ import { app, ipcMain, WebContentsView } from 'electron';
 import type { BrowserWindow, IpcMainInvokeEvent } from 'electron';
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import type { AgasWorkspace, SurfaceBounds } from '@/common/platform/agas';
 import { validateWorkspaceId, validateWorkspaceUrl, WORKSPACES } from './workspacePolicy';
 
@@ -87,7 +88,8 @@ export function registerNativeWorkspaces(owner: BrowserWindow): void {
     const url = config[id];
     if (!url) throw new Error('Configure the native application URL first');
     const origin = new URL(url).origin;
-    const view = new WebContentsView({ webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, partition: `persist:agas-native-${id}` } });
+    const originKey = createHash('sha256').update(origin).digest('hex').slice(0, 16);
+    const view = new WebContentsView({ webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, partition: `persist:agas-native-${id}-${originKey}` } });
     surface = view;
     view.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
     view.webContents.session.setPermissionCheckHandler(() => false);

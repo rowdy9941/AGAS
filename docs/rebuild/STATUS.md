@@ -1,11 +1,15 @@
 # AGAS rebuild — implementation checkpoint
 
-Approved by Raghunath on 25 September 2026. Work is on `rebuild/agas-foundations`; main remains the reviewed prototype.
+Approved by Raghunath on 25 September 2026. Work is on `rebuild/agas-foundations`; `main` remains the reviewed prototype. The finalized source artwork is `brand/AGAS_Logo.jpg` (SHA-256 `aa4995e57353d1e1b9a09125f642daea1c64325d8fcf6052a246b5b8c1d57a97`). UI identity is **AGAS — Accessible General AI System, BY RAGHUNATH.D**.
 
-The original logo is `brand/AGAS_Logo.jpg`. Preserve it unchanged. UI identity is **AGAS — Accessible General AI System, BY RAGHUNATH.D**.
+## Reproducible desktop slice
 
-The foundation lock selects AionUI, its pinned AionCore v0.2.2, real Paperclip, and the Agency catalog. `node scripts/foundations.mjs fetch` materializes their exact commits in one checkout. Canonical AGAS changes are maintained as checked patches under `integrations/`; generated native icons come from the original logo. Release packages must bundle the core applications; users must not need these development clones at runtime.
+`runtime/foundations.lock.json` pins the AionUI fork, AionCore v0.2.2, actual Paperclip, and Agency. `node scripts/foundations.mjs fetch` fetches the pinned commits, applies all AGAS patches in `integrations/aionui/patches/`, and generates the Agency catalog. The source patch has been replayed and reverse-checked on a clean checkout. `scripts/brand.mjs` derives desktop/PWA icons from the original image. The AionUI source keeps its copyright/license notices.
 
-This is a recoverable source-import build, not a claim of a completed desktop MVP. The repository's original console and simulator remain historical prototype code until replacement gates pass. See `approved-plan.md` for scope and acceptance gates.
+The new **Agent UI** has a native local-application panel and a searchable catalog of 279 original Agency personas, each with a source path, pinned commit, and source SHA-256. The local application panel opens Paperclip, Hermes, OpenClaw, or OpenCode at explicit loopback URLs inside sandboxed, session-separated Electron views. It does not claim that a configured external app is installed or that a catalog persona has been activated. `npm start` launches a Paperclip development server, waits for its health response, then starts the actual Electron app after setup. The old console starts only with `npm run legacy:start`.
 
-Pending: complete/recover AGAS UI patch; build and test desktop; real Paperclip startup and embedding; native runtime sessions and cancellation; catalog-to-hub activation; scoped context/MCP handoffs; durable missions and evidence verification; clean-machine installer. No real agent outcome is verified by a simulator.
+Checks in this workspace: TypeScript and lint passed (916 existing warnings, zero errors); all 13 i18n locales and key types validated; focused tests passed; Electron/Vite production assets built with a 4 GB Node heap and include the catalog; the full suite initially reported two stale wordmark test expectations and one sandboxed OS-interface enumeration failure, then the affected 24 tests passed after fixing both issues. Re-run the entire suite before a release. A real Electron UI session, full Paperclip integration test, bundled AionCore binary, and clean-machine installer have not been verified in this environment.
+
+## Next product gates
+
+Verify actual desktop launch with Paperclip and AionCore on a host with Electron/Rust. Build runtime lifecycle and cancellation with real child processes; activate original Agency personas in native runtimes; implement persistent hubs and scoped context/MCP handoffs; execute missions with recipient acknowledgement and evidence-backed acceptance; assemble and test installers on clean supported operating systems. Simulated outcomes are not release evidence.

@@ -262,6 +262,24 @@ index 0b8a403..2c02f52 100644
        "promise4": "開源倉庫持續更新，核心功能保持同步，開源精神不變。",
        "noRush": "如果您暫不升級，當前版本仍可照常使用，只是不會再收到更新；而一旦在新版本完成首次登入，本地資料便已遷移過去，請以新版本作為日常入口。"
      }
+diff --git a/packages/web-host/src/static-server.ts b/packages/web-host/src/static-server.ts
+index 130cc98..eaa8724 100644
+--- a/packages/web-host/src/static-server.ts
++++ b/packages/web-host/src/static-server.ts
+@@ -73,7 +73,12 @@ export function pickLanIP(nets: ReturnType<typeof networkInterfaces>): string |
+ }
+ 
+ function getLanIP(): string | null {
+-  return pickLanIP(networkInterfaces());
++  try {
++    return pickLanIP(networkInterfaces());
++  } catch {
++    // Sandboxed desktop hosts may deny interface enumeration. Local access still works.
++    return null;
++  }
+ }
+ 
+ function forwardToBackend(req: IncomingMessage, res: ServerResponse, backendPort: number): void {
 diff --git a/public/manifest.webmanifest b/public/manifest.webmanifest
 index 83aebe7..45e1801 100644
 --- a/public/manifest.webmanifest
@@ -277,6 +295,129 @@ index 83aebe7..45e1801 100644
    "start_url": "./",
    "scope": "./",
    "display": "standalone",
+diff --git a/tests/unit/process/services/agas/nativeWorkspaces.test.ts b/tests/unit/process/services/agas/nativeWorkspaces.test.ts
+new file mode 100644
+index 0000000..670234e
+--- /dev/null
++++ b/tests/unit/process/services/agas/nativeWorkspaces.test.ts
+@@ -0,0 +1,117 @@
++import { beforeEach, describe, expect, it, vi } from 'vitest';
++
++type IpcHandler = (event: { sender: unknown; senderFrame: unknown }, ...args: unknown[]) => unknown;
++type NavigationHandler = (event: { preventDefault: () => void }, destination: string) => void;
++const mocks = vi.hoisted(() => ({
++  handlers: new Map<string, IpcHandler>(),
++  events: new Map<string, NavigationHandler>(),
++  options: [] as unknown[],
++  addChildView: vi.fn(),
++  loadURL: vi.fn(async () => undefined),
++  denyPermission: vi.fn(),
++}));
++
++vi.mock('electron', () => ({
++  app: { getPath: () => '/tmp/agas-workspaces-test' },
++  ipcMain: {
++    handle: (name: string, handler: IpcHandler) => mocks.handlers.set(name, handler),
++    removeHandler: (name: string) => mocks.handlers.delete(name),
++  },
++  WebContentsView: class {
++    webContents = {
++      session: { setPermissionRequestHandler: mocks.denyPermission, setPermissionCheckHandler: vi.fn() },
++      setWindowOpenHandler: vi.fn(),
++      on: (name: string, handler: NavigationHandler) => mocks.events.set(name, handler),
++      loadURL: mocks.loadURL,
++      isDestroyed: () => false,
++      close: vi.fn(),
++    };
++    setBounds = vi.fn();
++    constructor(options: unknown) {
++      mocks.options.push(options);
++    }
++  },
++}));
++vi.mock('node:fs/promises', () => ({
++  readFile: vi.fn(async () => {
++    throw Object.assign(new Error('missing'), { code: 'ENOENT' });
++  }),
++  writeFile: vi.fn(),
++  mkdir: vi.fn(),
++  rename: vi.fn(),
++}));
++
++import type { BrowserWindow } from 'electron';
++import { registerNativeWorkspaces } from '@/process/services/agas/nativeWorkspaces';
++
++const bounds = { x: 10, y: 20, width: 300, height: 200 };
++const createOwner = () => {
++  const mainFrame = {};
++  const webContents = { mainFrame, getZoomFactor: () => 1, on: vi.fn() };
++  const owner = {
++    webContents,
++    contentView: { addChildView: mocks.addChildView, removeChildView: vi.fn() },
++    getContentSize: () => [1000, 800],
++    isDestroyed: () => false,
++    on: vi.fn(),
++  };
++  registerNativeWorkspaces(owner as unknown as BrowserWindow);
++  return { owner, event: { sender: webContents, senderFrame: mainFrame } };
++};
++
++describe('native application boundary', () => {
++  beforeEach(() => {
++    mocks.handlers.clear();
++    mocks.events.clear();
++    mocks.options.length = 0;
++    mocks.addChildView.mockClear();
++    mocks.loadURL.mockClear();
++    mocks.denyPermission.mockClear();
++    delete process.env.AGAS_PAPERCLIP_URL;
++  });
++
++  it('refuses IPC from a subframe even when it belongs to the AGAS window', () => {
++    const { owner } = createOwner();
++    const open = mocks.handlers.get('agas:workspaces:open');
++    expect(() => open?.({ sender: owner.webContents, senderFrame: {} }, 'paperclip', bounds)).toThrow('access denied');
++  });
++
++  it('refuses a remote URL before saving workspace configuration', async () => {
++    const { event } = createOwner();
++    const configure = mocks.handlers.get('agas:workspaces:configure');
++    await expect(configure?.(event, 'paperclip', 'https://example.com/')).rejects.toThrow('loopback');
++  });
++
++  it('isolates the native app and blocks navigation outside its local origin', async () => {
++    process.env.AGAS_PAPERCLIP_URL = 'http://127.0.0.1:3100/';
++    const { event } = createOwner();
++    const open = mocks.handlers.get('agas:workspaces:open');
++    await open?.(event, 'paperclip', bounds);
++    expect(mocks.options[0]).toMatchObject({
++      webPreferences: {
++        sandbox: true,
++        nodeIntegration: false,
++        partition: expect.stringMatching(/^persist:agas-native-paperclip-[a-f0-9]{16}$/),
++      },
++    });
++    expect(mocks.addChildView).toHaveBeenCalledOnce();
++    const external = { preventDefault: vi.fn() };
++    mocks.events.get('will-navigate')?.(external, 'https://example.com/');
++    expect(external.preventDefault).toHaveBeenCalledOnce();
++    const local = { preventDefault: vi.fn() };
++    mocks.events.get('will-navigate')?.(local, 'http://127.0.0.1:3100/companies');
++    expect(local.preventDefault).not.toHaveBeenCalled();
++  });
++
++  it('changes the session partition when an app moves to another port', async () => {
++    process.env.AGAS_PAPERCLIP_URL = 'http://127.0.0.1:3100/';
++    const { event } = createOwner();
++    const open = mocks.handlers.get('agas:workspaces:open');
++    await open?.(event, 'paperclip', bounds);
++    process.env.AGAS_PAPERCLIP_URL = 'http://127.0.0.1:3101/';
++    await open?.(event, 'paperclip', bounds);
++    const first = mocks.options[0] as { webPreferences: { partition: string } };
++    const second = mocks.options[1] as { webPreferences: { partition: string } };
++    expect(second.webPreferences.partition).not.toBe(first.webPreferences.partition);
++  });
++});
 diff --git a/tests/unit/process/services/agas/workspacePolicy.test.ts b/tests/unit/process/services/agas/workspacePolicy.test.ts
 new file mode 100644
 index 0000000..c6aa4d4
@@ -348,6 +489,28 @@ index 075bed2..839e0ec 100644
    });
  
    it('sets the localised login title on the login route', () => {
+diff --git a/tests/unit/renderer/layout/LayoutSiderBrandHome.dom.test.tsx b/tests/unit/renderer/layout/LayoutSiderBrandHome.dom.test.tsx
+index c679385..7d546cb 100644
+--- a/tests/unit/renderer/layout/LayoutSiderBrandHome.dom.test.tsx
++++ b/tests/unit/renderer/layout/LayoutSiderBrandHome.dom.test.tsx
+@@ -159,7 +159,7 @@ describe('Layout sider brand Home button', () => {
+ 
+     // No actionable role/label in chat routes.
+     expect(screen.queryByLabelText(BACK_KEY)).toBeNull();
+-    const wordmark = screen.getByText('AionUi');
++    const wordmark = screen.getByText('AGAS');
+     fireEvent.click(wordmark);
+     expect(navigate).not.toHaveBeenCalled();
+   });
+@@ -168,7 +168,7 @@ describe('Layout sider brand Home button', () => {
+     currentPathname = '/conversation/xyz';
+     renderLayout();
+ 
+-    fireEvent.click(screen.getByText('AionUi'));
++    fireEvent.click(screen.getByText('AGAS'));
+     expect(navigate).not.toHaveBeenCalled();
+   });
+ 
 diff --git a/tests/unit/updateBridgeCdnRewrite.test.ts b/tests/unit/updateBridgeCdnRewrite.test.ts
 index e13d1b5..5328b29 100644
 --- a/tests/unit/updateBridgeCdnRewrite.test.ts

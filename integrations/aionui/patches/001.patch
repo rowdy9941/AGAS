@@ -190,14 +190,15 @@ index 0000000..dd3abe3
 +export const AGAS_AUTO_UPDATE_ENABLED = false;
 diff --git a/packages/desktop/src/process/services/agas/nativeWorkspaces.ts b/packages/desktop/src/process/services/agas/nativeWorkspaces.ts
 new file mode 100644
-index 0000000..86f913d
+index 0000000..119e218
 --- /dev/null
 +++ b/packages/desktop/src/process/services/agas/nativeWorkspaces.ts
-@@ -0,0 +1,149 @@
+@@ -0,0 +1,151 @@
 +import { app, ipcMain, WebContentsView } from 'electron';
 +import type { BrowserWindow, IpcMainInvokeEvent } from 'electron';
 +import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 +import path from 'node:path';
++import { createHash } from 'node:crypto';
 +import type { AgasWorkspace, SurfaceBounds } from '@/common/platform/agas';
 +import { validateWorkspaceId, validateWorkspaceUrl, WORKSPACES } from './workspacePolicy';
 +
@@ -301,12 +302,13 @@ index 0000000..86f913d
 +    const url = config[id];
 +    if (!url) throw new Error('Configure the native application URL first');
 +    const origin = new URL(url).origin;
++    const originKey = createHash('sha256').update(origin).digest('hex').slice(0, 16);
 +    const view = new WebContentsView({
 +      webPreferences: {
 +        sandbox: true,
 +        contextIsolation: true,
 +        nodeIntegration: false,
-+        partition: `persist:agas-native-${id}`,
++        partition: `persist:agas-native-${id}-${originKey}`,
 +      },
 +    });
 +    surface = view;
