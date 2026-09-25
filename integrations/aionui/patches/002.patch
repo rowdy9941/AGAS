@@ -396,10 +396,10 @@ index 5a2d019..0178fab 100644
          {officialSkills.length > 0 ? (
 diff --git a/packages/desktop/src/renderer/services/agency/createAssistant.ts b/packages/desktop/src/renderer/services/agency/createAssistant.ts
 new file mode 100644
-index 0000000..5db37e1
+index 0000000..5545a04
 --- /dev/null
 +++ b/packages/desktop/src/renderer/services/agency/createAssistant.ts
-@@ -0,0 +1,48 @@
+@@ -0,0 +1,50 @@
 +import { ipcBridge } from '@/common';
 +
 +export type AgencyAssistantPersona = {
@@ -439,10 +439,12 @@ index 0000000..5db37e1
 +    try {
 +      await bridge.assistants.delete.invoke({ id: created.id });
 +    } catch (rollbackError) {
-+      throw new AggregateError(
++      const failure = new AggregateError(
 +        [error, rollbackError],
 +        `Agency assistant ${created.id} was created but its rules could not be saved or rolled back`
 +      );
++      failure.cause = rollbackError;
++      throw failure;
 +    }
 +    throw error;
 +  }

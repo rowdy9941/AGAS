@@ -465,10 +465,10 @@ index 2849de0..467d150 100644
    autoDownload: true,
 diff --git a/tests/unit/renderer/agency/createAssistant.test.ts b/tests/unit/renderer/agency/createAssistant.test.ts
 new file mode 100644
-index 0000000..734565a
+index 0000000..f2612ce
 --- /dev/null
 +++ b/tests/unit/renderer/agency/createAssistant.test.ts
-@@ -0,0 +1,63 @@
+@@ -0,0 +1,66 @@
 +import { describe, expect, it, vi } from 'vitest';
 +import type { ipcBridge } from '@/common';
 +import { createAgencyAssistant } from '@/renderer/services/agency/createAssistant';
@@ -521,7 +521,10 @@ index 0000000..734565a
 +    const { bridge, write, remove } = makeBridge();
 +    write.mockRejectedValueOnce(new Error('rule write failed'));
 +    remove.mockRejectedValueOnce(new Error('delete failed'));
-+    await expect(createAgencyAssistant(persona, bridge)).rejects.toThrow('could not be saved or rolled back');
++    await expect(createAgencyAssistant(persona, bridge)).rejects.toMatchObject({
++      message: expect.stringContaining('could not be saved or rolled back'),
++      errors: [{ message: 'rule write failed' }, { message: 'delete failed' }],
++    });
 +  });
 +
 +  it('refuses malformed catalog data before creating an assistant', async () => {
