@@ -463,6 +463,75 @@ index 2849de0..467d150 100644
  const autoUpdaterMock = vi.hoisted(() => ({
    logger: null as unknown,
    autoDownload: true,
+diff --git a/tests/unit/renderer/agency/createAssistant.test.ts b/tests/unit/renderer/agency/createAssistant.test.ts
+new file mode 100644
+index 0000000..734565a
+--- /dev/null
++++ b/tests/unit/renderer/agency/createAssistant.test.ts
+@@ -0,0 +1,63 @@
++import { describe, expect, it, vi } from 'vitest';
++import type { ipcBridge } from '@/common';
++import { createAgencyAssistant } from '@/renderer/services/agency/createAssistant';
++
++const persona = {
++  slug: 'frontend-developer',
++  name: 'Frontend Developer',
++  description: 'Builds interfaces',
++  body: 'Original Agency specialist instructions.',
++};
++const makeBridge = () => {
++  const create = vi.fn(async () => ({ id: 'agas-agency-frontend-developer' }));
++  const write = vi.fn(async () => true);
++  const remove = vi.fn(async () => undefined);
++  return {
++    bridge: {
++      assistants: { create: { invoke: create }, delete: { invoke: remove } },
++      fs: { writeAssistantRule: { invoke: write } },
++    } as unknown as Pick<typeof ipcBridge, 'assistants' | 'fs'>,
++    create,
++    write,
++    remove,
++  };
++};
++
++describe('Agency specialist activation in AionCore', () => {
++  it('persists the original specialist prompt as the assistant rule', async () => {
++    const { bridge, create, write } = makeBridge();
++    const id = await createAgencyAssistant(persona, bridge);
++    expect(id).toBe('agas-agency-frontend-developer');
++    expect(create).toHaveBeenCalledWith({ id, name: persona.name, description: persona.description });
++    expect(write).toHaveBeenCalledWith({ assistant_id: id, locale: 'en-US', content: persona.body });
++  });
++
++  it('removes the newly created assistant when the original prompt cannot be saved', async () => {
++    const { bridge, write, remove } = makeBridge();
++    write.mockRejectedValueOnce(new Error('rule store unavailable'));
++    await expect(createAgencyAssistant(persona, bridge)).rejects.toThrow('rule store unavailable');
++    expect(remove).toHaveBeenCalledWith({ id: 'agas-agency-frontend-developer' });
++  });
++
++  it('also rolls back a false response from the rule store', async () => {
++    const { bridge, write, remove } = makeBridge();
++    write.mockResolvedValueOnce(false);
++    await expect(createAgencyAssistant(persona, bridge)).rejects.toThrow('did not save');
++    expect(remove).toHaveBeenCalledWith({ id: 'agas-agency-frontend-developer' });
++  });
++
++  it('reports both failures if rollback also fails', async () => {
++    const { bridge, write, remove } = makeBridge();
++    write.mockRejectedValueOnce(new Error('rule write failed'));
++    remove.mockRejectedValueOnce(new Error('delete failed'));
++    await expect(createAgencyAssistant(persona, bridge)).rejects.toThrow('could not be saved or rolled back');
++  });
++
++  it('refuses malformed catalog data before creating an assistant', async () => {
++    const { bridge, create } = makeBridge();
++    await expect(createAgencyAssistant({ ...persona, slug: '../../admin' }, bridge)).rejects.toThrow(
++      'Invalid Agency specialist'
++    );
++    expect(create).not.toHaveBeenCalled();
++  });
++});
 diff --git a/tests/unit/renderer/documentTitle.dom.test.tsx b/tests/unit/renderer/documentTitle.dom.test.tsx
 index 075bed2..839e0ec 100644
 --- a/tests/unit/renderer/documentTitle.dom.test.tsx

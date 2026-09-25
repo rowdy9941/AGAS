@@ -13,7 +13,7 @@ if (!existsSync(path.join(desktopDir, 'node_modules')) || !existsSync(path.join(
 }
 
 const url = `http://127.0.0.1:${port}`;
-const env = { ...process.env, PORT: String(port), AGAS_PAPERCLIP_URL: url, PAPERCLIP_TELEMETRY_DISABLED: '1' };
+const env = { ...process.env, PATH: `${path.join(root, 'scripts/bin')}${path.delimiter}${process.env.PATH ?? ''}`, PORT: String(port), AGAS_PAPERCLIP_URL: url, PAPERCLIP_TELEMETRY_DISABLED: '1' };
 const children = new Set();
 let stopped = false;
 function start(command, args, cwd) {

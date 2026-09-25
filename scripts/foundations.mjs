@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const lock = JSON.parse(readFileSync(path.join(root, 'runtime/foundations.lock.json'), 'utf8'));
+const paperclipPath = `${path.join(root, 'scripts/bin')}${path.delimiter}${process.env.PATH ?? ''}`;
 function run(command, args, cwd = root) {
   const result = spawnSync(command, args, { cwd, stdio: 'inherit', shell: false });
   if (result.error) throw result.error;
@@ -44,6 +45,7 @@ if (action === 'fetch') {
   run('python3', ['scripts/catalog.py']);
 } else if (action === 'install') {
   run('bun', ['install', '--frozen-lockfile'], path.join(root, 'foundations/aionui'));
+  process.env.PATH = paperclipPath;
   run('corepack', ['pnpm', 'install', '--frozen-lockfile'], path.join(root, 'foundations/paperclip'));
   run('node', ['scripts/brand.mjs']);
   run('cargo', ['install', '--path', 'crates/aionui-app', '--locked'], path.join(root, 'foundations/aioncore'));
@@ -55,5 +57,6 @@ if (action === 'fetch') {
   process.env.NODE_OPTIONS ??= '--max-old-space-size=4096';
   run('bun', ['run', 'package'], path.join(root, 'foundations/aionui'));
 } else if (action === 'paperclip') {
+  process.env.PATH = paperclipPath;
   run('corepack', ['pnpm', 'dev'], path.join(root, 'foundations/paperclip'));
 } else throw new Error(`Unknown command: ${action}`);

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Input, Pagination, Space, Spin, Typography } from '@arco-design/web-react';
+import { Alert, Button, Card, Input, Message, Pagination, Space, Spin, Typography } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
+import { createAgencyAssistant } from '@renderer/services/agency/createAssistant';
 type Persona = {
   slug: string;
   name: string;
@@ -20,6 +21,22 @@ const AgencyCatalog: React.FC = () => {
   const [selected, setSelected] = useState<Persona>();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [createdSlug, setCreatedSlug] = useState('');
+  const handleCreate = async (): Promise<void> => {
+    if (!selected || creating) return;
+    setCreating(true);
+    setError('');
+    try {
+      await createAgencyAssistant(selected);
+      setCreatedSlug(selected.slug);
+      Message.success(t('common.createSuccess'));
+    } catch (reason) {
+      setError(`${t('common.saveFailed')}: ${reason instanceof Error ? reason.message : String(reason)}`);
+    } finally {
+      setCreating(false);
+    }
+  };
   useEffect(() => {
     const controller = new AbortController();
     void fetch('./agas/catalog.json', { signal: controller.signal })
@@ -73,6 +90,14 @@ const AgencyCatalog: React.FC = () => {
             {selected.source_path} · {selected.source_commit.slice(0, 12)}
           </Typography.Paragraph>
           <Typography.Paragraph className='whitespace-pre-wrap'>{selected.body}</Typography.Paragraph>
+          <Button
+            type='primary'
+            loading={creating}
+            disabled={createdSlug === selected.slug}
+            onClick={() => void handleCreate()}
+          >
+            {createdSlug === selected.slug ? t('common.createSuccess') : t('settings.createAssistant')}
+          </Button>
         </Card>
       ) : (
         <>

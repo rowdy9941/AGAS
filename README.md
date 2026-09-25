@@ -23,6 +23,6 @@ npm run legacy:start        # run the historical prototype for comparison only
 npm run check               # tests for that historical prototype
 ```
 
-The catalog keeps the original persona body, source file, source commit, and SHA-256 of each source file. Viewing the catalog is distinct from activating a specialist in a runtime; activation, durable hubs, context/MCP handoffs, missions, and a clean-machine installer are still under implementation. This branch is not a production release.
+The catalog keeps the original persona body, source file, source commit, and SHA-256 of each source file. Its **Create Assistant** action creates a real AionCore assistant and saves that original body as its rule; using it requires a configured agent backend. Durable hubs, context/MCP handoffs, missions, and a clean-machine installer are still under implementation. This branch is not a production release.
 
 AionUI and AionCore are Apache-2.0 licensed; Paperclip and Agency are MIT licensed. Their pinned upstream source histories and copyright notices remain intact in the fetched checkouts. AGAS-specific work is in the `integrations/`, `scripts/`, `brand/`, and `docs/rebuild/` paths. Do not infer AGAS-specific license rights over these upstream applications from the root prototype's MIT license.

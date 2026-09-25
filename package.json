@@ -20,6 +20,6 @@
     "restore": "node scripts/agas-restore.js",
     "check": "npm run lint && npm test",
     "lint": "node --check apps/control-plane/src/server.js && node --check apps/operator-console/app.js && node --check packages/core/src/control-plane.js && node --check packages/core/src/state-database.js && node --check packages/runtime/src/dispatcher.js && node --check packages/ecosystem/src/catalog-service.js && node --check packages/context/src/context-fabric.js && node --check packages/mcp/src/mcp-gateway.js && node --check packages/vault/src/vault-projector.js && node --check packages/organization/src/organization-store.js && node --check packages/mission/src/mission-authority.js && node --check scripts/agas-backup.js && node --check scripts/agas-restore.js",
-    "test": "node --test --test-reporter=spec"
+    "test": "node --test --test-reporter=spec test/*.test.js"
   }
 }

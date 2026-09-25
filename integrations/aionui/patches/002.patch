@@ -24,13 +24,14 @@ index 71afabd..7438e82 100644
        (function () {
 diff --git a/packages/desktop/src/renderer/pages/AgentWorkspace/AgencyCatalog.tsx b/packages/desktop/src/renderer/pages/AgentWorkspace/AgencyCatalog.tsx
 new file mode 100644
-index 0000000..cb59e06
+index 0000000..3aff90d
 --- /dev/null
 +++ b/packages/desktop/src/renderer/pages/AgentWorkspace/AgencyCatalog.tsx
-@@ -0,0 +1,94 @@
+@@ -0,0 +1,119 @@
 +import React, { useEffect, useMemo, useState } from 'react';
-+import { Alert, Button, Card, Input, Pagination, Space, Spin, Typography } from '@arco-design/web-react';
++import { Alert, Button, Card, Input, Message, Pagination, Space, Spin, Typography } from '@arco-design/web-react';
 +import { useTranslation } from 'react-i18next';
++import { createAgencyAssistant } from '@renderer/services/agency/createAssistant';
 +type Persona = {
 +  slug: string;
 +  name: string;
@@ -50,6 +51,22 @@ index 0000000..cb59e06
 +  const [selected, setSelected] = useState<Persona>();
 +  const [error, setError] = useState('');
 +  const [loading, setLoading] = useState(true);
++  const [creating, setCreating] = useState(false);
++  const [createdSlug, setCreatedSlug] = useState('');
++  const handleCreate = async (): Promise<void> => {
++    if (!selected || creating) return;
++    setCreating(true);
++    setError('');
++    try {
++      await createAgencyAssistant(selected);
++      setCreatedSlug(selected.slug);
++      Message.success(t('common.createSuccess'));
++    } catch (reason) {
++      setError(`${t('common.saveFailed')}: ${reason instanceof Error ? reason.message : String(reason)}`);
++    } finally {
++      setCreating(false);
++    }
++  };
 +  useEffect(() => {
 +    const controller = new AbortController();
 +    void fetch('./agas/catalog.json', { signal: controller.signal })
@@ -103,6 +120,14 @@ index 0000000..cb59e06
 +            {selected.source_path} · {selected.source_commit.slice(0, 12)}
 +          </Typography.Paragraph>
 +          <Typography.Paragraph className='whitespace-pre-wrap'>{selected.body}</Typography.Paragraph>
++          <Button
++            type='primary'
++            loading={creating}
++            disabled={createdSlug === selected.slug}
++            onClick={() => void handleCreate()}
++          >
++            {createdSlug === selected.slug ? t('common.createSuccess') : t('settings.createAssistant')}
++          </Button>
 +        </Card>
 +      ) : (
 +        <>
@@ -369,6 +394,60 @@ index 5a2d019..0178fab 100644
            })}
          </p>
          {officialSkills.length > 0 ? (
+diff --git a/packages/desktop/src/renderer/services/agency/createAssistant.ts b/packages/desktop/src/renderer/services/agency/createAssistant.ts
+new file mode 100644
+index 0000000..5db37e1
+--- /dev/null
++++ b/packages/desktop/src/renderer/services/agency/createAssistant.ts
+@@ -0,0 +1,48 @@
++import { ipcBridge } from '@/common';
++
++export type AgencyAssistantPersona = {
++  slug: string;
++  name: string;
++  description: string;
++  body: string;
++};
++
++/** Persist the original Agency instructions in the real AionCore assistant rule store. */
++export async function createAgencyAssistant(
++  persona: AgencyAssistantPersona,
++  bridge: Pick<typeof ipcBridge, 'assistants' | 'fs'> = ipcBridge
++): Promise<string> {
++  if (
++    !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(persona.slug) ||
++    persona.slug.length > 80 ||
++    !persona.name.trim() ||
++    !persona.body.trim()
++  ) {
++    throw new Error('Invalid Agency specialist');
++  }
++  const id = `agas-agency-${persona.slug}`;
++  const created = await bridge.assistants.create.invoke({
++    id,
++    name: persona.name,
++    description: persona.description,
++  });
++  try {
++    const saved = await bridge.fs.writeAssistantRule.invoke({
++      assistant_id: created.id,
++      locale: 'en-US',
++      content: persona.body,
++    });
++    if (!saved) throw new Error('AionCore did not save the Agency assistant rule');
++  } catch (error) {
++    try {
++      await bridge.assistants.delete.invoke({ id: created.id });
++    } catch (rollbackError) {
++      throw new AggregateError(
++        [error, rollbackError],
++        `Agency assistant ${created.id} was created but its rules could not be saved or rolled back`
++      );
++    }
++    throw error;
++  }
++  return created.id;
++}
 diff --git a/packages/desktop/src/renderer/services/feedback/resolveFeedbackModule.ts b/packages/desktop/src/renderer/services/feedback/resolveFeedbackModule.ts
 index 8f87574..9145aa0 100644
 --- a/packages/desktop/src/renderer/services/feedback/resolveFeedbackModule.ts
