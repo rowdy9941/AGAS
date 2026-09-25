@@ -2,14 +2,20 @@
   "name": "agas",
   "version": "1.0.1",
   "private": true,
-  "description": "Local-first Agent Governance and Activation System",
+  "description": "AGAS — Accessible General AI System, by Raghunath D",
   "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "start": "node apps/control-plane/src/server.js",
+    "start": "node scripts/desktop-dev.mjs",
+    "dev": "node scripts/desktop-dev.mjs",
+    "setup": "node scripts/foundations.mjs fetch && node scripts/foundations.mjs install",
+    "foundations:fetch": "node scripts/foundations.mjs fetch",
+    "catalog:build": "python3 scripts/catalog.py",
+    "build:desktop": "node scripts/foundations.mjs build",
+    "legacy:start": "node apps/control-plane/src/server.js",
     "backup": "node scripts/agas-backup.js",
     "restore": "node scripts/agas-restore.js",
     "check": "npm run lint && npm test",

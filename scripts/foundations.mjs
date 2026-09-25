@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { readFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -29,24 +29,31 @@ if (action === 'fetch') {
     console.log(`${source.id}: pinned ${source.commit}`);
   }
   const ui = path.join(root, 'foundations/aionui');
-  const patch = path.join(root, 'integrations/aionui/agas.patch');
-  if (existsSync(patch)) {
+  const patchDirectory = path.join(root, 'integrations/aionui/patches');
+  if (!existsSync(patchDirectory)) throw new Error('AGAS desktop patches are missing');
+  const patches = readdirSync(patchDirectory).filter((name) => /^\d{3}\.patch$/.test(name)).sort();
+  if (!patches.length) throw new Error('AGAS desktop patches are empty');
+  for (const name of patches) {
+    const patch = path.join(patchDirectory, name);
     const alreadyApplied = spawnSync('git', ['apply', '--reverse', '--check', patch], { cwd: ui, stdio: 'ignore' }).status === 0;
     if (!alreadyApplied) {
       run('git', ['apply', '--check', patch], ui);
       run('git', ['apply', patch], ui);
     }
   }
+  run('python3', ['scripts/catalog.py']);
 } else if (action === 'install') {
   run('bun', ['install', '--frozen-lockfile'], path.join(root, 'foundations/aionui'));
-  run('pnpm', ['install', '--frozen-lockfile'], path.join(root, 'foundations/paperclip'));
+  run('corepack', ['pnpm', 'install', '--frozen-lockfile'], path.join(root, 'foundations/paperclip'));
   run('node', ['scripts/brand.mjs']);
   run('cargo', ['install', '--path', 'crates/aionui-app', '--locked'], path.join(root, 'foundations/aioncore'));
 } else if (action === 'desktop') {
   run('bun', ['run', 'start'], path.join(root, 'foundations/aionui'));
 } else if (action === 'build') {
+  run('python3', ['scripts/catalog.py']);
   run('node', ['scripts/brand.mjs']);
+  process.env.NODE_OPTIONS ??= '--max-old-space-size=4096';
   run('bun', ['run', 'package'], path.join(root, 'foundations/aionui'));
 } else if (action === 'paperclip') {
-  run('pnpm', ['dev'], path.join(root, 'foundations/paperclip'));
+  run('corepack', ['pnpm', 'dev'], path.join(root, 'foundations/paperclip'));
 } else throw new Error(`Unknown command: ${action}`);

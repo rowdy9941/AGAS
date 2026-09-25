@@ -1,0 +1,921 @@
+diff --git a/bun.lock b/bun.lock
+index e442869..fe3f842 100644
+--- a/bun.lock
++++ b/bun.lock
+@@ -3,7 +3,7 @@
+   "configVersion": 1,
+   "workspaces": {
+     "": {
+-      "name": "AionUi",
++      "name": "agas-desktop",
+       "dependencies": {
+         "@agentclientprotocol/sdk": "^0.18.2",
+         "@aionui/web-host": "workspace:*",
+diff --git a/package.json b/package.json
+index e0f58b5..f984344 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+-  "name": "AionUi",
+-  "version": "2.2.2",
+-  "description": "Transform your command-line AI agent into a modern, efficient AI Chat interface.",
++  "name": "agas-desktop",
++  "version": "0.1.0-alpha.1",
++  "description": "AGAS — Accessible General AI System, by Raghunath D",
+   "keywords": [],
+   "license": "Apache-2.0",
+   "author": {
+@@ -268,5 +268,5 @@
+   "patchedDependencies": {
+     "7zip-bin@5.2.0": "patches/7zip-bin@5.2.0.patch"
+   },
+-  "productName": "AionUi"
++  "productName": "AGAS"
+ }
+diff --git a/packages/desktop/electron-builder.yml b/packages/desktop/electron-builder.yml
+index ada1cae..fd3e536 100644
+--- a/packages/desktop/electron-builder.yml
++++ b/packages/desktop/electron-builder.yml
+@@ -1,7 +1,7 @@
+-appId: com.aionui.app
+-productName: AionUi
+-executableName: AionUi
+-copyright: Copyright © 2024 AionUi
++appId: in.agas.desktop
++productName: AGAS
++executableName: AGAS
++copyright: Copyright © 2026 Raghunath D
+ 
+ protocols:
+   - name: AionUi Protocol
+@@ -175,9 +175,9 @@ linux:
+   description: ${description}
+   desktop:
+     entry:
+-      Name: AionUi
++      Name: AGAS
+       Comment: ${description}
+-      Icon: AionUi
++      Icon: AGAS
+       Categories: Office;Utility;
+       MimeType: x-scheme-handler/aionui;
+ 
+@@ -218,7 +218,7 @@ electronDownload:
+ 
+ publish:
+   provider: github
+-  owner: iOfficeAI
+-  repo: AionUi
+-  publishAutoUpdate: true
++  owner: rowdy9941
++  repo: AGAS
++  publishAutoUpdate: false
+   releaseType: release
+diff --git a/packages/desktop/package.json b/packages/desktop/package.json
+index 48eb119..770bd1a 100644
+--- a/packages/desktop/package.json
++++ b/packages/desktop/package.json
+@@ -2,7 +2,7 @@
+   "name": "@aionui/desktop",
+   "version": "0.0.0",
+   "private": true,
+-  "description": "AionUi desktop Electron application",
++  "description": "AGAS desktop Electron application",
+   "main": "../../out/main/index.js",
+   "dependencies": {
+     "@aionui/web-host": "workspace:*"
+diff --git a/packages/desktop/src/common/platform/agas.ts b/packages/desktop/src/common/platform/agas.ts
+new file mode 100644
+index 0000000..39ee84d
+--- /dev/null
++++ b/packages/desktop/src/common/platform/agas.ts
+@@ -0,0 +1,20 @@
++/** Desktop-only contract. The renderer has no direct filesystem or process access. */
++export type AgasWorkspace = {
++  id: string;
++  name: string;
++  url: string;
++  status: 'unconfigured' | 'reachable' | 'unreachable';
++};
++export type SurfaceBounds = { x: number; y: number; width: number; height: number };
++export type AgasDesktop = {
++  list: () => Promise<AgasWorkspace[]>;
++  configure: (id: string, url: string) => Promise<void>;
++  open: (id: string, bounds: SurfaceBounds) => Promise<void>;
++  resize: (bounds: SurfaceBounds) => Promise<void>;
++  close: () => Promise<void>;
++};
++declare global {
++  interface Window {
++    agas?: AgasDesktop;
++  }
++}
+diff --git a/packages/desktop/src/common/platform/index.ts b/packages/desktop/src/common/platform/index.ts
+index dbae4c0..e876109 100644
+--- a/packages/desktop/src/common/platform/index.ts
++++ b/packages/desktop/src/common/platform/index.ts
+@@ -10,7 +10,7 @@ let _services: IPlatformServices | null = null;
+  */
+ export function getDevAppName(): string {
+   const isMultiInstance = process.env.AIONUI_MULTI_INSTANCE === '1';
+-  return isMultiInstance ? 'AionUi-Dev-2' : 'AionUi-Dev';
++  return isMultiInstance ? 'AGAS-Dev-2' : 'AGAS-Dev';
+ }
+ 
+ export function registerPlatformServices(services: IPlatformServices): void {
+diff --git a/packages/desktop/src/preload/main.ts b/packages/desktop/src/preload/main.ts
+index 1fe2c57..f63f6c3 100644
+--- a/packages/desktop/src/preload/main.ts
++++ b/packages/desktop/src/preload/main.ts
+@@ -11,6 +11,16 @@
+ import '@sentry/electron/preload';
+ import { contextBridge, ipcRenderer, webUtils } from 'electron';
+ import { ADAPTER_BRIDGE_EVENT_KEY } from '../common/adapter/constant';
++import type { AgasDesktop, SurfaceBounds } from '../common/platform/agas';
++
++const agasDesktop: AgasDesktop = {
++  list: () => ipcRenderer.invoke('agas:workspaces:list'),
++  configure: (id: string, url: string) => ipcRenderer.invoke('agas:workspaces:configure', id, url),
++  open: (id: string, bounds: SurfaceBounds) => ipcRenderer.invoke('agas:workspaces:open', id, bounds),
++  resize: (bounds: SurfaceBounds) => ipcRenderer.invoke('agas:workspaces:resize', bounds),
++  close: () => ipcRenderer.invoke('agas:workspaces:close'),
++};
++contextBridge.exposeInMainWorld('agas', agasDesktop);
+ 
+ /**
+  * @description 注入到renderer进程中, 用于与main进程通信
+diff --git a/packages/desktop/src/process/bridge/applicationBridge.ts b/packages/desktop/src/process/bridge/applicationBridge.ts
+index eca3766..fa255a0 100644
+--- a/packages/desktop/src/process/bridge/applicationBridge.ts
++++ b/packages/desktop/src/process/bridge/applicationBridge.ts
+@@ -16,6 +16,7 @@ import { getGpuStatus, setGpuUserOverride } from '@process/utils/gpuRecovery';
+ import { initApplicationBridgeCore } from './applicationBridgeCore';
+ import type { IStartOnBootStatus } from '@/common/adapter/ipcBridge';
+ import { restartApplication } from './restartApplication';
++import { registerNativeWorkspaces } from '@process/services/agas/nativeWorkspaces';
+ 
+ let mainWindowRef: BrowserWindow | null = null;
+ 
+@@ -95,6 +96,7 @@ export function setStartOnBootEnabled(enabled: boolean): IStartOnBootStatus {
+ 
+ export function setApplicationMainWindow(win: BrowserWindow): void {
+   mainWindowRef = win;
++  registerNativeWorkspaces(win);
+ }
+ 
+ export function initApplicationBridge(): void {
+diff --git a/packages/desktop/src/process/bridge/updateBridge.ts b/packages/desktop/src/process/bridge/updateBridge.ts
+index 91f6112..8e56268 100644
+--- a/packages/desktop/src/process/bridge/updateBridge.ts
++++ b/packages/desktop/src/process/bridge/updateBridge.ts
+@@ -60,8 +60,8 @@ interface AutoUpdateCheckParams {
+   includePrerelease?: boolean;
+ }
+ 
+-const DEFAULT_REPO = 'iOfficeAI/AionUi';
+-const DEFAULT_USER_AGENT = 'AionUi';
++const DEFAULT_REPO = 'rowdy9941/AGAS';
++const DEFAULT_USER_AGENT = 'AGAS';
+ const ALLOWED_ASSET_EXTS = new Set(['.exe', '.msi', '.dmg', '.zip', '.deb', '.rpm']);
+ const CDN_HOST = 'static.aionui.com';
+ const CDN_BASE_URL = `https://${CDN_HOST}/releases`;
+diff --git a/packages/desktop/src/process/services/agas/brandPolicy.ts b/packages/desktop/src/process/services/agas/brandPolicy.ts
+new file mode 100644
+index 0000000..dd3abe3
+--- /dev/null
++++ b/packages/desktop/src/process/services/agas/brandPolicy.ts
+@@ -0,0 +1,2 @@
++/** Preview builds cannot install upstream AionUI packages as AGAS updates. */
++export const AGAS_AUTO_UPDATE_ENABLED = false;
+diff --git a/packages/desktop/src/process/services/agas/nativeWorkspaces.ts b/packages/desktop/src/process/services/agas/nativeWorkspaces.ts
+new file mode 100644
+index 0000000..86f913d
+--- /dev/null
++++ b/packages/desktop/src/process/services/agas/nativeWorkspaces.ts
+@@ -0,0 +1,149 @@
++import { app, ipcMain, WebContentsView } from 'electron';
++import type { BrowserWindow, IpcMainInvokeEvent } from 'electron';
++import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
++import path from 'node:path';
++import type { AgasWorkspace, SurfaceBounds } from '@/common/platform/agas';
++import { validateWorkspaceId, validateWorkspaceUrl, WORKSPACES } from './workspacePolicy';
++
++/** Isolate each native app from AGAS preload, credentials and other app sessions. */
++export function registerNativeWorkspaces(owner: BrowserWindow): void {
++  let surface: WebContentsView | undefined;
++  let epoch = 0;
++  let saveQueue = Promise.resolve();
++  const channels = new Set<string>();
++  const configFile = path.join(app.getPath('userData'), 'agas', 'native-workspaces.json');
++  const close = (): void => {
++    epoch++;
++    if (!surface) return;
++    if (!owner.isDestroyed()) owner.contentView.removeChildView(surface);
++    if (!surface.webContents.isDestroyed()) surface.webContents.close();
++    surface = undefined;
++  };
++  const readConfig = async (): Promise<Record<string, string>> => {
++    try {
++      const value: unknown = JSON.parse(await readFile(configFile, 'utf8'));
++      if (!value || typeof value !== 'object' || Array.isArray(value))
++        throw new Error('Invalid workspace configuration');
++      const result: Record<string, string> = {};
++      for (const [id, url] of Object.entries(value)) {
++        validateWorkspaceId(id);
++        result[id] = validateWorkspaceUrl(url);
++      }
++      return result;
++    } catch (error) {
++      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
++        const configured = process.env.AGAS_PAPERCLIP_URL;
++        return configured ? { paperclip: validateWorkspaceUrl(configured) } : {};
++      }
++      throw error;
++    }
++  };
++  const resize = (value: unknown): void => {
++    if (!surface || owner.isDestroyed()) return;
++    const bounds = value as SurfaceBounds;
++    if (!bounds || ![bounds.x, bounds.y, bounds.width, bounds.height].every(Number.isFinite))
++      throw new Error('Invalid workspace bounds');
++    const zoom = owner.webContents.getZoomFactor();
++    const [width, height] = owner.getContentSize();
++    const x = Math.min(width, Math.max(0, Math.round(bounds.x * zoom)));
++    const y = Math.min(height, Math.max(0, Math.round(bounds.y * zoom)));
++    surface.setBounds({
++      x,
++      y,
++      width: Math.min(width - x, Math.max(0, Math.round(bounds.width * zoom))),
++      height: Math.min(height - y, Math.max(0, Math.round(bounds.height * zoom))),
++    });
++  };
++  const handle = (channel: string, fn: (...args: unknown[]) => unknown): void => {
++    ipcMain.removeHandler(channel);
++    ipcMain.handle(channel, (event: IpcMainInvokeEvent, ...args: unknown[]) => {
++      if (event.sender !== owner.webContents || event.senderFrame !== owner.webContents.mainFrame)
++        throw new Error('Native workspace access denied');
++      return fn(...args);
++    });
++    channels.add(channel);
++  };
++  handle('agas:workspaces:list', async (): Promise<AgasWorkspace[]> => {
++    await saveQueue;
++    const config = await readConfig();
++    return Promise.all(
++      WORKSPACES.map(async (item) => {
++        const url = config[item.id] ?? '';
++        if (!url) return { ...item, url, status: 'unconfigured' as const };
++        try {
++          const response = await fetch(url, { method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(2500) });
++          await response.body?.cancel();
++          return { ...item, url, status: response.status < 500 ? ('reachable' as const) : ('unreachable' as const) };
++        } catch {
++          return { ...item, url, status: 'unreachable' as const };
++        }
++      })
++    );
++  });
++  handle('agas:workspaces:configure', async (id, value) => {
++    validateWorkspaceId(id);
++    const url = value === '' ? '' : validateWorkspaceUrl(value);
++    const save = saveQueue.then(async () => {
++      const config = await readConfig();
++      if (url) config[id] = url;
++      else delete config[id];
++      await mkdir(path.dirname(configFile), { recursive: true, mode: 0o700 });
++      await writeFile(configFile + '.tmp', JSON.stringify(config), { mode: 0o600 });
++      await rename(configFile + '.tmp', configFile);
++    });
++    saveQueue = save.catch(() => {});
++    await save;
++    close();
++  });
++  handle('agas:workspaces:open', async (id, bounds) => {
++    validateWorkspaceId(id);
++    close();
++    const request = epoch;
++    await saveQueue;
++    const config = await readConfig();
++    if (request !== epoch || owner.isDestroyed()) return;
++    const url = config[id];
++    if (!url) throw new Error('Configure the native application URL first');
++    const origin = new URL(url).origin;
++    const view = new WebContentsView({
++      webPreferences: {
++        sandbox: true,
++        contextIsolation: true,
++        nodeIntegration: false,
++        partition: `persist:agas-native-${id}`,
++      },
++    });
++    surface = view;
++    view.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
++    view.webContents.session.setPermissionCheckHandler(() => false);
++    view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
++    const guard = (event: Electron.Event, destination: string): void => {
++      try {
++        if (new URL(destination).origin !== origin) event.preventDefault();
++      } catch {
++        event.preventDefault();
++      }
++    };
++    view.webContents.on('will-navigate', guard);
++    view.webContents.on('will-redirect', guard);
++    view.webContents.on('will-attach-webview', (event) => event.preventDefault());
++    owner.contentView.addChildView(view);
++    try {
++      resize(bounds);
++      await view.webContents.loadURL(url);
++    } catch (error) {
++      if (surface === view) close();
++      throw error;
++    }
++  });
++  handle('agas:workspaces:resize', resize);
++  handle('agas:workspaces:close', close);
++  owner.webContents.on('did-start-navigation', (_event, _url, _inPlace, mainFrame) => {
++    if (mainFrame) close();
++  });
++  owner.webContents.on('render-process-gone', close);
++  owner.on('closed', () => {
++    close();
++    for (const channel of channels) ipcMain.removeHandler(channel);
++  });
++}
+diff --git a/packages/desktop/src/process/services/agas/workspacePolicy.ts b/packages/desktop/src/process/services/agas/workspacePolicy.ts
+new file mode 100644
+index 0000000..a2d7f8b
+--- /dev/null
++++ b/packages/desktop/src/process/services/agas/workspacePolicy.ts
+@@ -0,0 +1,19 @@
++/** Native surfaces only point to explicit loopback applications. */
++export function validateWorkspaceUrl(value: unknown): string {
++  if (typeof value !== 'string' || value.length > 2048) throw new Error('Invalid workspace URL');
++  const url = new URL(value);
++  if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Workspace requires HTTP or HTTPS');
++  if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) throw new Error('Workspace must use loopback');
++  if (url.username || url.password || url.hash || url.search)
++    throw new Error('Credentials and query tokens are not allowed in workspace URLs');
++  return url.href;
++}
++export const WORKSPACES = [
++  { id: 'paperclip', name: 'Paperclip' },
++  { id: 'hermes', name: 'Hermes' },
++  { id: 'openclaw', name: 'OpenClaw' },
++  { id: 'opencode', name: 'OpenCode' },
++] as const;
++export function validateWorkspaceId(value: unknown): asserts value is string {
++  if (!WORKSPACES.some((entry) => entry.id === value)) throw new Error('Unknown native workspace');
++}
+diff --git a/packages/desktop/src/process/services/autoUpdaterService.ts b/packages/desktop/src/process/services/autoUpdaterService.ts
+index 31dde4a..e677365 100644
+--- a/packages/desktop/src/process/services/autoUpdaterService.ts
++++ b/packages/desktop/src/process/services/autoUpdaterService.ts
+@@ -25,6 +25,7 @@ import {
+   recordAutoUpdateStatus,
+ } from './autoUpdateDiagnostics';
+ import { buildCdnFeedOptions } from './updateFeed';
++import { AGAS_AUTO_UPDATE_ENABLED } from './agas/brandPolicy';
+ 
+ const FORCE_DEV_AUTO_UPDATE_ENV = 'AIONUI_FORCE_DEV_AUTO_UPDATE';
+ const DEBUG_AUTO_UPDATE_CURRENT_VERSION_ENV = 'AIONUI_DEBUG_AUTO_UPDATE_CURRENT_VERSION';
+@@ -604,6 +605,8 @@ class AutoUpdaterService extends EventEmitter {
+   }
+ 
+   async checkForUpdates(): Promise<{ success: boolean; updateInfo?: UpdateInfo; error?: string }> {
++    if (!AGAS_AUTO_UPDATE_ENABLED)
++      return { success: false, error: 'AGAS updates are unavailable until a verified release is published.' };
+     try {
+       if (!this._isInitialized) {
+         throw new Error('AutoUpdaterService not initialized');
+@@ -789,6 +792,8 @@ class AutoUpdaterService extends EventEmitter {
+   }
+ 
+   async downloadUpdate(): Promise<{ success: boolean; error?: string }> {
++    if (!AGAS_AUTO_UPDATE_ENABLED)
++      return { success: false, error: 'AGAS updates are unavailable until a verified release is published.' };
+     if (this._activeDownloadPromise) {
+       log.debug('[auto-update] downloadUpdate reused active download');
+       return this._activeDownloadPromise;
+@@ -842,6 +847,7 @@ class AutoUpdaterService extends EventEmitter {
+   }
+ 
+   async quitAndInstall(): Promise<void> {
++    if (!AGAS_AUTO_UPDATE_ENABLED) return;
+     await this.waitForNativeInstallReady();
+ 
+     if (this._beforeQuitAndInstallCallback) {
+@@ -903,6 +909,7 @@ class AutoUpdaterService extends EventEmitter {
+    * Check for updates and notify (for startup)
+    */
+   async checkForUpdatesAndNotify(): Promise<void> {
++    if (!AGAS_AUTO_UPDATE_ENABLED) return;
+     try {
+       // Ensure clean state: prevent stale allowDowngrade=true from prior setAllowPrerelease(true) calls
+       autoUpdater.allowDowngrade = false;
+diff --git a/packages/desktop/src/process/startup/windowsAppUserModelId.ts b/packages/desktop/src/process/startup/windowsAppUserModelId.ts
+index 0ba1caf..45d9fb8 100644
+--- a/packages/desktop/src/process/startup/windowsAppUserModelId.ts
++++ b/packages/desktop/src/process/startup/windowsAppUserModelId.ts
+@@ -16,7 +16,7 @@ import type { App } from 'electron';
+  * Squirrel.Windows installers only, so NSIS builds must do it themselves.
+  * Consistency with electron-builder.yml is guarded by a unit test.
+  */
+-export const WINDOWS_APP_USER_MODEL_ID = 'com.aionui.app';
++export const WINDOWS_APP_USER_MODEL_ID = 'in.agas.desktop';
+ 
+ type AppUserModelIdTarget = Pick<App, 'isPackaged' | 'setAppUserModelId'>;
+ 
+diff --git a/packages/desktop/src/process/utils/tray.ts b/packages/desktop/src/process/utils/tray.ts
+index 6c64a6c..ef394cc 100644
+--- a/packages/desktop/src/process/utils/tray.ts
++++ b/packages/desktop/src/process/utils/tray.ts
+@@ -262,7 +262,7 @@ export const createOrUpdateTray = (): void => {
+   try {
+     const icon = getTrayIcon();
+     tray = new Tray(icon);
+-    tray.setToolTip('AionUi');
++    tray.setToolTip('AGAS');
+     void buildTrayContextMenu().then((menu) => tray?.setContextMenu(menu));
+ 
+     // Double-click: always show/focus (Windows/Linux; macOS rarely fires this).
+diff --git a/packages/desktop/src/renderer/components/agent/ChannelConflictWarning.tsx b/packages/desktop/src/renderer/components/agent/ChannelConflictWarning.tsx
+index cd5455e..1df3142 100644
+--- a/packages/desktop/src/renderer/components/agent/ChannelConflictWarning.tsx
++++ b/packages/desktop/src/renderer/components/agent/ChannelConflictWarning.tsx
+@@ -1,6 +1,6 @@
+ /**
+  * @license
+- * Copyright 2025 AionUi (aionui.com)
++ * Copyright 2025 AGAS (aionui.com)
+  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
+@@ -18,7 +18,7 @@ interface ChannelConflictWarningProps {
+ }
+ 
+ /**
+- * Warning component when OpenClaw channel conflicts with AionUi Channels
++ * Warning component when OpenClaw channel conflicts with AGAS Channels
+  */
+ export const ChannelConflictWarning: React.FC<ChannelConflictWarningProps> = ({
+   platform,
+@@ -37,14 +37,14 @@ export const ChannelConflictWarning: React.FC<ChannelConflictWarningProps> = ({
+       content={
+         <Space direction='vertical' size='medium' style={{ width: '100%' }}>
+           <Paragraph>
+-            <Text bold>OpenClaw is handling {platformName} messages, not AionUi.</Text>
++            <Text bold>OpenClaw is handling {platformName} messages, not AGAS.</Text>
+           </Paragraph>
+ 
+           <Paragraph>
+             Your {platformName} bot credentials are also configured in OpenClaw. This means:
+             <ul>
+               <li>
+-                <Text type='error'>✗ Switching agents in AionUi will have no effect</Text>
++                <Text type='error'>✗ Switching agents in AGAS will have no effect</Text>
+               </li>
+               <li>
+                 <Text type='error'>✗ Messages are processed by OpenClaw's agent</Text>
+@@ -56,7 +56,7 @@ export const ChannelConflictWarning: React.FC<ChannelConflictWarningProps> = ({
+           </Paragraph>
+ 
+           <Paragraph>
+-            <Text bold>To use AionUi Channels and switch agents:</Text>
++            <Text bold>To use AGAS Channels and switch agents:</Text>
+           </Paragraph>
+ 
+           <Paragraph>
+@@ -66,19 +66,19 @@ export const ChannelConflictWarning: React.FC<ChannelConflictWarningProps> = ({
+             <br />
+             Set: <Text code>{`channels.${channelKey}.enabled = false`}</Text>
+             <br />
+-            Then restart OpenClaw and AionUi.
++            Then restart OpenClaw and AGAS.
+           </Paragraph>
+ 
+           <Paragraph>
+             <Text type='secondary'>Option 2: Use a different bot</Text>
+             <br />
+-            Create a new {platformName} bot with different credentials for AionUi.
++            Create a new {platformName} bot with different credentials for AGAS.
+           </Paragraph>
+ 
+           <Paragraph>
+             <Text type='secondary'>Option 3: Keep using OpenClaw</Text>
+             <br />
+-            Disable {platformName} in AionUi Channels and continue using OpenClaw's integration.
++            Disable {platformName} in AGAS Channels and continue using OpenClaw's integration.
+           </Paragraph>
+ 
+           <Space>
+diff --git a/packages/desktop/src/renderer/components/base/ButlerDiagnoseButton.tsx b/packages/desktop/src/renderer/components/base/ButlerDiagnoseButton.tsx
+index 53a79a1..6cf0f4a 100644
+--- a/packages/desktop/src/renderer/components/base/ButlerDiagnoseButton.tsx
++++ b/packages/desktop/src/renderer/components/base/ButlerDiagnoseButton.tsx
+@@ -1,6 +1,6 @@
+ /**
+  * @license
+- * Copyright 2025 AionUi (aionui.com)
++ * Copyright 2025 AGAS (aionui.com)
+  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
+@@ -20,7 +20,7 @@ type ButlerDiagnoseButtonProps = {
+ /**
+  * Inline "ask the Butler" chip shown next to FeedbackButton on error surfaces.
+  * Instead of filing a report, it routes the user to the home chat with the
+- * AionUi Butler selected and a diagnosis prompt (including the error text)
++ * AGAS Butler selected and a diagnosis prompt (including the error text)
+  * pre-filled — the same flow as the report modal's "Solve via chat" action.
+  */
+ const ButlerDiagnoseButton: React.FC<ButlerDiagnoseButtonProps> = ({ errorText, className }) => {
+@@ -32,7 +32,7 @@ const ButlerDiagnoseButton: React.FC<ButlerDiagnoseButtonProps> = ({ errorText,
+       event.stopPropagation();
+       const prompt = t('settings.talkToButler.prompt.diagnoseChatError', {
+         defaultValue:
+-          'I ran into an error during a conversation in AionUi, please help me diagnose it.\n\n[Error] {{error}}\n\nPlease diagnose the cause and tell me how to fix it.',
++          'I ran into an error during a conversation in AGAS, please help me diagnose it.\n\n[Error] {{error}}\n\nPlease diagnose the cause and tell me how to fix it.',
+         error: errorText.trim(),
+       });
+       talkToButler({ prompt }).catch((err) => {
+diff --git a/packages/desktop/src/renderer/components/layout/DocumentTitle.tsx b/packages/desktop/src/renderer/components/layout/DocumentTitle.tsx
+index 9fafe0b..8da8175 100644
+--- a/packages/desktop/src/renderer/components/layout/DocumentTitle.tsx
++++ b/packages/desktop/src/renderer/components/layout/DocumentTitle.tsx
+@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
+  * navigation and language switches.
+  */
+ export function titleForPath(pathname: string, t: (key: string) => string): string {
+-  return pathname.startsWith('/login') ? t('login.pageTitle') : 'AionUi';
++  return pathname.startsWith('/login') ? t('login.pageTitle') : 'AGAS';
+ }
+ 
+ const DocumentTitle: React.FC = () => {
+diff --git a/packages/desktop/src/renderer/components/layout/Layout.tsx b/packages/desktop/src/renderer/components/layout/Layout.tsx
+index a9d054b..8502075 100644
+--- a/packages/desktop/src/renderer/components/layout/Layout.tsx
++++ b/packages/desktop/src/renderer/components/layout/Layout.tsx
+@@ -8,6 +8,7 @@ import { ipcBridge } from '@/common';
+ import { TEAM_MODE_ENABLED } from '@/common/config/constants';
+ import PwaPullToRefresh from '@/renderer/components/layout/PwaPullToRefresh';
+ import Titlebar from '@/renderer/components/layout/Titlebar';
++import agasLogo from '@renderer/assets/logos/brand/app.png';
+ import { Layout as ArcoLayout, Tooltip } from '@arco-design/web-react';
+ import classNames from 'classnames';
+ import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+@@ -404,28 +405,7 @@ const Layout: React.FC<{
+                   })}
+                   onClick={onClick}
+                 >
+-                  <svg
+-                    className={classNames('w-5.5 h-5.5 absolute inset-0 m-auto', {
+-                      'scale-140': !collapsed,
+-                    })}
+-                    viewBox='0 0 80 80'
+-                    fill='none'
+-                  >
+-                    <path
+-                      key='logo-path-1'
+-                      d='M40 20 Q38 22 25 40 Q23 42 26 42 L30 42 Q32 40 40 30 Q48 40 50 42 L54 42 Q57 42 55 40 Q42 22 40 20'
+-                      fill='white'
+-                    ></path>
+-                    <circle key='logo-circle' cx='40' cy='46' r='3' fill='white'></circle>
+-                    <path
+-                      key='logo-path-2'
+-                      d='M18 50 Q40 70 62 50'
+-                      stroke='white'
+-                      strokeWidth='3.5'
+-                      fill='none'
+-                      strokeLinecap='round'
+-                    ></path>
+-                  </svg>
++                  <img src={agasLogo} alt='AGAS' className='size-full object-cover rd-0.5rem' />
+                 </div>
+                 {isSettingsRoute ? (
+                   <Tooltip content={t('common.back', { defaultValue: 'Back to Chat' })} position='bottom'>
+@@ -442,11 +422,11 @@ const Layout: React.FC<{
+                         }
+                       }}
+                     >
+-                      AionUi
++                      AGAS
+                     </div>
+                   </Tooltip>
+                 ) : (
+-                  <div className='text-16px text-t-primary collapsed-hidden font-semibold'>AionUi</div>
++                  <div className='text-16px text-t-primary collapsed-hidden font-semibold'>AGAS</div>
+                 )}
+                 {isMobile && !collapsed && (
+                   <button
+diff --git a/packages/desktop/src/renderer/components/layout/Router.tsx b/packages/desktop/src/renderer/components/layout/Router.tsx
+index e04746e..cc6829a 100644
+--- a/packages/desktop/src/renderer/components/layout/Router.tsx
++++ b/packages/desktop/src/renderer/components/layout/Router.tsx
+@@ -25,6 +25,7 @@ const ComponentsShowcase = React.lazy(() => import('@renderer/pages/TestShowcase
+ const ScheduledTasksPage = React.lazy(() => import('@renderer/pages/cron/ScheduledTasksPage'));
+ const TaskDetailPage = React.lazy(() => import('@renderer/pages/cron/ScheduledTasksPage/TaskDetailPage'));
+ const TeamIndex = React.lazy(() => import('@renderer/pages/team'));
++const AgentWorkspace = React.lazy(() => import('@renderer/pages/AgentWorkspace'));
+ 
+ const withRouteFallback = (Component: React.LazyExoticComponent<React.ComponentType>) => (
+   <Suspense fallback={<AppLoader />}>
+@@ -74,6 +75,7 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
+         <Route element={<ProtectedLayout layout={layout} />}>
+           <Route index element={<Navigate to='/guid' replace />} />
+           <Route path='/guid' element={withRouteFallback(Guid)} />
++          <Route path='/agent-ui' element={withRouteFallback(AgentWorkspace)} />
+           <Route path='/conversation/:id' element={withRouteFallback(Conversation)} />
+           <Route
+             path='/team/:id'
+diff --git a/packages/desktop/src/renderer/components/layout/Sider/SiderNav/SiderAgentEntry.tsx b/packages/desktop/src/renderer/components/layout/Sider/SiderNav/SiderAgentEntry.tsx
+new file mode 100644
+index 0000000..2ab3c6d
+--- /dev/null
++++ b/packages/desktop/src/renderer/components/layout/Sider/SiderNav/SiderAgentEntry.tsx
+@@ -0,0 +1,23 @@
++import React from 'react';
++import { Button, Tooltip } from '@arco-design/web-react';
++import { Robot } from '@icon-park/react';
++import { useTranslation } from 'react-i18next';
++type Props = { collapsed: boolean; active: boolean; onClick: () => void };
++const SiderAgentEntry: React.FC<Props> = ({ collapsed, active, onClick }) => {
++  const { t } = useTranslation();
++  return (
++    <Tooltip content={t('common.agas.title')} position='right'>
++      <Button
++        long
++        type={active ? 'secondary' : 'text'}
++        aria-label={t('common.agas.title')}
++        aria-current={active ? 'page' : undefined}
++        icon={<Robot size={16} />}
++        onClick={onClick}
++      >
++        {!collapsed && t('common.agas.title')}
++      </Button>
++    </Tooltip>
++  );
++};
++export default SiderAgentEntry;
+diff --git a/packages/desktop/src/renderer/components/layout/Sider/index.tsx b/packages/desktop/src/renderer/components/layout/Sider/index.tsx
+index 5cabf35..d1d9f63 100644
+--- a/packages/desktop/src/renderer/components/layout/Sider/index.tsx
++++ b/packages/desktop/src/renderer/components/layout/Sider/index.tsx
+@@ -8,6 +8,7 @@ import { useLayoutContext } from '@renderer/hooks/context/LayoutContext';
+ import { blurActiveElement } from '@renderer/utils/ui/focus';
+ import { useThemeContext } from '@renderer/hooks/context/ThemeContext';
+ import { SiderToolbar, SiderSearchEntry, SiderScheduledEntry, SiderAssistantEntry } from './SiderNav';
++import SiderAgentEntry from './SiderNav/SiderAgentEntry';
+ import SiderFooter from './SiderFooter';
+ import TeamSiderSection from './TeamSiderSection';
+ import siderStyles from './Sider.module.css';
+@@ -109,6 +110,15 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
+     }
+   };
+ 
++  const handleAgentWorkspaceClick = () => {
++    cleanupSiderTooltips();
++    blurActiveElement();
++    closePreview();
++    setIsBatchMode(false);
++    void navigate('/agent-ui');
++    onSessionClick?.();
++  };
++
+   const handleQuickThemeToggle = () => {
+     void setTheme(theme === 'dark' ? 'light' : 'dark');
+   };
+@@ -201,6 +211,11 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
+               />
+             )}
+             {/* Assistant nav entry - fixed above Scheduled */}
++            <SiderAgentEntry
++              collapsed={collapsed}
++              active={pathname.startsWith('/agent-ui')}
++              onClick={handleAgentWorkspaceClick}
++            />
+             <SiderAssistantEntry
+               isMobile={isMobile}
+               isActive={pathname.startsWith('/assistants')}
+diff --git a/packages/desktop/src/renderer/components/layout/Titlebar/index.tsx b/packages/desktop/src/renderer/components/layout/Titlebar/index.tsx
+index 4272bc0..2768794 100644
+--- a/packages/desktop/src/renderer/components/layout/Titlebar/index.tsx
++++ b/packages/desktop/src/renderer/components/layout/Titlebar/index.tsx
+@@ -18,6 +18,7 @@ import { resolveFeedbackModule } from '@/renderer/services/feedback/resolveFeedb
+ import { isElectronDesktop, isMacOS } from '@/renderer/utils/platform';
+ import { IS_DISCONTINUED_BUILD } from '@/renderer/utils/discontinuedBuild';
+ import MigrationInviteCapsule from './MigrationInviteCapsule';
++import agasLogo from '@renderer/assets/logos/brand/app.png';
+ import './titlebar.css';
+ 
+ interface TitlebarProps {
+@@ -98,7 +99,7 @@ const SidebarIcon: React.FC<{ size?: number; strokeWidth?: number }> = ({ size =
+ 
+ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
+   const { t } = useTranslation();
+-  const appTitle = useMemo(() => 'AionUi', []);
++  const appTitle = useMemo(() => 'AGAS', []);
+   const [workspaceCollapsed, setWorkspaceCollapsed] = useState(true);
+   const [mobileCenterTitle, setMobileCenterTitle] = useState(appTitle);
+   const [mobileCenterOffset, setMobileCenterOffset] = useState(0);
+@@ -387,6 +388,12 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
+         aria-label={layout?.isMobile ? mobileCenterTitle : appTitle}
+         title={layout?.isMobile ? mobileCenterTitle : appTitle}
+       >
++        {!layout?.isMobile && (
++          <span className='app-titlebar__brand-mobile'>
++            <img src={agasLogo} width={22} height={22} alt='' />
++            <span className='app-titlebar__brand-text'>{appTitle}</span>
++          </span>
++        )}
+         {layout?.isMobile &&
+           (() => {
+             const conversationMatch = location.pathname.match(/^\/conversation\/([^/]+)/);
+diff --git a/packages/desktop/src/renderer/components/settings/SettingsModal/contents/AboutModalContent.tsx b/packages/desktop/src/renderer/components/settings/SettingsModal/contents/AboutModalContent.tsx
+index babf7fc..e2fa944 100644
+--- a/packages/desktop/src/renderer/components/settings/SettingsModal/contents/AboutModalContent.tsx
++++ b/packages/desktop/src/renderer/components/settings/SettingsModal/contents/AboutModalContent.tsx
+@@ -112,12 +112,12 @@ const AboutModalContent: React.FC = () => {
+   const linkItems: LinkItem[] = [
+     {
+       title: t('settings.helpDocumentation'),
+-      url: 'https://github.com/iOfficeAI/AionUi/wiki',
++      url: 'https://github.com/rowdy9941/AGAS#readme',
+       icon: <Right theme='outline' size='16' className='rtl-mirror' />,
+     },
+     {
+       title: t('settings.updateLog'),
+-      url: 'https://github.com/iOfficeAI/AionUi/releases',
++      url: 'https://github.com/rowdy9941/AGAS/releases',
+       icon: <Right theme='outline' size='16' className='rtl-mirror' />,
+     },
+     {
+@@ -127,12 +127,12 @@ const AboutModalContent: React.FC = () => {
+     },
+     {
+       title: t('settings.contactMe'),
+-      url: 'https://x.com/WailiVery',
++      url: 'https://github.com/rowdy9941/AGAS/issues',
+       icon: <Right theme='outline' size='16' className='rtl-mirror' />,
+     },
+     {
+       title: t('settings.officialWebsite'),
+-      url: 'https://www.aionui.com',
++      url: 'https://github.com/rowdy9941/AGAS',
+       icon: <Right theme='outline' size='16' className='rtl-mirror' />,
+     },
+   ];
+@@ -150,7 +150,7 @@ const AboutModalContent: React.FC = () => {
+           {/* App Info Section */}
+           <div className='flex flex-col items-center pb-24px'>
+             <Typography.Title heading={3} className='text-24px font-bold text-t-primary mb-8px'>
+-              AionUi
++              AGAS
+             </Typography.Title>
+             <Typography.Text className='text-14px text-t-secondary mb-12px text-center'>
+               {t('settings.appDescription')}
+@@ -162,7 +162,7 @@ const AboutModalContent: React.FC = () => {
+               <div
+                 className='text-t-primary cursor-pointer hover:text-t-secondary transition-colors p-4px'
+                 onClick={() =>
+-                  openLink('https://github.com/iOfficeAI/AionUi').catch((error) =>
++                  openLink('https://github.com/rowdy9941/AGAS').catch((error) =>
+                     console.error('Failed to open link:', error)
+                   )
+                 }
+diff --git a/packages/desktop/src/renderer/components/settings/SettingsModal/contents/FeedbackReportModal.tsx b/packages/desktop/src/renderer/components/settings/SettingsModal/contents/FeedbackReportModal.tsx
+index 15efb75..872ffcb 100644
+--- a/packages/desktop/src/renderer/components/settings/SettingsModal/contents/FeedbackReportModal.tsx
++++ b/packages/desktop/src/renderer/components/settings/SettingsModal/contents/FeedbackReportModal.tsx
+@@ -1,6 +1,6 @@
+ /**
+  * @license
+- * Copyright 2025 AionUi (aionui.com)
++ * Copyright 2025 AGAS (aionui.com)
+  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
+@@ -220,7 +220,7 @@ const FeedbackReportModal: React.FC<FeedbackReportModalProps> = ({
+     feedbackDiagnosticsContext,
+   ]);
+ 
+-  // "Solve via chat": hand the report to the AionUi Butler for on-the-spot
++  // "Solve via chat": hand the report to the AGAS Butler for on-the-spot
+   // diagnosis instead of submitting to the team. The typed description + module
+   // become a structured prompt; screenshots are uploaded to disk so they ride
+   // along in the chat input (reusing the same upload path as pasted images).
+@@ -246,7 +246,7 @@ const FeedbackReportModal: React.FC<FeedbackReportModalProps> = ({
+       const moduleLabel = t(selectedModule?.i18nKey ?? 'settings.bugReportModuleOther');
+       const prompt = t('settings.talkToButler.prompt.diagnose', {
+         defaultValue:
+-          'I ran into a problem with AionUi, please help me diagnose it.\n\n[Module] {{module}}\n[Description] {{description}}\n[Attachments] see the screenshots in the input.\n\nPlease diagnose the cause and tell me how to fix it.',
++          'I ran into a problem with AGAS, please help me diagnose it.\n\n[Module] {{module}}\n[Description] {{description}}\n[Attachments] see the screenshots in the input.\n\nPlease diagnose the cause and tell me how to fix it.',
+         module: moduleLabel,
+         description: description.trim(),
+       });
+diff --git a/packages/desktop/src/renderer/components/settings/SettingsModal/contents/WebuiModalContent.tsx b/packages/desktop/src/renderer/components/settings/SettingsModal/contents/WebuiModalContent.tsx
+index be7dc2c..478c3d0 100644
+--- a/packages/desktop/src/renderer/components/settings/SettingsModal/contents/WebuiModalContent.tsx
++++ b/packages/desktop/src/renderer/components/settings/SettingsModal/contents/WebuiModalContent.tsx
+@@ -1,6 +1,6 @@
+ /**
+  * @license
+- * Copyright 2025 AionUi (aionui.com)
++ * Copyright 2025 AGAS (aionui.com)
+  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
+@@ -668,7 +668,7 @@ const WebuiModalContent: React.FC = () => {
+                     void talkToButler({
+                       prompt: t('settings.talkToButler.prompt.setupRemote', {
+                         defaultValue:
+-                          'Help me set up remote access so I can open AionUi from my phone or over the internet.',
++                          'Help me set up remote access so I can open AGAS from my phone or over the internet.',
+                       }),
+                     })
+                   }
+diff --git a/packages/desktop/src/renderer/components/settings/SettingsModal/contents/channels/ChannelModalContent.tsx b/packages/desktop/src/renderer/components/settings/SettingsModal/contents/channels/ChannelModalContent.tsx
+index 81bdcb5..f06d458 100644
+--- a/packages/desktop/src/renderer/components/settings/SettingsModal/contents/channels/ChannelModalContent.tsx
++++ b/packages/desktop/src/renderer/components/settings/SettingsModal/contents/channels/ChannelModalContent.tsx
+@@ -1,6 +1,6 @@
+ /**
+  * @license
+- * Copyright 2025 AionUi (aionui.com)
++ * Copyright 2025 AGAS (aionui.com)
+  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
+@@ -731,7 +731,7 @@ const ChannelModalContent: React.FC = () => {
+     const telegramChannel: ChannelConfig = {
+       id: 'telegram',
+       title: t('settings.channels.telegramTitle', 'Telegram'),
+-      description: t('settings.channels.telegramDesc', 'Chat with AionUi assistant via Telegram'),
++      description: t('settings.channels.telegramDesc', 'Chat with AGAS assistant via Telegram'),
+       status: 'active',
+       enabled: pluginStatus?.enabled || false,
+       disabled: enableLoading,
+@@ -753,7 +753,7 @@ const ChannelModalContent: React.FC = () => {
+     const slackChannel: ChannelConfig = {
+       id: 'slack',
+       title: t('settings.channels.slackTitle', 'Slack'),
+-      description: t('settings.channels.slackDesc', 'Chat with AionUi assistant via Slack'),
++      description: t('settings.channels.slackDesc', 'Chat with AGAS assistant via Slack'),
+       status: 'active',
+       enabled: slackPluginStatus?.enabled || false,
+       disabled: slackEnableLoading,
+@@ -775,7 +775,7 @@ const ChannelModalContent: React.FC = () => {
+     const discordChannel: ChannelConfig = {
+       id: 'discord',
+       title: t('settings.channels.discordTitle', 'Discord'),
+-      description: t('settings.channels.discordDesc', 'Chat with AionUi assistant via Discord'),
++      description: t('settings.channels.discordDesc', 'Chat with AGAS assistant via Discord'),
+       status: 'active',
+       enabled: discordPluginStatus?.enabled || false,
+       disabled: discordEnableLoading,
+@@ -797,7 +797,7 @@ const ChannelModalContent: React.FC = () => {
+     const larkChannel: ChannelConfig = {
+       id: 'lark',
+       title: t('settings.channels.larkTitle', 'Lark / Feishu'),
+-      description: t('settings.channels.larkDesc', 'Chat with AionUi assistant via Lark or Feishu'),
++      description: t('settings.channels.larkDesc', 'Chat with AGAS assistant via Lark or Feishu'),
+       status: 'active',
+       enabled: larkPluginStatus?.enabled || false,
+       disabled: larkEnableLoading,
+@@ -815,7 +815,7 @@ const ChannelModalContent: React.FC = () => {
+     const dingtalkChannel: ChannelConfig = {
+       id: 'dingtalk',
+       title: t('settings.channels.dingtalkTitle', 'DingTalk'),
+-      description: t('settings.channels.dingtalkDesc', 'Chat with AionUi assistant via DingTalk'),
++      description: t('settings.channels.dingtalkDesc', 'Chat with AGAS assistant via DingTalk'),
+       status: 'active',
+       enabled: dingtalkPluginStatus?.enabled || false,
+       disabled: dingtalkEnableLoading,
+@@ -833,7 +833,7 @@ const ChannelModalContent: React.FC = () => {
+     const weixinChannel: ChannelConfig = {
+       id: 'weixin',
+       title: t('settings.channels.weixinTitle', 'WeChat'),
+-      description: t('settings.channels.weixinDesc', 'Chat with AionUi assistant via WeChat'),
++      description: t('settings.channels.weixinDesc', 'Chat with AGAS assistant via WeChat'),
+       status: 'active',
+       enabled: weixinPluginStatus?.enabled || false,
+       disabled: weixinEnableLoading,
+@@ -851,7 +851,7 @@ const ChannelModalContent: React.FC = () => {
+     const wecomChannel: ChannelConfig = {
+       id: 'wecom',
+       title: t('settings.channels.wecomTitle', 'WeCom'),
+-      description: t('settings.channels.wecomDesc', 'Chat with AionUi assistant via WeCom (Enterprise WeChat)'),
++      description: t('settings.channels.wecomDesc', 'Chat with AGAS assistant via WeCom (Enterprise WeChat)'),
+       status: 'coming_soon' as const,
+       enabled: false,
+       disabled: true,
+@@ -939,7 +939,7 @@ const ChannelModalContent: React.FC = () => {
+     return undefined;
+   };
+   const channelGuideText = t('settings.webui.featureChannelsDesc', {
+-    defaultValue: 'Connect Telegram, Lark, and DingTalk to interact with AionUi from IM apps.',
++    defaultValue: 'Connect Telegram, Lark, and DingTalk to interact with AGAS from IM apps.',
+   });
+   const channelSetupSteps = [
+     t('settings.channels.selectFirst', {

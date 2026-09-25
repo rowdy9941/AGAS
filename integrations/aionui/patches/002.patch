@@ -1,0 +1,668 @@
+diff --git a/packages/desktop/src/renderer/index.html b/packages/desktop/src/renderer/index.html
+index 71afabd..7438e82 100644
+--- a/packages/desktop/src/renderer/index.html
++++ b/packages/desktop/src/renderer/index.html
+@@ -3,16 +3,16 @@
+   <head>
+     <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+-    <meta name="application-name" content="AionUi" />
++    <meta name="application-name" content="AGAS" />
+     <meta name="apple-mobile-web-app-capable" content="yes" />
+     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+-    <meta name="apple-mobile-web-app-title" content="AionUi" />
++    <meta name="apple-mobile-web-app-title" content="AGAS" />
+     <meta name="mobile-web-app-capable" content="yes" />
+     <meta name="theme-color" content="#4E5969" />
+     <link rel="icon" type="image/png" href="./pwa/icon-192.png" />
+     <link rel="manifest" href="./manifest.webmanifest" />
+     <link rel="apple-touch-icon" href="./pwa/icon-180.png" />
+-    <title>AionUi</title>
++    <title>AGAS</title>
+     <script>
+       // Synchronously restore theme appearance from localStorage to prevent theme flash
+       (function () {
+diff --git a/packages/desktop/src/renderer/pages/AgentWorkspace/AgencyCatalog.tsx b/packages/desktop/src/renderer/pages/AgentWorkspace/AgencyCatalog.tsx
+new file mode 100644
+index 0000000..cb59e06
+--- /dev/null
++++ b/packages/desktop/src/renderer/pages/AgentWorkspace/AgencyCatalog.tsx
+@@ -0,0 +1,94 @@
++import React, { useEffect, useMemo, useState } from 'react';
++import { Alert, Button, Card, Input, Pagination, Space, Spin, Typography } from '@arco-design/web-react';
++import { useTranslation } from 'react-i18next';
++type Persona = {
++  slug: string;
++  name: string;
++  division: string;
++  description: string;
++  body: string;
++  source_path: string;
++  source_commit: string;
++  sha256: string;
++};
++const PAGE_SIZE = 12;
++const AgencyCatalog: React.FC = () => {
++  const { t } = useTranslation();
++  const [agents, setAgents] = useState<Persona[]>([]);
++  const [query, setQuery] = useState('');
++  const [page, setPage] = useState(1);
++  const [selected, setSelected] = useState<Persona>();
++  const [error, setError] = useState('');
++  const [loading, setLoading] = useState(true);
++  useEffect(() => {
++    const controller = new AbortController();
++    void fetch('./agas/catalog.json', { signal: controller.signal })
++      .then(async (response) => {
++        if (!response.ok) throw new Error(t('common.agas.catalogMissing'));
++        const data: unknown = await response.json();
++        if (!data || typeof data !== 'object' || !('agents' in data) || !Array.isArray(data.agents))
++          throw new Error(t('common.agas.catalogMissing'));
++        const valid = data.agents.every(
++          (agent: unknown) =>
++            agent &&
++            typeof agent === 'object' &&
++            ['slug', 'name', 'division', 'description', 'body', 'source_path', 'source_commit', 'sha256'].every(
++              (key) => typeof (agent as Record<string, unknown>)[key] === 'string'
++            )
++        );
++        if (!valid) throw new Error(t('common.agas.catalogMissing'));
++        setAgents(data.agents as Persona[]);
++      })
++      .catch((reason: unknown) => {
++        if (!controller.signal.aborted) setError(String(reason));
++      })
++      .finally(() => {
++        if (!controller.signal.aborted) setLoading(false);
++      });
++    return () => controller.abort();
++  }, [t]);
++  const filtered = useMemo(() => {
++    const needle = query.trim().toLocaleLowerCase();
++    return agents.filter((agent) =>
++      `${agent.name} ${agent.division} ${agent.description}`.toLocaleLowerCase().includes(needle)
++    );
++  }, [agents, query]);
++  if (loading) return <Spin />;
++  return (
++    <div className='flex flex-col gap-12px overflow-auto min-h-0'>
++      {error && <Alert type='error' content={error} />}
++      <Typography.Text type='secondary'>{t('common.agas.catalogCount', { count: agents.length })}</Typography.Text>
++      <Input.Search
++        aria-label={t('common.agas.search')}
++        placeholder={t('common.agas.search')}
++        value={query}
++        onChange={(value) => {
++          setQuery(value);
++          setPage(1);
++        }}
++      />
++      {selected ? (
++        <Card title={selected.name} extra={<Button onClick={() => setSelected(undefined)}>{t('common.close')}</Button>}>
++          <Typography.Paragraph>
++            {selected.source_path} · {selected.source_commit.slice(0, 12)}
++          </Typography.Paragraph>
++          <Typography.Paragraph className='whitespace-pre-wrap'>{selected.body}</Typography.Paragraph>
++        </Card>
++      ) : (
++        <>
++          {filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((agent) => (
++            <Card key={agent.slug} title={agent.name}>
++              <Space direction='vertical'>
++                <Typography.Text type='secondary'>{agent.division}</Typography.Text>
++                <Typography.Paragraph>{agent.description}</Typography.Paragraph>
++                <Button onClick={() => setSelected(agent)}>{t('common.agas.inspect')}</Button>
++              </Space>
++            </Card>
++          ))}
++          <Pagination current={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} />
++        </>
++      )}
++    </div>
++  );
++};
++export default AgencyCatalog;
+diff --git a/packages/desktop/src/renderer/pages/AgentWorkspace/index.tsx b/packages/desktop/src/renderer/pages/AgentWorkspace/index.tsx
+new file mode 100644
+index 0000000..59ac73b
+--- /dev/null
++++ b/packages/desktop/src/renderer/pages/AgentWorkspace/index.tsx
+@@ -0,0 +1,153 @@
++import React, { useCallback, useEffect, useRef, useState } from 'react';
++import { Alert, Button, Input, Select, Space, Spin, Tabs, Typography } from '@arco-design/web-react';
++import { useTranslation } from 'react-i18next';
++import type { AgasWorkspace, SurfaceBounds } from '@/common/platform/agas';
++import LocalAgents from '../settings/AgentSettings/LocalAgents';
++import AgencyCatalog from './AgencyCatalog';
++import styles from './workspace.module.css';
++const NativeWorkspace: React.FC = () => {
++  const { t } = useTranslation();
++  const [entries, setEntries] = useState<AgasWorkspace[]>([]);
++  const [selected, setSelected] = useState('paperclip');
++  const [url, setUrl] = useState('');
++  const [error, setError] = useState('');
++  const [busy, setBusy] = useState(false);
++  const [opened, setOpened] = useState(false);
++  const host = useRef<HTMLDivElement>(null);
++  const api = window.agas;
++  const bounds = (): SurfaceBounds => {
++    const rect = host.current!.getBoundingClientRect();
++    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
++  };
++  const refresh = useCallback(async () => {
++    if (!api) return;
++    const values = await api.list();
++    setEntries(values);
++    setUrl(values.find((entry) => entry.id === selected)?.url ?? '');
++  }, [api, selected]);
++  const run = async (action: () => Promise<void>): Promise<void> => {
++    setBusy(true);
++    setError('');
++    try {
++      await action();
++    } catch (reason) {
++      setError(reason instanceof Error ? reason.message : String(reason));
++    } finally {
++      setBusy(false);
++    }
++  };
++  useEffect(() => {
++    void refresh().catch((reason: unknown) => setError(String(reason)));
++  }, [refresh]);
++  useEffect(() => {
++    if (!api || !host.current) return;
++    const observer = new ResizeObserver(() => {
++      void api.resize(bounds()).catch((reason: unknown) => setError(String(reason)));
++    });
++    observer.observe(host.current);
++    return () => {
++      observer.disconnect();
++      void api.close().catch(() => {});
++    };
++  }, [api]);
++  const selectedEntry = entries.find((entry) => entry.id === selected);
++  if (!api) return <Alert type='info' content={t('common.agas.desktopOnly')} />;
++  return (
++    <div className={styles.native}>
++      <Space wrap>
++        <Select
++          aria-label={t('common.agas.workspace')}
++          value={selected}
++          disabled={busy}
++          style={{ width: 180 }}
++          onChange={(id: string) => {
++            void run(async () => {
++              await api.close();
++              setOpened(false);
++              setSelected(id);
++            });
++          }}
++          options={entries.map((entry) => ({ value: entry.id, label: entry.name }))}
++        />
++        <Input
++          aria-label={t('common.agas.url')}
++          placeholder='http://127.0.0.1:3100'
++          value={url}
++          disabled={busy || opened}
++          onChange={setUrl}
++          style={{ width: 280 }}
++        />
++        <Button
++          disabled={busy || opened}
++          onClick={() =>
++            void run(async () => {
++              await api.configure(selected, url);
++              await refresh();
++            })
++          }
++        >
++          {t('common.save')}
++        </Button>
++        <Button
++          type='primary'
++          disabled={busy || !selectedEntry?.url || opened}
++          onClick={() =>
++            void run(async () => {
++              await api.open(selected, bounds());
++              setOpened(true);
++            })
++          }
++        >
++          {t('common.agas.open')}
++        </Button>
++        <Button
++          disabled={busy || !opened}
++          onClick={() =>
++            void run(async () => {
++              await api.close();
++              setOpened(false);
++            })
++          }
++        >
++          {t('common.close')}
++        </Button>
++        <Button disabled={busy || opened} onClick={() => void run(refresh)}>
++          {t('common.agas.refresh')}
++        </Button>
++      </Space>
++      {error && <Alert type='error' content={error} />}
++      {!opened && <Alert type='info' content={t('common.agas.nativeHelp')} />}
++      {!opened && selectedEntry && (
++        <Typography.Text type='secondary'>{t(`common.agas.${selectedEntry.status}`)}</Typography.Text>
++      )}
++      <div ref={host} className={styles.host} aria-label={t('common.agas.nativeRegion')}>
++        {!opened && <div className={styles.empty}>{busy ? <Spin /> : t('common.agas.empty')}</div>}
++      </div>
++    </div>
++  );
++};
++const AgentWorkspace: React.FC = () => {
++  const { t } = useTranslation();
++  const [tab, setTab] = useState('native');
++  return (
++    <div className={styles.page}>
++      <Typography.Title heading={4}>{t('common.agas.title')}</Typography.Title>
++      <Typography.Text type='secondary'>{t('common.agas.subtitle')}</Typography.Text>
++      <Tabs activeTab={tab} onChange={setTab}>
++        <Tabs.TabPane key='native' title={t('common.agas.native')} />
++        <Tabs.TabPane key='catalog' title={t('common.agas.catalog')} />
++        <Tabs.TabPane key='agents' title={t('common.agas.agents')} />
++      </Tabs>
++      {tab === 'catalog' ? (
++        <AgencyCatalog />
++      ) : tab === 'native' ? (
++        <NativeWorkspace />
++      ) : (
++        <div className={styles.agents}>
++          <LocalAgents />
++        </div>
++      )}
++    </div>
++  );
++};
++export default AgentWorkspace;
+diff --git a/packages/desktop/src/renderer/pages/AgentWorkspace/workspace.module.css b/packages/desktop/src/renderer/pages/AgentWorkspace/workspace.module.css
+new file mode 100644
+index 0000000..2a408ff
+--- /dev/null
++++ b/packages/desktop/src/renderer/pages/AgentWorkspace/workspace.module.css
+@@ -0,0 +1,35 @@
++.page {
++  display: flex;
++  flex-direction: column;
++  height: 100%;
++  min-height: 0;
++  padding: 16px 24px;
++  gap: 8px;
++  color: var(--text-primary);
++}
++.native {
++  display: flex;
++  flex: 1;
++  flex-direction: column;
++  min-height: 0;
++  gap: 12px;
++}
++.host {
++  flex: 1;
++  min-height: 240px;
++  border: 1px solid var(--color-border-2);
++  border-radius: 8px;
++  overflow: hidden;
++}
++.empty {
++  height: 100%;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  padding: 24px;
++  color: var(--text-secondary);
++}
++.agents {
++  overflow: auto;
++  flex: 1;
++}
+diff --git a/packages/desktop/src/renderer/pages/TestShowcase.tsx b/packages/desktop/src/renderer/pages/TestShowcase.tsx
+index 7ce681b..f6604a8 100644
+--- a/packages/desktop/src/renderer/pages/TestShowcase.tsx
++++ b/packages/desktop/src/renderer/pages/TestShowcase.tsx
+@@ -14,7 +14,7 @@ const ComponentsShowcase: React.FC = () => {
+       {contextHolder}
+ 
+       <div>
+-        <h1 className='text-3xl font-bold mb-2'>AionUi 自定义组件样式展示</h1>
++        <h1 className='text-3xl font-bold mb-2'>AGAS 自定义组件样式展示</h1>
+         <p className='text-t-secondary'>展示所有在 arco-override.css 中自定义的组件样式</p>
+       </div>
+ 
+diff --git a/packages/desktop/src/renderer/pages/settings/AssistantSettings/home/OfficialAssistantsGrid.tsx b/packages/desktop/src/renderer/pages/settings/AssistantSettings/home/OfficialAssistantsGrid.tsx
+index ae1f717..0cdf816 100644
+--- a/packages/desktop/src/renderer/pages/settings/AssistantSettings/home/OfficialAssistantsGrid.tsx
++++ b/packages/desktop/src/renderer/pages/settings/AssistantSettings/home/OfficialAssistantsGrid.tsx
+@@ -1,6 +1,6 @@
+ /**
+  * @license
+- * Copyright 2025 AionUi (aionui.com)
++ * Copyright 2025 AGAS (aionui.com)
+  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
+@@ -72,7 +72,7 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
+           />
+           <span className='truncate'>
+             {t('settings.officialAssistantsHintShort', {
+-              defaultValue: 'Maintained by AionUi · enable to use, duplicate to customize',
++              defaultValue: 'Maintained by AGAS · enable to use, duplicate to customize',
+             })}
+           </span>
+         </span>
+diff --git a/packages/desktop/src/renderer/pages/settings/SkillsSettings/SkillsHubSettings.tsx b/packages/desktop/src/renderer/pages/settings/SkillsSettings/SkillsHubSettings.tsx
+index 5a2d019..0178fab 100644
+--- a/packages/desktop/src/renderer/pages/settings/SkillsSettings/SkillsHubSettings.tsx
++++ b/packages/desktop/src/renderer/pages/settings/SkillsSettings/SkillsHubSettings.tsx
+@@ -928,7 +928,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
+       <div data-testid='official-skills-section'>
+         <p className='m-0 mb-12px text-12px leading-relaxed text-t-tertiary'>
+           {t('settings.skillsHub.officialHint', {
+-            defaultValue: 'Built-in skills maintained by AionUi — read-only and updated with each release.',
++            defaultValue: 'Built-in skills maintained by AGAS — read-only and updated with each release.',
+           })}
+         </p>
+         {officialSkills.length > 0 ? (
+diff --git a/packages/desktop/src/renderer/services/feedback/resolveFeedbackModule.ts b/packages/desktop/src/renderer/services/feedback/resolveFeedbackModule.ts
+index 8f87574..9145aa0 100644
+--- a/packages/desktop/src/renderer/services/feedback/resolveFeedbackModule.ts
++++ b/packages/desktop/src/renderer/services/feedback/resolveFeedbackModule.ts
+@@ -17,6 +17,7 @@ import type { FeedbackModuleTag } from '@/common/types/feedbackDiagnostics';
+  * before the user can click the report button.
+  */
+ const ROUTE_MODULE_MAP: ReadonlyArray<readonly [prefix: string, tag: FeedbackModuleTag]> = [
++  ['/agent-ui', 'agent-detection'],
+   ['/conversation', 'conversation-session'],
+   ['/team', 'agent-team'],
+   ['/scheduled', 'scheduled-task'],
+diff --git a/packages/desktop/src/renderer/services/i18n/i18n-keys.d.ts b/packages/desktop/src/renderer/services/i18n/i18n-keys.d.ts
+index 677ae71..966f17c 100644
+--- a/packages/desktop/src/renderer/services/i18n/i18n-keys.d.ts
++++ b/packages/desktop/src/renderer/services/i18n/i18n-keys.d.ts
+@@ -185,6 +185,26 @@ export type I18nKey =
+   | 'common.about'
+   | 'common.add'
+   | 'common.added'
++  | 'common.agas.agents'
++  | 'common.agas.catalog'
++  | 'common.agas.catalogCount'
++  | 'common.agas.catalogMissing'
++  | 'common.agas.desktopOnly'
++  | 'common.agas.empty'
++  | 'common.agas.inspect'
++  | 'common.agas.native'
++  | 'common.agas.nativeHelp'
++  | 'common.agas.nativeRegion'
++  | 'common.agas.open'
++  | 'common.agas.reachable'
++  | 'common.agas.refresh'
++  | 'common.agas.search'
++  | 'common.agas.subtitle'
++  | 'common.agas.title'
++  | 'common.agas.unconfigured'
++  | 'common.agas.unreachable'
++  | 'common.agas.url'
++  | 'common.agas.workspace'
+   | 'common.agentMode'
+   | 'common.aiAssistant'
+   | 'common.back'
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/de-DE/common.json b/packages/desktop/src/renderer/services/i18n/locales/de-DE/common.json
+index 6ccdd02..fc301d5 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/de-DE/common.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/de-DE/common.json
+@@ -64,10 +64,10 @@
+   "more": "Mehr",
+   "refresh": "Aktualisieren",
+   "readOnly": "Schreibgeschützt",
+-  "tray.showWindow": "AionUi anzeigen",
++  "tray.showWindow": "AGAS anzeigen",
+   "tray.newChat": "Neuer Chat",
+   "tray.closeToTray": "In Taskleiste minimieren",
+-  "tray.about": "Über AionUi",
++  "tray.about": "Über AGAS",
+   "tray.restart": "App neu starten",
+   "tray.quit": "Beenden",
+   "tray.runningTasks": "Laufende Aufgaben",
+@@ -78,39 +78,39 @@
+   "backendStartup": {
+     "incompatibleRuntime": {
+       "title": "Dieses System wird vom gebündelten Backend nicht unterstützt",
+-      "description": "AionUi wurde geöffnet, aber das lokale AionCore-Backend kann auf dieser Linux-Version nicht ausgeführt werden. Bitte upgrade auf eine unterstützte Linux-Distribution und starte AionUi neu.",
++      "description": "AGAS wurde geöffnet, aber das lokale AionCore-Backend kann auf dieser Linux-Version nicht ausgeführt werden. Bitte upgrade auf eine unterstützte Linux-Distribution und starte AGAS neu.",
+       "requiredVersions": "Erforderliche Runtime-Symbole: {{versions}}"
+     },
+     "incompleteInstallation": {
+-      "title": "AionUi-Installation ist unvollständig",
+-      "description": "Diese Installation fehlen erforderliche lokale Ressourcen, daher kann AionCore nicht starten. Bitte lade die neueste Version von AionUi herunter und installiere sie neu. Wenn das Problem nach der Neuinstallation erneut auftritt, überprüfe, ob Sicherheits- oder Antivirus-Software AionCore unter Quarantäne gestellt hat.",
++      "title": "AGAS-Installation ist unvollständig",
++      "description": "Diese Installation fehlen erforderliche lokale Ressourcen, daher kann AionCore nicht starten. Bitte lade die neueste Version von AGAS herunter und installiere sie neu. Wenn das Problem nach der Neuinstallation erneut auftritt, überprüfe, ob Sicherheits- oder Antivirus-Software AionCore unter Quarantäne gestellt hat.",
+       "downloadLatest": "Neueste Version herunterladen",
+       "sendDiagnostics": "Diagnose senden",
+       "diagnosticsSent": "Diagnose gesendet",
+       "diagnosticsReportSuccess": "Diagnosebericht gesendet",
+       "diagnosticsReportFailed": "Fehler beim Senden des Diagnoseberichts",
+-      "runtimeComponentDescription": "Diese Installation fehlen erforderliche gebündelte Runtime-Komponenten, daher kann {{resource}} nicht starten. Installiere das neueste AionUi-Paket neu. Wenn es nach der Neuinstallation immer noch auftritt, überprüfe, ob Sicherheits- oder Antivirus-Software AionUi-Komponenten unter Quarantäne gestellt hat."
++      "runtimeComponentDescription": "Diese Installation fehlen erforderliche gebündelte Runtime-Komponenten, daher kann {{resource}} nicht starten. Installiere das neueste AGAS-Paket neu. Wenn es nach der Neuinstallation immer noch auftritt, überprüfe, ob Sicherheits- oder Antivirus-Software AGAS-Komponenten unter Quarantäne gestellt hat."
+     },
+     "packageArchitectureMismatch": {
+-      "title": "AionUi-Paket-Architektur-Fehlanpassung",
+-      "description": "Dieses AionUi-Paket ist für {{packageArch}}, aber dieser Mac ist {{deviceArch}}. Möglicherweise hast du das falsche Paket heruntergeladen. Bitte lade das {{expectedArch}}-Paket herunter und installiere es."
++      "title": "AGAS-Paket-Architektur-Fehlanpassung",
++      "description": "Dieses AGAS-Paket ist für {{packageArch}}, aber dieser Mac ist {{deviceArch}}. Möglicherweise hast du das falsche Paket heruntergeladen. Bitte lade das {{expectedArch}}-Paket herunter und installiere es."
+     },
+     "dataMigration": {
+       "title": "Local data migration failed",
+-      "description": "AionUi opened, but AionCore stopped while initializing local data. Reinstalling AionUi may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
++      "description": "AGAS opened, but AionCore stopped while initializing local data. Reinstalling AGAS may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+       "diagnosticsReportFailed": "Failed to send diagnostics report"
+     },
+     "databaseNewerThanApp": {
+-      "title": "Neuere AionUi-Version erforderlich",
+-      "description": "Ihre lokalen Daten wurden von einer neueren AionUi-Version erstellt und können von dieser Version nicht geöffnet werden. Aktualisieren Sie AionUi auf die neueste Version — Ihre Daten bleiben erhalten, eine Neuinstallation oder ein Zurücksetzen ist nicht nötig.",
+-      "descriptionWithVersion": "Ihre lokalen Daten wurden von einer AionUi-Version erstellt, die neuer ist als die aktuell installierte (v{{currentVersion}}), daher kann diese Version sie nicht öffnen. Aktualisieren Sie AionUi auf die neueste Version — Ihre Daten bleiben erhalten, eine Neuinstallation oder ein Zurücksetzen ist nicht nötig."
++      "title": "Neuere AGAS-Version erforderlich",
++      "description": "Ihre lokalen Daten wurden von einer neueren AGAS-Version erstellt und können von dieser Version nicht geöffnet werden. Aktualisieren Sie AGAS auf die neueste Version — Ihre Daten bleiben erhalten, eine Neuinstallation oder ein Zurücksetzen ist nicht nötig.",
++      "descriptionWithVersion": "Ihre lokalen Daten wurden von einer AGAS-Version erstellt, die neuer ist als die aktuell installierte (v{{currentVersion}}), daher kann diese Version sie nicht öffnen. Aktualisieren Sie AGAS auf die neueste Version — Ihre Daten bleiben erhalten, eine Neuinstallation oder ein Zurücksetzen ist nicht nötig."
+     },
+     "localDataRepair": {
+       "title": "Local data repair failed",
+-      "description": "AionUi wurde geöffnet, aber AionCore wurde beim Vorbereiten lokaler Startdaten wie Assistant- oder Agent-Datensätzen beendet. Eine Neuinstallation von AionUi behebt dies möglicherweise nicht. Senden Sie einen Diagnosebericht oder wenden Sie sich an den Support, damit die lokale Datenbank geprüft werden kann.",
++      "description": "AGAS wurde geöffnet, aber AionCore wurde beim Vorbereiten lokaler Startdaten wie Assistant- oder Agent-Datensätzen beendet. Eine Neuinstallation von AGAS behebt dies möglicherweise nicht. Senden Sie einen Diagnosebericht oder wenden Sie sich an den Support, damit die lokale Datenbank geprüft werden kann.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+@@ -118,7 +118,7 @@
+     },
+     "startupDirectory": {
+       "title": "Startup directory is unavailable",
+-      "description": "AionUi opened, but AionCore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart AionUi.",
++      "description": "AGAS opened, but AionCore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart AGAS.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+@@ -126,7 +126,7 @@
+     },
+     "recoverableDatabaseCorruption": {
+       "title": "Lokale Daten sind beschädigt",
+-      "description": "AionUi hat erkannt, dass die lokale Datenbank beschädigt ist und den Start nicht fortsetzen kann. Nach der Bestätigung wird die alte Datenbank gesichert und eine neue lokale Datenbank erstellt, um den Start fortzusetzen. Frühere Unterhaltungen werden nicht mehr angezeigt, und die alte Datenbank bleibt als Sicherungsdatei erhalten.",
++      "description": "AGAS hat erkannt, dass die lokale Datenbank beschädigt ist und den Start nicht fortsetzen kann. Nach der Bestätigung wird die alte Datenbank gesichert und eine neue lokale Datenbank erstellt, um den Start fortzusetzen. Frühere Unterhaltungen werden nicht mehr angezeigt, und die alte Datenbank bleibt als Sicherungsdatei erhalten.",
+       "confirmRebuild": "Alte DB sichern und neue DB erstellen",
+       "sendDiagnostics": "Diagnose senden",
+       "diagnosticsHint": "Das Senden der Diagnose ändert die lokale Datenbank nicht.",
+@@ -142,8 +142,8 @@
+       }
+     },
+     "transientConcurrentStartup": {
+-      "title": "AionUi wird gestartet",
+-      "description": "Beim Öffnen dieses Fensters verwendete ein anderer AionUi-Startvorgang noch die lokalen Daten. Das ist vorübergehend und Ihre Daten sind sicher – eine Neuinstallation ist nicht erforderlich. Bitte warten Sie einen Moment und versuchen Sie es erneut oder starten Sie AionUi neu.",
++      "title": "AGAS wird gestartet",
++      "description": "Beim Öffnen dieses Fensters verwendete ein anderer AGAS-Startvorgang noch die lokalen Daten. Das ist vorübergehend und Ihre Daten sind sicher – eine Neuinstallation ist nicht erforderlich. Bitte warten Sie einen Moment und versuchen Sie es erneut oder starten Sie AGAS neu.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+@@ -202,5 +202,27 @@
+   "goBack": "Zurück",
+   "selectedCount": "{{count}} ausgewählt",
+   "selectedSkills": "Ausgewählte Skills",
+-  "aiAssistant": "KI-Assistent"
++  "aiAssistant": "KI-Assistent",
++  "agas": {
++    "title": "AGAS Agenten-UI",
++    "subtitle": "Accessible General AI System · BY RAGHUNATH.D",
++    "native": "Native Apps",
++    "agents": "Lokale Agenten",
++    "workspace": "Anwendung",
++    "url": "Lokale URL",
++    "open": "Öffnen",
++    "refresh": "Aktualisieren",
++    "desktopOnly": "Für native Apps wird die AGAS-Desktopanwendung benötigt.",
++    "nativeHelp": "Starten Sie die App lokal, geben Sie ihre Loopback-URL ein, speichern Sie sie und öffnen Sie sie hier.",
++    "unconfigured": "Nicht konfiguriert",
++    "reachable": "App antwortet",
++    "unreachable": "App antwortet nicht",
++    "nativeRegion": "Ansicht der nativen App",
++    "empty": "Wählen und öffnen Sie eine App, um ihre echte Oberfläche zu nutzen.",
++    "catalog": "Agency-Katalog",
++    "catalogCount": "{{count}} ursprüngliche Agency-Fachagenten",
++    "catalogMissing": "Der Agency-Katalog fehlt. Führen Sie die Katalogerstellung aus.",
++    "search": "Fachagenten suchen",
++    "inspect": "Original-Prompt ansehen"
++  }
+ }
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/de-DE/conversation.json b/packages/desktop/src/renderer/services/i18n/locales/de-DE/conversation.json
+index b02b628..fedc9d3 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/de-DE/conversation.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/de-DE/conversation.json
+@@ -12,10 +12,10 @@
+     "clearWorkspace": "Ordner entfernen",
+     "openFolder": "Ordner öffnen",
+     "none": "Keiner",
+-    "quickActionsTitle": "Was kann AionUi?",
++    "quickActionsTitle": "Was kann AGAS?",
+     "quickActionFeedback": "Feedback oder Vorschläge?",
+-    "quickActionStar": "Gefällt dir AionUi? Gib uns einen Stern!",
+-    "skillsMarket": "AionUi Skills-Markt",
++    "quickActionStar": "Gefällt dir AGAS? Gib uns einen Stern!",
++    "skillsMarket": "AGAS Skills-Markt",
+     "skillsMarketDesc": "Community-Skills auf Abruf suchen und aktivieren. Einmal konfigurieren, für alle Agenten verfügbar.",
+     "skillsMarketDetails": "Mehr anzeigen >>"
+   },
+@@ -319,7 +319,7 @@
+       },
+       "MCP_HTTP_RESPONSE_READ_FAILED": {
+         "title": "Failed to read the team helper response",
+-        "body": "AionUi could not read the local team helper response. Retry once, and if it keeps happening, restart the app."
++        "body": "AGAS could not read the local team helper response. Retry once, and if it keeps happening, restart the app."
+       },
+       "MCP_TOOL_REMOTE_ERROR": {
+         "title": "The local team helper rejected the request",
+@@ -327,11 +327,11 @@
+       },
+       "MCP_TOOL_RESPONSE_UNEXPECTED": {
+         "title": "The team helper returned an unexpected response",
+-        "body": "AionUi received an unexpected response from the local team helper. Retry once, and report it if the problem persists."
++        "body": "AGAS received an unexpected response from the local team helper. Retry once, and report it if the problem persists."
+       },
+       "MCP_TCP_READ_FAILED": {
+         "title": "Failed to read from the local team helper",
+-        "body": "AionUi could not read the local team helper TCP response. Retry once, and restart the app if it keeps failing."
++        "body": "AGAS could not read the local team helper TCP response. Retry once, and restart the app if it keeps failing."
+       },
+       "TEAM_SERVICE_UNAVAILABLE": {
+         "title": "Team service is not ready yet",
+@@ -620,13 +620,13 @@
+         "body": "{{count}} Schritt(e) sind fehlgeschlagen und wurden NICHT ausgeführt. agy schließt solche Durchläufe trotzdem als erfolgreich ab – prüfe daher das tatsächliche Ergebnis statt der Antwort."
+       },
+       "CLI_VERSION_OLDER": {
+-        "body": "Das installierte {{cli}} ist älter als die von AionUi verifizierte Version; einige Funktionen fehlen möglicherweise. Ein Upgrade von {{cli}} wird empfohlen. (installiert: {{reported}} / von AionUi verifiziert: {{verified}})"
++        "body": "Das installierte {{cli}} ist älter als die von AGAS verifizierte Version; einige Funktionen fehlen möglicherweise. Ein Upgrade von {{cli}} wird empfohlen. (installiert: {{reported}} / von AGAS verifiziert: {{verified}})"
+       },
+       "CLI_VERSION_NEWER": {
+-        "body": "Das installierte {{cli}} ist neuer als die von AionUi verifizierte Version. Es sollte weiterhin funktionieren; melden Sie ungewöhnliches Verhalten. (installiert: {{reported}} / von AionUi verifiziert: {{verified}})"
++        "body": "Das installierte {{cli}} ist neuer als die von AGAS verifizierte Version. Es sollte weiterhin funktionieren; melden Sie ungewöhnliches Verhalten. (installiert: {{reported}} / von AGAS verifiziert: {{verified}})"
+       },
+       "CODEX_RETRYING": {
+-        "body": "{{detail}} (Versuch {{attempts}}, bisher {{elapsed}} – der Anbieter des Agents bricht die Verbindung wiederholt ab; AionUi wartet ab.)"
++        "body": "{{detail}} (Versuch {{attempts}}, bisher {{elapsed}} – der Anbieter des Agents bricht die Verbindung wiederholt ab; AGAS wartet ab.)"
+       }
+     }
+   },
+@@ -706,7 +706,7 @@
+         "conflicted": "!",
+         "unknown": "?"
+       },
+-      "conflictedHint": "Lösen Sie diesen Konflikt zuerst außerhalb von AionUi",
++      "conflictedHint": "Lösen Sie diesen Konflikt zuerst außerhalb von AGAS",
+       "opaqueHint": "Dieser Status kommt von einem neueren Backend — nur lesend angezeigt",
+       "degraded": "Die Aktualisierung läuft langsamer, weil der git-Index nicht geschrieben werden kann",
+       "truncated": "Zu viele Änderungen — nur der erste Teil wird angezeigt",
+@@ -725,7 +725,7 @@
+         "discard": "Änderungen verwerfen",
+         "stageAll": "Alle vormerken",
+         "unstageAll": "Alle Vormerkungen aufheben",
+-        "blockedHint": "Lösen Sie den Konflikt außerhalb von AionUi, bevor Sie vormerken oder verwerfen",
++        "blockedHint": "Lösen Sie den Konflikt außerhalb von AGAS, bevor Sie vormerken oder verwerfen",
+         "confirmDiscardTitle": "Änderungen verwerfen?",
+         "confirmDiscardTracked": "Die Änderungen an {{count}} Dateien gehen verloren. Das kann nicht rückgängig gemacht werden.",
+         "confirmDiscardUntracked": "{{count}} neue Dateien werden in den Papierkorb verschoben.",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/de-DE/cron.json b/packages/desktop/src/renderer/services/i18n/locales/de-DE/cron.json
+index 432deba..f72e48c 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/de-DE/cron.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/de-DE/cron.json
+@@ -14,7 +14,7 @@
+     "error": "Fehler",
+     "unread": "Neue Ausführung",
+     "unconfigured": "Keine geplante Aufgabe",
+-    "defaultPrompt": "Täglich um 10 Uhr die neuesten KI-Nachrichten suchen, zusammenfassen und einen Erkenntnisbericht ausgeben. (Bitte verwende den /cron-Skill, um eine geplante Aufgabe in AionUi zu erstellen.)"
++    "defaultPrompt": "Täglich um 10 Uhr die neuesten KI-Nachrichten suchen, zusammenfassen und einen Erkenntnisbericht ausgeben. (Bitte verwende den /cron-Skill, um eine geplante Aufgabe in AGAS zu erstellen.)"
+   },
+   "actions": {
+     "goTo": "Chat anzeigen",
+@@ -54,10 +54,10 @@
+     "newTask": "Neue Aufgabe",
+     "createViaChat": "Per Chat erstellen",
+     "createManually": "Manuell erstellen",
+-    "description": "Aufgaben nach Zeitplan ausführen. Du kannst AionUi auch in jedem Gespräch bitten, eine zu erstellen.",
++    "description": "Aufgaben nach Zeitplan ausführen. Du kannst AGAS auch in jedem Gespräch bitten, eine zu erstellen.",
+     "awakeBanner": "Geplante Aufgaben werden nur ausgeführt, wenn dein Computer aktiv ist.",
+     "keepAwake": "Aktiv halten",
+-    "keepAwakeTooltip": "Wenn aktiviert, verhindert AionUi, dass dein Computer in den Ruhezustand geht",
++    "keepAwakeTooltip": "Wenn aktiviert, verhindert AGAS, dass dein Computer in den Ruhezustand geht",
+     "createTask": "Geplante Aufgabe erstellen",
+     "editTask": "Geplante Aufgabe bearbeiten",
+     "createSuccess": "Aufgabe erfolgreich erstellt",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/de-DE/login.json b/packages/desktop/src/renderer/services/i18n/locales/de-DE/login.json
+index 17b644c..ef7d028 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/de-DE/login.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/de-DE/login.json
+@@ -1,6 +1,6 @@
+ {
+-  "pageTitle": "AionUi - Anmelden",
+-  "brand": "AionUi",
++  "pageTitle": "AGAS - Anmelden",
++  "brand": "AGAS",
+   "subtitle": "Willkommen zurück, bitte melde dich in deinem Konto an",
+   "username": "Benutzername",
+   "usernamePlaceholder": "Benutzernamen eingeben",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/de-DE/preview.json b/packages/desktop/src/renderer/services/i18n/locales/de-DE/preview.json
+index db0d949..6e62b58 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/de-DE/preview.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/de-DE/preview.json
+@@ -85,7 +85,7 @@
+       "outsideSandbox": "Diese Datei befindet sich außerhalb der aktuellen Projekt-Sandbox."
+     },
+     "serverInstall": {
+-      "hint": "AionUi läuft auf einem Server. Installiere die Vorschau-Komponente auf diesem Server und versuche es erneut:",
++      "hint": "AGAS läuft auf einem Server. Installiere die Vorschau-Komponente auf diesem Server und versuche es erneut:",
+       "icuNote": "Falls es immer noch nicht startet, installiere die ICU-Bibliothek auf dem Server (Debian/Ubuntu: apt-get install -y libicu-dev)."
+     }
+   },

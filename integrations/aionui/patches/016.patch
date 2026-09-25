@@ -1,0 +1,622 @@
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/zh-CN/conversation.json b/packages/desktop/src/renderer/services/i18n/locales/zh-CN/conversation.json
+index 247c4d8..2f91dfc 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/zh-CN/conversation.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/zh-CN/conversation.json
+@@ -12,10 +12,10 @@
+     "clearWorkspace": "移除项目",
+     "openFolder": "打开文件夹",
+     "none": "无",
+-    "quickActionsTitle": "AionUi 能做什么？",
++    "quickActionsTitle": "AGAS 能做什么？",
+     "quickActionFeedback": "反馈问题",
+     "quickActionStar": "喜欢我们？点个星吧",
+-    "skillsMarket": "AionUi Skills Market",
++    "skillsMarket": "AGAS Skills Market",
+     "skillsMarketDesc": "按需搜索并调用社区 Skills，一次配置，所有Agent通用。",
+     "skillsMarketDetails": "详情 >>"
+   },
+@@ -319,7 +319,7 @@
+       },
+       "MCP_HTTP_RESPONSE_READ_FAILED": {
+         "title": "读取团队辅助进程响应失败",
+-        "body": "AionUi 无法读取本地团队辅助进程的响应。请先重试一次，如果持续出现，再重启应用。"
++        "body": "AGAS 无法读取本地团队辅助进程的响应。请先重试一次，如果持续出现，再重启应用。"
+       },
+       "MCP_TOOL_REMOTE_ERROR": {
+         "title": "本地团队辅助进程拒绝了这次请求",
+@@ -327,11 +327,11 @@
+       },
+       "MCP_TOOL_RESPONSE_UNEXPECTED": {
+         "title": "团队辅助进程返回了异常响应",
+-        "body": "AionUi 收到了本地团队辅助进程的异常响应。请先重试一次，如果持续出现再反馈问题。"
++        "body": "AGAS 收到了本地团队辅助进程的异常响应。请先重试一次，如果持续出现再反馈问题。"
+       },
+       "MCP_TCP_READ_FAILED": {
+         "title": "读取本地团队辅助进程失败",
+-        "body": "AionUi 无法读取本地团队辅助进程的 TCP 响应。请先重试一次，如仍失败可重启应用。"
++        "body": "AGAS 无法读取本地团队辅助进程的 TCP 响应。请先重试一次，如仍失败可重启应用。"
+       },
+       "TEAM_SERVICE_UNAVAILABLE": {
+         "title": "团队服务尚未就绪",
+@@ -619,13 +619,13 @@
+         "body": "本轮有 {{count}} 个步骤失败且未生效。agy 仍会把这类轮次标记为成功，请核对实际结果而非回复内容。"
+       },
+       "CLI_VERSION_OLDER": {
+-        "body": "已安装的 {{cli}} 低于 AionUi 验证过的版本，部分功能可能缺失。建议升级 {{cli}}。 （本地 {{reported}} / AionUi 验证过 {{verified}}）"
++        "body": "已安装的 {{cli}} 低于 AGAS 验证过的版本，部分功能可能缺失。建议升级 {{cli}}。 （本地 {{reported}} / AGAS 验证过 {{verified}}）"
+       },
+       "CLI_VERSION_NEWER": {
+-        "body": "已安装的 {{cli}} 高于 AionUi 验证过的版本。通常仍可正常使用；如遇异常行为请反馈。 （本地 {{reported}} / AionUi 验证过 {{verified}}）"
++        "body": "已安装的 {{cli}} 高于 AGAS 验证过的版本。通常仍可正常使用；如遇异常行为请反馈。 （本地 {{reported}} / AGAS 验证过 {{verified}}）"
+       },
+       "CODEX_RETRYING": {
+-        "body": "{{detail}}（累计第 {{attempts}} 次重试，已等待 {{elapsed}}——Agent 的服务方反复中断连接，AionUi 正在等待重连。）"
++        "body": "{{detail}}（累计第 {{attempts}} 次重试，已等待 {{elapsed}}——Agent 的服务方反复中断连接，AGAS 正在等待重连。）"
+       }
+     }
+   },
+@@ -705,7 +705,7 @@
+         "conflicted": "!",
+         "unknown": "?"
+       },
+-      "conflictedHint": "请先在 AionUi 之外解决此冲突",
++      "conflictedHint": "请先在 AGAS 之外解决此冲突",
+       "opaqueHint": "该状态来自更新版本的后端 — 仅供查看",
+       "degraded": "由于无法更新 git 索引，刷新正以较慢的模式运行",
+       "truncated": "变更过多，仅显示前一部分",
+@@ -724,7 +724,7 @@
+         "discard": "丢弃更改",
+         "stageAll": "全部暂存",
+         "unstageAll": "全部取消暂存",
+-        "blockedHint": "请先在 AionUi 之外解决冲突，然后再暂存或丢弃",
++        "blockedHint": "请先在 AGAS 之外解决冲突，然后再暂存或丢弃",
+         "confirmDiscardTitle": "要丢弃更改吗？",
+         "confirmDiscardTracked": "{{count}} 个文件的修改将丢失，且无法撤销。",
+         "confirmDiscardUntracked": "{{count}} 个新文件将被移到回收站。",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/zh-CN/cron.json b/packages/desktop/src/renderer/services/i18n/locales/zh-CN/cron.json
+index 05d5b16..1efbe25 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/zh-CN/cron.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/zh-CN/cron.json
+@@ -14,7 +14,7 @@
+     "error": "执行出错",
+     "unread": "有新执行",
+     "unconfigured": "未配置定时任务",
+-    "defaultPrompt": "每天早上10点，为我搜索AI最新的新闻动向，汇总并输出洞察报告。（请使用 /cron 技能在 AionUi 中创建定时任务。）"
++    "defaultPrompt": "每天早上10点，为我搜索AI最新的新闻动向，汇总并输出洞察报告。（请使用 /cron 技能在 AGAS 中创建定时任务。）"
+   },
+   "actions": {
+     "goTo": "查看会话",
+@@ -55,10 +55,10 @@
+     "newTask": "新建任务",
+     "createViaChat": "通过对话创建",
+     "createManually": "手动创建",
+-    "description": "按计划自动运行任务。你也可以在任意对话中直接让 AionUi 帮你创建一个定时任务。",
++    "description": "按计划自动运行任务。你也可以在任意对话中直接让 AGAS 帮你创建一个定时任务。",
+     "awakeBanner": "定时任务仅在电脑唤醒状态下运行。",
+     "keepAwake": "保持唤醒",
+-    "keepAwakeTooltip": "开启后，AionUi 将阻止电脑进入休眠状态",
++    "keepAwakeTooltip": "开启后，AGAS 将阻止电脑进入休眠状态",
+     "searchPlaceholder": "搜索定时任务...",
+     "noSearchResults": "没有匹配的定时任务。",
+     "createTask": "创建定时任务",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/zh-CN/login.json b/packages/desktop/src/renderer/services/i18n/locales/zh-CN/login.json
+index ebcf68e..128d974 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/zh-CN/login.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/zh-CN/login.json
+@@ -1,6 +1,6 @@
+ {
+-  "pageTitle": "AionUi - 登录",
+-  "brand": "AionUi",
++  "pageTitle": "AGAS - 登录",
++  "brand": "AGAS",
+   "subtitle": "欢迎回来，请登录您的账户",
+   "username": "用户名",
+   "usernamePlaceholder": "请输入用户名",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/zh-CN/preview.json b/packages/desktop/src/renderer/services/i18n/locales/zh-CN/preview.json
+index a1e6dc8..f77655e 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/zh-CN/preview.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/zh-CN/preview.json
+@@ -85,7 +85,7 @@
+       "outsideSandbox": "该文件不在当前项目沙箱范围内。"
+     },
+     "serverInstall": {
+-      "hint": "AionUi 运行在服务器上，预览组件需要安装在该服务器上。请在服务器执行以下命令后重试：",
++      "hint": "AGAS 运行在服务器上，预览组件需要安装在该服务器上。请在服务器执行以下命令后重试：",
+       "icuNote": "若安装后仍无法启动，请在服务器安装 ICU 库（Debian/Ubuntu：apt-get install -y libicu-dev）。"
+     }
+   },
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/zh-CN/settings.json b/packages/desktop/src/renderer/services/i18n/locales/zh-CN/settings.json
+index f2ffc1b..b97b40d 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/zh-CN/settings.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/zh-CN/settings.json
+@@ -120,7 +120,7 @@
+     "officialSkillsEmpty": "暂无官方技能。",
+     "noSearchResults": "没有匹配的技能。",
+     "customHint": "支持技能目录、父目录或 zip 导入；单文件上限 {{maxFileSize}}、单技能上限 {{maxTotalSize}}；同名导入会覆盖现有技能。",
+-    "officialHint": "AionUi 官方内置的技能，开箱即用、只读，随版本更新维护。",
++    "officialHint": "AGAS 官方内置的技能，开箱即用、只读，随版本更新维护。",
+     "deleteAffectsNewOnlyHint": "删除仅影响新会话：历史会话中已选用的技能仍可继续使用。"
+   },
+   "authMethod": "认证",
+@@ -181,13 +181,13 @@
+   "assistantReorderHint": "拖拽可调整顺序，它决定你挑选助手时（首页、开团、定时任务等）列表里的展示先后。",
+   "assistantGroupCli": "CLI 助手",
+   "assistantGroupCreated": "自定义助手",
+-  "myAssistantsEmpty": "你的助手列表还是空的。去「官方助手」启用一个专家，或让 AionUi 识别你本机的 CLI 工具。",
++  "myAssistantsEmpty": "你的助手列表还是空的。去「官方助手」启用一个专家，或让 AGAS 识别你本机的 CLI 工具。",
+   "customEmptyTitle": "还没有自定义助手",
+   "customEmptyBody": "可以通过对话来创建一个，或从官方助手复制一个。",
+   "customEmptyCreate": "通过对话创建",
+   "customEmptyBrowseOfficial": "逛逛官方助手",
+-  "officialAssistantsHint": "官方助手由 AionUi 持续维护、随版本更新能力。启用后即可在你的对话、开团和定时任务里使用；若想调整成专属于你的版本，可将它复制为我的助手。",
+-  "officialAssistantsHintShort": "AionUi 内置的官方助手，由官方持续维护、随版本更新；可复制为「我的助手」后自由修改。",
++  "officialAssistantsHint": "官方助手由 AGAS 持续维护、随版本更新能力。启用后即可在你的对话、开团和定时任务里使用；若想调整成专属于你的版本，可将它复制为我的助手。",
++  "officialAssistantsHintShort": "AGAS 内置的官方助手，由官方持续维护、随版本更新；可复制为「我的助手」后自由修改。",
+   "reorderCoachTitle": "拖拽调整顺序",
+   "reorderCoachBody": "把你常用的助手拖到前面——这个顺序决定你挑选助手时（首页、开团、定时任务等）列表里的展示先后。",
+   "assistantFilter": {
+@@ -325,7 +325,7 @@
+   "language": "语言",
+   "saveUploadToWorkspace": "上传文件保存到项目文件夹",
+   "startOnBoot": "开机启动",
+-  "startOnBootDesc": "登录 macOS 或 Windows 后自动启动 AionUi。",
++  "startOnBootDesc": "登录 macOS 或 Windows 后自动启动 AGAS。",
+   "startOnBootUnsupported": "仅在打包后的 macOS 和 Windows 客户端中可用。",
+   "startOnBootUpdateFailed": "更新开机启动设置失败",
+   "closeToTray": "关闭到托盘",
+@@ -334,7 +334,7 @@
+   "hardwareAccelerationAutoDisabled": "因 GPU 反复崩溃已自动关闭。",
+   "hardwareAccelerationAutoDisabledTitle": "已关闭硬件加速",
+   "hardwareAccelerationAutoDisabledNotice": "检测到显卡渲染反复崩溃，已自动关闭硬件加速以保持应用稳定。可在 设置 → 系统 中重新开启。",
+-  "hardwareAccelerationRestartConfirm": "重启 AionUi 以应用新的硬件加速设置？",
++  "hardwareAccelerationRestartConfirm": "重启 AGAS 以应用新的硬件加速设置？",
+   "hardwareAccelerationUpdateFailed": "更新硬件加速设置失败",
+   "browserNotification": {
+     "enable": "开启浏览器通知",
+@@ -477,7 +477,7 @@
+   "installed": "已安装",
+   "builtin": "内置",
+   "channels": "频道",
+-  "webui.description": "把 AionUi 当作\"7*24小时的远程助手\"，随时随地用远程设备安排任务。",
++  "webui.description": "把 AGAS 当作\"7*24小时的远程助手\"，随时随地用远程设备安排任务。",
+   "webui.steps": "步骤 1. 打开 WebUI 开关;  步骤 2. 复制访问地址;  步骤 3.远程浏览器打开",
+   "webui.configuration": "WebUI 配置",
+   "webui.enable": "启用 WebUI",
+@@ -555,13 +555,13 @@
+   "webui.passwordHint": "首次启动时密码会显示在控制台，如需重置请使用「修改密码」功能",
+   "webui.checkConsoleForPassword": "请查看应用控制台获取初始密码",
+   "webui.browserNotSupported": "浏览器端无法访问 WebUI 设置",
+-  "webui.browserNotSupportedDesc": "出于安全考虑，WebUI 设置只能在桌面应用中管理。请在 AionUi 桌面应用中打开设置面板进行配置。",
++  "webui.browserNotSupportedDesc": "出于安全考虑，WebUI 设置只能在桌面应用中管理。请在 AGAS 桌面应用中打开设置面板进行配置。",
+   "webui.passwordHidden": "******",
+   "webui.passwordOnlyFirstTime": "密码仅在首次启动时显示，之后将被隐藏",
+   "webui.resetPasswordWarning": "请保管好重置之后的密码！",
+-  "webui.featureRemoteDesc": "启用 WebUI 后，你可以通过手机或远程浏览器访问 AionUi。",
++  "webui.featureRemoteDesc": "启用 WebUI 后，你可以通过手机或远程浏览器访问 AGAS。",
+   "webui.featureChannelsTitle": "Messaging Control",
+-  "webui.featureChannelsDesc": "连接 Telegram、Lark、钉钉、微信，在即时通讯软件中与 AionUi 交互。",
++  "webui.featureChannelsDesc": "连接 Telegram、Lark、钉钉、微信，在即时通讯软件中与 AGAS 交互。",
+   "webui.goToChannels": "前往 Channels",
+   "assistant.telegramConfig": "Telegram 机器人配置",
+   "assistant.botToken": "Bot Token",
+@@ -612,24 +612,24 @@
+   "assistant.step4": "授权成功后，你可以通过 Telegram 与 Gemini 聊天！",
+   "channels.title": "渠道配置",
+   "channels.telegramTitle": "Telegram",
+-  "channels.telegramDesc": "通过 Telegram 与 AionUi 助手对话",
++  "channels.telegramDesc": "通过 Telegram 与 AGAS 助手对话",
+   "channels.slackTitle": "Slack",
+-  "channels.slackDesc": "通过 Slack 与 AionUi 助手对话",
++  "channels.slackDesc": "通过 Slack 与 AGAS 助手对话",
+   "channels.discordTitle": "Discord",
+-  "channels.discordDesc": "通过 Discord 与 AionUi 助手对话",
++  "channels.discordDesc": "通过 Discord 与 AGAS 助手对话",
+   "channels.larkTitle": "Lark",
+-  "channels.larkDesc": "通过 Lark 与 AionUi 助手对话",
++  "channels.larkDesc": "通过 Lark 与 AGAS 助手对话",
+   "channels.dingtalkTitle": "钉钉",
+-  "channels.dingtalkDesc": "通过钉钉与 AionUi 助手对话",
++  "channels.dingtalkDesc": "通过钉钉与 AGAS 助手对话",
+   "channels.weixinTitle": "微信",
+-  "channels.weixinDesc": "通过微信与 AionUi 助手对话",
++  "channels.weixinDesc": "通过微信与 AGAS 助手对话",
+   "channels.wecomTitle": "企业微信",
+-  "channels.wecomDesc": "通过企业微信智能机器人与 AionUi 助手对话",
++  "channels.wecomDesc": "通过企业微信智能机器人与 AGAS 助手对话",
+   "channels.comingSoon": "即将上线",
+   "channels.comingSoonDesc": "即将支持通过 {{channel}} 与助手直接对话",
+   "channels.notConfigured": "未配置",
+   "channels.configured": "已配置",
+-  "channels.guide": "连接 Telegram、飞书、钉钉等消息应用，让你的 AionUi 助手在任意聊天应用中随时可用。",
++  "channels.guide": "连接 Telegram、飞书、钉钉等消息应用，让你的 AGAS 助手在任意聊天应用中随时可用。",
+   "channels.selectFirst": "选择一个渠道并完成凭据配置。",
+   "channels.enableAfterConfig": "启用该渠道后，即可开始与 AI 助手对话。",
+   "channels.extension.requiredField": "请填写必填项：{{field}}",
+@@ -708,18 +708,18 @@
+   "mcpDisconnected": "未测试",
+   "mcpError": "最近一次测试失败",
+   "mcpErrorNodeCommandNotFound": "无法准备命令 {{command}}。AionCore 通常会自动准备托管的 Node 运行环境。请重试连接测试；若仍失败，请检查后端日志，或把这个 MCP server 改成绝对命令路径。",
+-  "mcpErrorBunCommandNotFound": "未找到命令 {{command}}。请安装 Bun（包含 bun/bunx），重启 AionUI，或把这个 MCP server 改成绝对命令路径。",
+-  "mcpErrorUvCommandNotFound": "未找到命令 {{command}}。请安装 uv，重启 AionUI，或把这个 MCP server 改成绝对命令路径。",
+-  "mcpErrorPythonCommandNotFound": "未找到命令 {{command}}。请安装 Python，重启 AionUI，或把这个 MCP server 改成绝对命令路径。",
+-  "mcpErrorDenoCommandNotFound": "未找到命令 {{command}}。请安装 Deno，重启 AionUI，或把这个 MCP server 改成绝对命令路径。",
++  "mcpErrorBunCommandNotFound": "未找到命令 {{command}}。请安装 Bun（包含 bun/bunx），重启 AGAS，或把这个 MCP server 改成绝对命令路径。",
++  "mcpErrorUvCommandNotFound": "未找到命令 {{command}}。请安装 uv，重启 AGAS，或把这个 MCP server 改成绝对命令路径。",
++  "mcpErrorPythonCommandNotFound": "未找到命令 {{command}}。请安装 Python，重启 AGAS，或把这个 MCP server 改成绝对命令路径。",
++  "mcpErrorDenoCommandNotFound": "未找到命令 {{command}}。请安装 Deno，重启 AGAS，或把这个 MCP server 改成绝对命令路径。",
+   "mcpErrorCommandNotFound": "未找到命令 {{command}}。请安装该命令，或把这个 MCP server 改成绝对命令路径。",
+-  "mcpErrorCommandPermissionDenied": "AionUI 无法执行 {{command}}，因为权限被拒绝。",
+-  "mcpErrorCommandStartFailed": "AionUI 启动 {{command}} 失败。",
++  "mcpErrorCommandPermissionDenied": "AGAS 无法执行 {{command}}，因为权限被拒绝。",
++  "mcpErrorCommandStartFailed": "AGAS 启动 {{command}} 失败。",
+   "mcpErrorTimeout": "连接测试在 {{seconds}} 秒后超时。",
+-  "mcpErrorConnectionFailed": "AionUI 无法连接到这个 MCP server。",
++  "mcpErrorConnectionFailed": "AGAS 无法连接到这个 MCP server。",
+   "mcpErrorHttp": "这个 MCP server 返回了 HTTP {{status}}。",
+   "mcpErrorRpc": "这个 MCP server 在处理 {{method}} 时返回了 RPC 错误。",
+-  "mcpErrorProtocol": "AionUI 无法完成 MCP 握手。",
++  "mcpErrorProtocol": "AGAS 无法完成 MCP 握手。",
+   "mcpLastCheckedAvailable": "工具设置页最近一次检测结果：可用",
+   "mcpLastCheckedFailed": "工具设置页最近一次检测结果：失败",
+   "mcpCheckedAt": "检测时间：{{time}}",
+@@ -746,7 +746,7 @@
+   "mcpImportSuccess": "导入成功",
+   "mcpImportFailed": "导入失败",
+   "mcpJsonInvalid": "无效的 JSON 格式",
+-  "mcpImportDescription": "从 CLI agents 中检测 MCP 配置，并导入到 AionUi。",
++  "mcpImportDescription": "从 CLI agents 中检测 MCP 配置，并导入到 AGAS。",
+   "mcpStepSelectAgent": "选择Agent",
+   "mcpStepFetchTools": "获取mcp",
+   "mcpStepImportSuccess": "导入成功",
+@@ -763,8 +763,8 @@
+   "mcpStatusReady": "将导入",
+   "mcpStatusImported": "已导入",
+   "mcpStatusSkipped": "已跳过",
+-  "mcpWillImport": "会导入到 AionUi",
+-  "mcpImported": "已导入到 AionUi",
++  "mcpWillImport": "会导入到 AGAS",
++  "mcpImported": "已导入到 AGAS",
+   "mcpImportSkipped": "不支持",
+   "mcpImportSkippedAlreadyExists": "已经导入",
+   "mcpImportSkippedPluginManaged": "这是 CLI 插件托管的 MCP，不能在这里导入",
+@@ -821,7 +821,7 @@
+   "needHelpTooltip": "如需帮助，请查看",
+   "googleCloudProjectPlaceholder": "请输入 Google Cloud Project ID",
+   "noAvailableModels": "暂无可用模型",
+-  "appDescription": "One desktop. Your AI agents, actually coworking.",
++  "appDescription": "Accessible General AI System — BY RAGHUNATH.D",
+   "helpDocumentation": "帮助文档",
+   "updateLog": "更新日志",
+   "feedback": "意见反馈",
+@@ -1229,8 +1229,8 @@
+       "managed_runtime_unavailable": "请修复或重新安装 {{resource}}，然后重新测试连接。",
+       "auth_required": "Agent 可连接，但需要先登录。请在 CLI 中登录，或在「环境变量」中补充所需的 API 密钥，然后重新测试连接。",
+       "no_provider": "尚未配置模型供应商。请在设置中添加并启用一个供应商，然后重新测试连接。",
+-      "version_drift_older": "已安装的 CLI 低于AionUi 验证过的版本，部分功能可能缺失。建议升级。",
+-      "version_drift_newer": "已安装的 CLI 高于AionUi 验证过的版本。通常仍可正常使用；如遇异常行为请反馈。"
++      "version_drift_older": "已安装的 CLI 低于AGAS 验证过的版本，部分功能可能缺失。建议升级。",
++      "version_drift_newer": "已安装的 CLI 高于AGAS 验证过的版本。通常仍可正常使用；如遇异常行为请反馈。"
+     },
+     "boundAssistantsTitle": "绑定此 Agent 的助手",
+     "boundAssistantsCount": "{{count}} 个助手",
+@@ -1345,16 +1345,16 @@
+     "addViaChat": "通过对话添加",
+     "addManually": "手动添加",
+     "solveViaChat": "通过对话排查",
+-    "enabledToast": "已为你启用 AionUi 管家",
++    "enabledToast": "已为你启用 AGAS 管家",
+     "prompt": {
+       "createAssistant": "帮我创建一个新助手，并引导我完成设置。",
+       "addCustomAgent": "帮我添加一个自定义 Agent。",
+       "addModel": "帮我添加一个新的 LLM 模型和 API Key，并设为默认模型。",
+       "addMcp": "帮我配置一个 MCP 服务器。",
+       "addSkill": "帮我导入一个技能，并绑定到助手上。",
+-      "setupRemote": "帮我配置远程访问，让我在手机或外网也能打开 AionUi。",
+-      "diagnose": "我在使用 AionUi 时遇到问题，帮我排查一下。\n\n【模块】{{module}}\n【问题描述】{{description}}\n【附件】见输入框中的截图。\n\n请帮我诊断原因并给出解决办法。",
+-      "diagnoseChatError": "我在 AionUi 对话过程中遇到了报错，帮我排查一下。\n\n【报错内容】{{error}}\n\n请帮我诊断原因并给出解决办法。"
++      "setupRemote": "帮我配置远程访问，让我在手机或外网也能打开 AGAS。",
++      "diagnose": "我在使用 AGAS 时遇到问题，帮我排查一下。\n\n【模块】{{module}}\n【问题描述】{{description}}\n【附件】见输入框中的截图。\n\n请帮我诊断原因并给出解决办法。",
++      "diagnoseChatError": "我在 AGAS 对话过程中遇到了报错，帮我排查一下。\n\n【报错内容】{{error}}\n\n请帮我诊断原因并给出解决办法。"
+     },
+     "solveWithButler": "找管家排查"
+   },
+@@ -1363,7 +1363,7 @@
+   "browserData": {
+     "title": "应用内浏览器",
+     "agentControlLabel": "允许 Agent 操作 APP 内的浏览器",
+-    "agentControlDesc": "开启后，Agent 可以在应用内浏览器里帮你打开网页、点击和填表，例如查资料或走完一个网站流程。它只能操作应用内浏览器这一个页面，碰不到 AionUi 界面本身，也不会打开单独的 Chrome 窗口。关闭后浏览器仍可自己使用，只是 Agent 无法操作。",
++    "agentControlDesc": "开启后，Agent 可以在应用内浏览器里帮你打开网页、点击和填表，例如查资料或走完一个网站流程。它只能操作应用内浏览器这一个页面，碰不到 AGAS 界面本身，也不会打开单独的 Chrome 窗口。关闭后浏览器仍可自己使用，只是 Agent 无法操作。",
+     "agentControlSaved": "设置已保存",
+     "agentControlFailed": "设置保存失败",
+     "agentControlRestartRequired": "该设置需要重启应用后生效。",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/zh-CN/update.json b/packages/desktop/src/renderer/services/i18n/locales/zh-CN/update.json
+index de6526a..7061124 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/zh-CN/update.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/zh-CN/update.json
+@@ -30,7 +30,7 @@
+   "errorTitle": "更新失败",
+   "installerLastFailure": {
+     "title": "上次更新未完成",
+-    "description": "上次静默更新时未能关闭 AionUi。你可以重试更新、查看安装日志，或发送反馈。",
++    "description": "上次静默更新时未能关闭 AGAS。你可以重试更新、查看安装日志，或发送反馈。",
+     "retryUpdate": "重试更新",
+     "viewLog": "查看日志"
+   },
+@@ -64,7 +64,7 @@
+   "migration": {
+     "capsule": "致用户的一封信",
+     "letter": {
+-      "title": "来自 AionUi 团队的一封信",
++      "title": "来自 AGAS 团队的一封信",
+       "whyTitle": "为什么要这样做？",
+       "whyLead": "过去「打包分发、各自本地运行」的方式，一直难以支撑我们想带给您的体验：",
+       "whyReason1": "安装包一旦发出，我们就无法再触达它——修复无法及时送达，最新的技能与助手也无法为您同步；",
+@@ -75,20 +75,20 @@
+       "promise3": "新版本没有绑定消费：现在怎么用，以后还怎么用；现在免费的功能，以后也都是免费的；",
+       "choicesTitle": "您依旧可以自由选择：",
+       "choice2": "如果您更喜欢本地 DIY，可以持续更新开源源码，自行打包使用。",
+-      "closing": "最后，感谢您陪 AionUi 走到今天，期待在新版与您相遇。",
+-      "signature": "AionUi 团队",
++      "closing": "最后，感谢您陪 AGAS 走到今天，期待在新版与您相遇。",
++      "signature": "AGAS 团队",
+       "downloadNew": "前往官网下载新版",
+-      "greeting": "亲爱的 AionUi 用户：",
++      "greeting": "亲爱的 AGAS 用户：",
+       "whyOutroPrefix": "因此，",
+       "whyOutroBold": "新版本需要登录后使用",
+-      "whyOutroSuffix": "（支持 Google 登录，更多登录方式正在路上）。我们希望把 AionUi 真正当作一个产品认真做下去，有了账号，这些才有了起点；您反馈的问题，我们也能更好地响应。",
+-      "choice1Bold": "如果您日常使用 AionUi，建议您升级到新版本",
++      "whyOutroSuffix": "（支持 Google 登录，更多登录方式正在路上）。我们希望把 AGAS 真正当作一个产品认真做下去，有了账号，这些才有了起点；您反馈的问题，我们也能更好地响应。",
++      "choice1Bold": "如果您日常使用 AGAS，建议您升级到新版本",
+       "choice1Rest": "：今后新的能力、技能与助手都会第一时间到达您手上，后续基于账号的数据同步等服务，也都会为您顺畅开启；",
+       "promise1Bold": "您的对话与文件依旧只在本地",
+       "promise1Rest": "：Agent 在您自己的电脑上运行，对话内容与文件不会上传到我们的服务器；",
+-      "introPrefix": "感谢您一直以来对 AionUi 的支持，",
+-      "introBold": "这是一封 AionUi 新版本的下载邀请信",
+-      "introSuffix": "：今后 AionUi 的安装包与更新将由官网提供，不再走 GitHub Release 渠道，我们诚邀您移步官网下载新版。",
++      "introPrefix": "感谢您一直以来对 AGAS 的支持，",
++      "introBold": "这是一封 AGAS 新版本的下载邀请信",
++      "introSuffix": "：今后 AGAS 的安装包与更新将由官网提供，不再走 GitHub Release 渠道，我们诚邀您移步官网下载新版。",
+       "promise4": "开源仓库持续更新，核心功能保持同步，开源精神不变。",
+       "noRush": "如果您暂不升级，当前版本仍可照常使用，只是不会再收到更新；而一旦在新版本完成首次登录，本地数据便已迁移过去，请以新版本作为日常入口。"
+     }
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/common.json b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/common.json
+index 435ebec..03e5b83 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/common.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/common.json
+@@ -65,10 +65,10 @@
+   "more": "更多",
+   "refresh": "重新整理",
+   "readOnly": "唯讀",
+-  "tray.showWindow": "顯示 AionUi",
++  "tray.showWindow": "顯示 AGAS",
+   "tray.newChat": "新建對話",
+   "tray.closeToTray": "隱藏到托盤",
+-  "tray.about": "關於 AionUi",
++  "tray.about": "關於 AGAS",
+   "tray.restart": "重啟應用",
+   "tray.quit": "結束",
+   "tray.runningTasks": "運行中的任務",
+@@ -79,39 +79,39 @@
+   "backendStartup": {
+     "incompatibleRuntime": {
+       "title": "目前系統不支援內建後端",
+-      "description": "AionUi 已開啟，但本機 AionCore 後端無法在目前 Linux 版本上執行。請升級到受支援的 Linux 發行版後重新啟動 AionUi。",
++      "description": "AGAS 已開啟，但本機 AionCore 後端無法在目前 Linux 版本上執行。請升級到受支援的 Linux 發行版後重新啟動 AGAS。",
+       "requiredVersions": "需要的執行階段符號：{{versions}}"
+     },
+     "incompleteInstallation": {
+-      "title": "AionUi 安裝不完整",
+-      "description": "目前安裝缺少必要的本機資源，AionCore 無法啟動。請下載並重新安裝最新版 AionUi；如果重新安裝後仍然出現，請檢查系統安全軟體或防毒軟體是否隔離了 AionCore。",
++      "title": "AGAS 安裝不完整",
++      "description": "目前安裝缺少必要的本機資源，AionCore 無法啟動。請下載並重新安裝最新版 AGAS；如果重新安裝後仍然出現，請檢查系統安全軟體或防毒軟體是否隔離了 AionCore。",
+       "downloadLatest": "下載最新版",
+       "sendDiagnostics": "傳送診斷報告",
+       "diagnosticsSent": "診斷報告已傳送",
+       "diagnosticsReportSuccess": "診斷報告已傳送",
+       "diagnosticsReportFailed": "診斷報告傳送失敗",
+-      "runtimeComponentDescription": "目前安裝缺少必要的內建執行元件，{{resource}} 無法啟動。請重新安裝最新版 AionUi；如果重新安裝後仍然出現，請檢查系統安全軟體或防毒軟體是否隔離了 AionUi 元件。"
++      "runtimeComponentDescription": "目前安裝缺少必要的內建執行元件，{{resource}} 無法啟動。請重新安裝最新版 AGAS；如果重新安裝後仍然出現，請檢查系統安全軟體或防毒軟體是否隔離了 AGAS 元件。"
+     },
+     "packageArchitectureMismatch": {
+-      "title": "AionUi 安裝包架構不相符",
+-      "description": "目前 AionUi 安裝包是 {{packageArch}}，但這台 Mac 是 {{deviceArch}}。你可能下載了錯誤的安裝包，請重新下載並安裝 {{expectedArch}} 版本。"
++      "title": "AGAS 安裝包架構不相符",
++      "description": "目前 AGAS 安裝包是 {{packageArch}}，但這台 Mac 是 {{deviceArch}}。你可能下載了錯誤的安裝包，請重新下載並安裝 {{expectedArch}} 版本。"
+     },
+     "dataMigration": {
+       "title": "本地資料遷移失敗",
+-      "description": "AionUi 已開啟，但 AionCore 在初始化本地資料時停止。重新安裝 AionUi 未必能解決此問題。請傳送診斷報告或聯絡支援，以便檢查本地資料庫遷移狀態。",
++      "description": "AGAS 已開啟，但 AionCore 在初始化本地資料時停止。重新安裝 AGAS 未必能解決此問題。請傳送診斷報告或聯絡支援，以便檢查本地資料庫遷移狀態。",
+       "sendDiagnostics": "傳送診斷報告",
+       "diagnosticsSent": "診斷報告已傳送",
+       "diagnosticsReportSuccess": "診斷報告已傳送",
+       "diagnosticsReportFailed": "診斷報告傳送失敗"
+     },
+     "databaseNewerThanApp": {
+-      "title": "需要更新 AionUi",
+-      "description": "本機資料由較新版本的 AionUi 建立，目前版本無法開啟。請將 AionUi 更新至最新版本即可繼續使用，資料完好無損，無需重新安裝或重設資料。",
+-      "descriptionWithVersion": "本機資料由比目前版本 v{{currentVersion}} 更新的 AionUi 建立，目前版本無法開啟。請將 AionUi 更新至最新版本即可繼續使用，資料完好無損，無需重新安裝或重設資料。"
++      "title": "需要更新 AGAS",
++      "description": "本機資料由較新版本的 AGAS 建立，目前版本無法開啟。請將 AGAS 更新至最新版本即可繼續使用，資料完好無損，無需重新安裝或重設資料。",
++      "descriptionWithVersion": "本機資料由比目前版本 v{{currentVersion}} 更新的 AGAS 建立，目前版本無法開啟。請將 AGAS 更新至最新版本即可繼續使用，資料完好無損，無需重新安裝或重設資料。"
+     },
+     "localDataRepair": {
+       "title": "本機資料修復失敗",
+-      "description": "AionUi 已開啟，但 AionCore 在準備本機啟動資料時停止，例如 assistant 或代理記錄。重新安裝 AionUi 可能無法解決此問題。請傳送診斷報告或聯絡支援，以便檢查本機資料庫。",
++      "description": "AGAS 已開啟，但 AionCore 在準備本機啟動資料時停止，例如 assistant 或代理記錄。重新安裝 AGAS 可能無法解決此問題。請傳送診斷報告或聯絡支援，以便檢查本機資料庫。",
+       "sendDiagnostics": "傳送診斷",
+       "diagnosticsSent": "診斷已傳送",
+       "diagnosticsReportSuccess": "診斷報告已傳送",
+@@ -119,7 +119,7 @@
+     },
+     "startupDirectory": {
+       "title": "啟動目錄無法使用",
+-      "description": "AionUi 已開啟，但因為設定的工作目錄或日誌目錄不存在、無法存取或權限受限，AionCore 無法啟動。請確認這些目錄存在且可寫入，然後重新啟動 AionUi。",
++      "description": "AGAS 已開啟，但因為設定的工作目錄或日誌目錄不存在、無法存取或權限受限，AionCore 無法啟動。請確認這些目錄存在且可寫入，然後重新啟動 AGAS。",
+       "sendDiagnostics": "傳送診斷報告",
+       "diagnosticsSent": "診斷報告已傳送",
+       "diagnosticsReportSuccess": "診斷報告已傳送",
+@@ -127,7 +127,7 @@
+     },
+     "recoverableDatabaseCorruption": {
+       "title": "本機資料已損壞",
+-      "description": "偵測到本機資料庫損壞，AionUi 無法繼續啟動。確認後將備份舊資料庫，並建立新的本機資料庫繼續啟動。歷史對話將不再顯示，舊資料庫會保留為備份檔案。",
++      "description": "偵測到本機資料庫損壞，AGAS 無法繼續啟動。確認後將備份舊資料庫，並建立新的本機資料庫繼續啟動。歷史對話將不再顯示，舊資料庫會保留為備份檔案。",
+       "confirmRebuild": "備份舊資料庫並重建新資料庫",
+       "sendDiagnostics": "傳送診斷報告",
+       "diagnosticsHint": "傳送診斷報告不會修改本機資料庫。",
+@@ -143,8 +143,8 @@
+       }
+     },
+     "transientConcurrentStartup": {
+-      "title": "AionUi 正在啟動",
+-      "description": "此視窗開啟時，另一個 AionUi 啟動程序仍在使用本機資料。這是暫時的，您的資料是安全的——無需重新安裝。請稍候片刻後重試，或重新啟動 AionUi。",
++      "title": "AGAS 正在啟動",
++      "description": "此視窗開啟時，另一個 AGAS 啟動程序仍在使用本機資料。這是暫時的，您的資料是安全的——無需重新安裝。請稍候片刻後重試，或重新啟動 AGAS。",
+       "sendDiagnostics": "傳送診斷",
+       "diagnosticsSent": "診斷已傳送",
+       "diagnosticsReportSuccess": "診斷報告已傳送",
+@@ -202,5 +202,27 @@
+   },
+   "selectedCount": "已選 {{count}}",
+   "selectedSkills": "已選技能",
+-  "aiAssistant": "AI 助手"
++  "aiAssistant": "AI 助手",
++  "agas": {
++    "title": "AGAS 智慧體介面",
++    "subtitle": "Accessible General AI System · BY RAGHUNATH.D",
++    "native": "原生應用",
++    "agents": "本機智慧體",
++    "workspace": "應用",
++    "url": "本機網址",
++    "open": "開啟",
++    "refresh": "重新整理",
++    "desktopOnly": "原生應用需要 AGAS 桌面程式。",
++    "nativeHelp": "在本機啟動應用，輸入其回環網址並儲存，即可在此開啟。",
++    "unconfigured": "尚未設定",
++    "reachable": "應用可連線",
++    "unreachable": "應用無回應",
++    "nativeRegion": "原生應用檢視",
++    "empty": "選擇並開啟應用，以使用其原始介面。",
++    "catalog": "Agency 目錄",
++    "catalogCount": "{{count}} 位 Agency 原始專家",
++    "catalogMissing": "缺少 Agency 目錄，請執行目錄產生步驟。",
++    "search": "搜尋專家",
++    "inspect": "檢視原始提示詞"
++  }
+ }
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/conversation.json b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/conversation.json
+index 2dbdda6..5c076a4 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/conversation.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/conversation.json
+@@ -12,10 +12,10 @@
+     "clearWorkspace": "移除專案",
+     "openFolder": "Open Folder",
+     "none": "None",
+-    "quickActionsTitle": "AionUi 能做什麼？",
++    "quickActionsTitle": "AGAS 能做什麼？",
+     "quickActionFeedback": "反饋問題",
+     "quickActionStar": "喜歡我們？點個星吧",
+-    "skillsMarket": "AionUi Skills Market",
++    "skillsMarket": "AGAS Skills Market",
+     "skillsMarketDesc": "按需搜尋並啟用社區 Skills，一次設定，所有Agent通用。",
+     "skillsMarketDetails": "詳情 >>"
+   },
+@@ -319,7 +319,7 @@
+       },
+       "MCP_HTTP_RESPONSE_READ_FAILED": {
+         "title": "讀取團隊輔助程序回應失敗",
+-        "body": "AionUi 無法讀取本地團隊輔助程序的回應。請先重試一次，若持續發生再重新啟動應用。"
++        "body": "AGAS 無法讀取本地團隊輔助程序的回應。請先重試一次，若持續發生再重新啟動應用。"
+       },
+       "MCP_TOOL_REMOTE_ERROR": {
+         "title": "本地團隊輔助程序拒絕了這次請求",
+@@ -327,11 +327,11 @@
+       },
+       "MCP_TOOL_RESPONSE_UNEXPECTED": {
+         "title": "團隊輔助程序回傳了異常回應",
+-        "body": "AionUi 收到了本地團隊輔助程序的異常回應。請先重試一次，若持續發生再回報問題。"
++        "body": "AGAS 收到了本地團隊輔助程序的異常回應。請先重試一次，若持續發生再回報問題。"
+       },
+       "MCP_TCP_READ_FAILED": {
+         "title": "讀取本地團隊輔助程序失敗",
+-        "body": "AionUi 無法讀取本地團隊輔助程序的 TCP 回應。請先重試一次，如仍失敗可重新啟動應用。"
++        "body": "AGAS 無法讀取本地團隊輔助程序的 TCP 回應。請先重試一次，如仍失敗可重新啟動應用。"
+       },
+       "TEAM_SERVICE_UNAVAILABLE": {
+         "title": "團隊服務尚未就緒",
+@@ -619,13 +619,13 @@
+         "body": "本輪有 {{count}} 個步驟失敗且未生效。agy 仍會將這類輪次標記為成功，請核對實際結果而非回覆內容。"
+       },
+       "CLI_VERSION_OLDER": {
+-        "body": "已安裝的 {{cli}} 低於 AionUi 驗證過的版本，部分功能可能缺失。建議升級 {{cli}}。 （本機 {{reported}} / AionUi 驗證過 {{verified}}）"
++        "body": "已安裝的 {{cli}} 低於 AGAS 驗證過的版本，部分功能可能缺失。建議升級 {{cli}}。 （本機 {{reported}} / AGAS 驗證過 {{verified}}）"
+       },
+       "CLI_VERSION_NEWER": {
+-        "body": "已安裝的 {{cli}} 高於 AionUi 驗證過的版本。通常仍可正常使用；如遇異常行為請回報。 （本機 {{reported}} / AionUi 驗證過 {{verified}}）"
++        "body": "已安裝的 {{cli}} 高於 AGAS 驗證過的版本。通常仍可正常使用；如遇異常行為請回報。 （本機 {{reported}} / AGAS 驗證過 {{verified}}）"
+       },
+       "CODEX_RETRYING": {
+-        "body": "{{detail}}（累計第 {{attempts}} 次重試，已等待 {{elapsed}}——Agent 的服務方反覆中斷連線，AionUi 正在等待重連。）"
++        "body": "{{detail}}（累計第 {{attempts}} 次重試，已等待 {{elapsed}}——Agent 的服務方反覆中斷連線，AGAS 正在等待重連。）"
+       }
+     }
+   },
+@@ -705,7 +705,7 @@
+         "conflicted": "!",
+         "unknown": "?"
+       },
+-      "conflictedHint": "請先在 AionUi 之外解決此衝突",
++      "conflictedHint": "請先在 AGAS 之外解決此衝突",
+       "opaqueHint": "該狀態來自更新版本的後端 — 僅供檢視",
+       "degraded": "由於無法更新 git 索引，重新整理正以較慢的模式執行",
+       "truncated": "變更過多，僅顯示前一部分",
+@@ -724,7 +724,7 @@
+         "discard": "捨棄變更",
+         "stageAll": "全部暫存",
+         "unstageAll": "全部取消暫存",
+-        "blockedHint": "請先在 AionUi 之外解決衝突，然後再暫存或捨棄",
++        "blockedHint": "請先在 AGAS 之外解決衝突，然後再暫存或捨棄",
+         "confirmDiscardTitle": "要捨棄變更嗎？",
+         "confirmDiscardTracked": "{{count}} 個檔案的修改將遺失，且無法復原。",
+         "confirmDiscardUntracked": "{{count}} 個新檔案將被移到垃圾桶。",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/cron.json b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/cron.json
+index 27f4d08..246c8a2 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/cron.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/cron.json
+@@ -14,7 +14,7 @@
+     "error": "執行出錯",
+     "unread": "有新執行",
+     "unconfigured": "未配置定時任務",
+-    "defaultPrompt": "每天早上10點，為我搜尋AI最新的新聞動向，彙總並輸出洞察報告。（請使用 /cron 技能在 AionUi 中建立排程任務。）"
++    "defaultPrompt": "每天早上10點，為我搜尋AI最新的新聞動向，彙總並輸出洞察報告。（請使用 /cron 技能在 AGAS 中建立排程任務。）"
+   },
+   "actions": {
+     "goTo": "查看對話",
+@@ -55,10 +55,10 @@
+     "newTask": "新建任務",
+     "createViaChat": "透過對話建立",
+     "createManually": "手動建立",
+-    "description": "按計畫自動執行任務。你也可以在任意對話中直接讓 AionUi 幫你建立一個定時任務。",
++    "description": "按計畫自動執行任務。你也可以在任意對話中直接讓 AGAS 幫你建立一個定時任務。",
+     "awakeBanner": "定時任務僅在電腦喚醒狀態下運行。",
+     "keepAwake": "保持喚醒",
+-    "keepAwakeTooltip": "開啟後，AionUi 將阻止電腦進入休眠狀態",
++    "keepAwakeTooltip": "開啟後，AGAS 將阻止電腦進入休眠狀態",
+     "searchPlaceholder": "搜尋定時任務...",
+     "noSearchResults": "沒有匹配的定時任務。",
+     "createTask": "建立定時任務",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/login.json b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/login.json
+index 0cd09f5..a4e1b09 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/login.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/login.json
+@@ -1,6 +1,6 @@
+ {
+-  "pageTitle": "AionUi - 登入",
+-  "brand": "AionUi",
++  "pageTitle": "AGAS - 登入",
++  "brand": "AGAS",
+   "subtitle": "歡迎回來，請登入您的帳號",
+   "username": "使用者名稱",
+   "usernamePlaceholder": "請輸入使用者名稱",

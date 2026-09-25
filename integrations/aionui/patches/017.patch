@@ -1,0 +1,363 @@
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/preview.json b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/preview.json
+index 5b0bd7e..e4e0192 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/preview.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/preview.json
+@@ -85,7 +85,7 @@
+       "outsideSandbox": "此檔案不在目前專案沙箱範圍內。"
+     },
+     "serverInstall": {
+-      "hint": "AionUi 執行於伺服器上，預覽元件需要安裝在該伺服器上。請在伺服器執行以下指令後重試：",
++      "hint": "AGAS 執行於伺服器上，預覽元件需要安裝在該伺服器上。請在伺服器執行以下指令後重試：",
+       "icuNote": "若安裝後仍無法啟動，請在伺服器安裝 ICU 函式庫（Debian/Ubuntu：apt-get install -y libicu-dev）。"
+     }
+   },
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/settings.json b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/settings.json
+index aebb9bd..8a1033b 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/settings.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/settings.json
+@@ -120,7 +120,7 @@
+     "officialSkillsEmpty": "暫無官方技能。",
+     "noSearchResults": "沒有符合的技能。",
+     "customHint": "支援技能目錄、父目錄或 zip 匯入；單檔上限 {{maxFileSize}}、單技能上限 {{maxTotalSize}}；同名匯入會覆蓋現有技能。",
+-    "officialHint": "AionUi 官方內建的技能，開箱即用、唯讀，隨版本更新維護。",
++    "officialHint": "AGAS 官方內建的技能，開箱即用、唯讀，隨版本更新維護。",
+     "deleteAffectsNewOnlyHint": "刪除僅影響新會話：歷史會話中已選用的技能仍可繼續使用。"
+   },
+   "authMethod": "驗證",
+@@ -181,9 +181,9 @@
+   "myAssistantsHintShort": "由本機 CLI 自動生成、你自己建立或從官方複製的助手。",
+   "assistantGroupCli": "CLI 助手",
+   "assistantGroupCreated": "自訂助手",
+-  "myAssistantsEmpty": "你的助理清單還是空的。去「官方助理」啟用一個專家，或讓 AionUi 辨識你本機的 CLI 工具。",
+-  "officialAssistantsHint": "官方助理由 AionUi 持續維護、隨版本更新能力。啟用後即可在你的對話、開團和定時任務裡使用；若想調整成專屬於你的版本，可將它複製為我的助理。",
+-  "officialAssistantsHintShort": "AionUi 內建的官方助手，由官方持續維護、隨版本更新；可複製為「我的助手」後自由修改。",
++  "myAssistantsEmpty": "你的助理清單還是空的。去「官方助理」啟用一個專家，或讓 AGAS 辨識你本機的 CLI 工具。",
++  "officialAssistantsHint": "官方助理由 AGAS 持續維護、隨版本更新能力。啟用後即可在你的對話、開團和定時任務裡使用；若想調整成專屬於你的版本，可將它複製為我的助理。",
++  "officialAssistantsHintShort": "AGAS 內建的官方助手，由官方持續維護、隨版本更新；可複製為「我的助手」後自由修改。",
+   "customEmptyTitle": "還沒有自訂助手",
+   "customEmptyBody": "可以透過對話來建立一個，或從官方助手複製一個。",
+   "customEmptyCreate": "透過對話建立",
+@@ -325,7 +325,7 @@
+   "language": "語言",
+   "saveUploadToWorkspace": "上傳檔案儲存到專案資料夾",
+   "startOnBoot": "開機啟動",
+-  "startOnBootDesc": "登入 macOS 或 Windows 後自動啟動 AionUi。",
++  "startOnBootDesc": "登入 macOS 或 Windows 後自動啟動 AGAS。",
+   "startOnBootUnsupported": "僅在打包後的 macOS 與 Windows 用戶端中可用。",
+   "startOnBootUpdateFailed": "更新開機啟動設定失敗",
+   "closeToTray": "關閉到托盤",
+@@ -334,7 +334,7 @@
+   "hardwareAccelerationAutoDisabled": "因 GPU 反覆崩潰已自動關閉。",
+   "hardwareAccelerationAutoDisabledTitle": "已關閉硬體加速",
+   "hardwareAccelerationAutoDisabledNotice": "偵測到顯示卡渲染反覆崩潰，已自動關閉硬體加速以維持應用程式穩定。可在 設定 → 系統 中重新開啟。",
+-  "hardwareAccelerationRestartConfirm": "重新啟動 AionUi 以套用新的硬體加速設定？",
++  "hardwareAccelerationRestartConfirm": "重新啟動 AGAS 以套用新的硬體加速設定？",
+   "hardwareAccelerationUpdateFailed": "更新硬體加速設定失敗",
+   "browserNotification": {
+     "enable": "開啟瀏覽器通知",
+@@ -477,7 +477,7 @@
+   "installed": "已安裝",
+   "builtin": "內建",
+   "channels": "頻道",
+-  "webui.description": "把 AionUi 當作「7*24小時的遠程助手」，隨時隨地用遠程設備安排任務。",
++  "webui.description": "把 AGAS 當作「7*24小時的遠程助手」，隨時隨地用遠程設備安排任務。",
+   "webui.steps": "步驟 1. 開啟 WebUI 開關；步驟 2. 複製存取網址；步驟 3. 遠程瀏覽器開啟",
+   "webui.configuration": "WebUI 配置",
+   "webui.enable": "啟用 WebUI",
+@@ -555,13 +555,13 @@
+   "webui.passwordHint": "Password is shown in console on first startup. Use \"Change Password\" to reset",
+   "webui.checkConsoleForPassword": "Check application console for initial password",
+   "webui.browserNotSupported": "瀏覽器端無法存取 WebUI 設定",
+-  "webui.browserNotSupportedDesc": "出於安全考量，WebUI 設定只能在桌面應用中管理。請在 AionUi 桌面應用中開啟設定面板進行配置。",
++  "webui.browserNotSupportedDesc": "出於安全考量，WebUI 設定只能在桌面應用中管理。請在 AGAS 桌面應用中開啟設定面板進行配置。",
+   "webui.passwordHidden": "******",
+   "webui.passwordOnlyFirstTime": "密碼僅在首次啟動時顯示，之後將被隱藏",
+   "webui.resetPasswordWarning": "請妥善保管重設後的密碼！",
+-  "webui.featureRemoteDesc": "啟用 WebUI 後，你可以透過手機或遠端瀏覽器存取 AionUi。",
++  "webui.featureRemoteDesc": "啟用 WebUI 後，你可以透過手機或遠端瀏覽器存取 AGAS。",
+   "webui.featureChannelsTitle": "Messaging Control",
+-  "webui.featureChannelsDesc": "連接 Telegram、Lark、釘釘、微信，在即時通訊軟體中與 AionUi 互動。",
++  "webui.featureChannelsDesc": "連接 Telegram、Lark、釘釘、微信，在即時通訊軟體中與 AGAS 互動。",
+   "webui.goToChannels": "前往 Channels",
+   "assistant.telegramConfig": "Telegram Bot Configuration",
+   "assistant.botToken": "Bot Token",
+@@ -612,24 +612,24 @@
+   "assistant.step4": "Once approved, you can start chatting with Gemini through Telegram!",
+   "channels.title": "Channels",
+   "channels.telegramTitle": "Telegram",
+-  "channels.telegramDesc": "Chat with AionUi assistant via Telegram",
++  "channels.telegramDesc": "Chat with AGAS assistant via Telegram",
+   "channels.slackTitle": "Slack",
+-  "channels.slackDesc": "Chat with AionUi assistant via Slack",
++  "channels.slackDesc": "Chat with AGAS assistant via Slack",
+   "channels.discordTitle": "Discord",
+-  "channels.discordDesc": "Chat with AionUi assistant via Discord",
++  "channels.discordDesc": "Chat with AGAS assistant via Discord",
+   "channels.larkTitle": "Lark",
+-  "channels.larkDesc": "Chat with AionUi assistant via Lark",
++  "channels.larkDesc": "Chat with AGAS assistant via Lark",
+   "channels.dingtalkTitle": "DingTalk",
+-  "channels.dingtalkDesc": "Chat with AionUi assistant via DingTalk",
++  "channels.dingtalkDesc": "Chat with AGAS assistant via DingTalk",
+   "channels.weixinTitle": "微信",
+-  "channels.weixinDesc": "透過微信與 AionUi 助手對話",
++  "channels.weixinDesc": "透過微信與 AGAS 助手對話",
+   "channels.wecomTitle": "企業微信",
+-  "channels.wecomDesc": "透過企業微信智慧機器人與 AionUi 助手對話",
++  "channels.wecomDesc": "透過企業微信智慧機器人與 AGAS 助手對話",
+   "channels.comingSoon": "Coming Soon",
+   "channels.comingSoonDesc": "Support for {{channel}} is coming soon",
+   "channels.notConfigured": "Not configured",
+   "channels.configured": "Configured",
+-  "channels.guide": "連接 Telegram、飛書、釘釘等訊息應用，讓你的 AionUi 助手在任意聊天應用中隨時可用。",
++  "channels.guide": "連接 Telegram、飛書、釘釘等訊息應用，讓你的 AGAS 助手在任意聊天應用中隨時可用。",
+   "channels.selectFirst": "選擇一個渠道並完成憑證配置。",
+   "channels.enableAfterConfig": "啟用該渠道後，即可開始與 AI 助手對話。",
+   "channels.extension.requiredField": "請填寫必填項：{{field}}",
+@@ -708,18 +708,18 @@
+   "mcpDisconnected": "未測試",
+   "mcpError": "最近一次測試失敗",
+   "mcpErrorNodeCommandNotFound": "無法準備命令 {{command}}。AionCore 通常會自動準備受管的 Node 執行環境。請重試連線測試；若仍失敗，請檢查後端日誌，或把這個 MCP server 改成絕對命令路徑。",
+-  "mcpErrorBunCommandNotFound": "找不到命令 {{command}}。請安裝 Bun（包含 bun/bunx），重新啟動 AionUI，或把這個 MCP server 改成絕對命令路徑。",
+-  "mcpErrorUvCommandNotFound": "找不到命令 {{command}}。請安裝 uv，重新啟動 AionUI，或把這個 MCP server 改成絕對命令路徑。",
+-  "mcpErrorPythonCommandNotFound": "找不到命令 {{command}}。請安裝 Python，重新啟動 AionUI，或把這個 MCP server 改成絕對命令路徑。",
+-  "mcpErrorDenoCommandNotFound": "找不到命令 {{command}}。請安裝 Deno，重新啟動 AionUI，或把這個 MCP server 改成絕對命令路徑。",
++  "mcpErrorBunCommandNotFound": "找不到命令 {{command}}。請安裝 Bun（包含 bun/bunx），重新啟動 AGAS，或把這個 MCP server 改成絕對命令路徑。",
++  "mcpErrorUvCommandNotFound": "找不到命令 {{command}}。請安裝 uv，重新啟動 AGAS，或把這個 MCP server 改成絕對命令路徑。",
++  "mcpErrorPythonCommandNotFound": "找不到命令 {{command}}。請安裝 Python，重新啟動 AGAS，或把這個 MCP server 改成絕對命令路徑。",
++  "mcpErrorDenoCommandNotFound": "找不到命令 {{command}}。請安裝 Deno，重新啟動 AGAS，或把這個 MCP server 改成絕對命令路徑。",
+   "mcpErrorCommandNotFound": "找不到命令 {{command}}。請安裝該命令，或把這個 MCP server 改成絕對命令路徑。",
+-  "mcpErrorCommandPermissionDenied": "AionUI 無法執行 {{command}}，因為權限被拒絕。",
+-  "mcpErrorCommandStartFailed": "AionUI 啟動 {{command}} 失敗。",
++  "mcpErrorCommandPermissionDenied": "AGAS 無法執行 {{command}}，因為權限被拒絕。",
++  "mcpErrorCommandStartFailed": "AGAS 啟動 {{command}} 失敗。",
+   "mcpErrorTimeout": "連線測試在 {{seconds}} 秒後逾時。",
+-  "mcpErrorConnectionFailed": "AionUI 無法連到這個 MCP server。",
++  "mcpErrorConnectionFailed": "AGAS 無法連到這個 MCP server。",
+   "mcpErrorHttp": "這個 MCP server 回傳了 HTTP {{status}}。",
+   "mcpErrorRpc": "這個 MCP server 在處理 {{method}} 時回傳了 RPC 錯誤。",
+-  "mcpErrorProtocol": "AionUI 無法完成 MCP 握手。",
++  "mcpErrorProtocol": "AGAS 無法完成 MCP 握手。",
+   "mcpLastCheckedAvailable": "工具設定頁最近一次檢測結果：可用",
+   "mcpLastCheckedFailed": "工具設定頁最近一次檢測結果：失敗",
+   "mcpCheckedAt": "檢測時間：{{time}}",
+@@ -746,7 +746,7 @@
+   "mcpImportSuccess": "匯入成功",
+   "mcpImportFailed": "匯入失敗",
+   "mcpJsonInvalid": "無效的 JSON 格式",
+-  "mcpImportDescription": "從 CLI agents 中偵測 MCP 配置，並匯入到 AionUi。",
++  "mcpImportDescription": "從 CLI agents 中偵測 MCP 配置，並匯入到 AGAS。",
+   "mcpStepSelectAgent": "選擇Agent",
+   "mcpStepFetchTools": "獲取mcp",
+   "mcpStepImportSuccess": "匯入成功",
+@@ -763,8 +763,8 @@
+   "mcpStatusReady": "將匯入",
+   "mcpStatusImported": "已匯入",
+   "mcpStatusSkipped": "已跳過",
+-  "mcpWillImport": "會匯入到 AionUi",
+-  "mcpImported": "已匯入到 AionUi",
++  "mcpWillImport": "會匯入到 AGAS",
++  "mcpImported": "已匯入到 AGAS",
+   "mcpImportSkipped": "不支援",
+   "mcpImportSkippedAlreadyExists": "已經匯入",
+   "mcpImportSkippedPluginManaged": "這是 CLI 外掛託管的 MCP，不能在這裡匯入",
+@@ -821,7 +821,7 @@
+   "needHelpTooltip": "如需幫助，請查看",
+   "googleCloudProjectPlaceholder": "請輸入 Google Cloud Project ID",
+   "noAvailableModels": "暫無可用模型",
+-  "appDescription": "One desktop. Your AI agents, actually coworking.",
++  "appDescription": "Accessible General AI System — BY RAGHUNATH.D",
+   "helpDocumentation": "幫助文檔",
+   "updateLog": "更新日誌",
+   "feedback": "意見反饋",
+@@ -1230,8 +1230,8 @@
+       "managed_runtime_unavailable": "請修復或重新安裝 {{resource}}，然後重新測試連線。",
+       "auth_required": "Agent 可連線，但需要先登入。請在 CLI 中登入，或在「環境變數」中補充所需的 API 金鑰，然後重新測試連線。",
+       "no_provider": "尚未設定模型供應商。請在設定中新增並啟用一個供應商，然後重新測試連線。",
+-      "version_drift_older": "已安裝的 CLI 低於AionUi 驗證過的版本，部分功能可能缺失。建議升級。",
+-      "version_drift_newer": "已安裝的 CLI 高於AionUi 驗證過的版本。通常仍可正常使用；如遇異常行為請回報。"
++      "version_drift_older": "已安裝的 CLI 低於AGAS 驗證過的版本，部分功能可能缺失。建議升級。",
++      "version_drift_newer": "已安裝的 CLI 高於AGAS 驗證過的版本。通常仍可正常使用；如遇異常行為請回報。"
+     },
+     "boundAssistantsTitle": "綁定此 Agent 的助手",
+     "boundAssistantsCount": "{{count}} 個助手",
+@@ -1346,16 +1346,16 @@
+     "addViaChat": "透過對話新增",
+     "addManually": "手動新增",
+     "solveViaChat": "透過對話排查",
+-    "enabledToast": "已為你啟用 AionUi 管家",
++    "enabledToast": "已為你啟用 AGAS 管家",
+     "prompt": {
+       "createAssistant": "幫我建立一個新助手，並引導我完成設定。",
+       "addCustomAgent": "幫我新增一個自訂 Agent。",
+       "addModel": "幫我新增一個新的 LLM 模型和 API Key，並設為預設模型。",
+       "addMcp": "幫我設定一個 MCP 伺服器。",
+       "addSkill": "幫我匯入一個技能，並綁定到助手上。",
+-      "setupRemote": "幫我設定遠端存取，讓我在手機或外網也能開啟 AionUi。",
+-      "diagnose": "我在使用 AionUi 時遇到問題，幫我排查一下。\n\n【模組】{{module}}\n【問題描述】{{description}}\n【附件】見輸入框中的截圖。\n\n請幫我診斷原因並給出解決辦法。",
+-      "diagnoseChatError": "我在 AionUi 對話過程中遇到了報錯，幫我排查一下。\n\n【報錯內容】{{error}}\n\n請幫我診斷原因並給出解決辦法。"
++      "setupRemote": "幫我設定遠端存取，讓我在手機或外網也能開啟 AGAS。",
++      "diagnose": "我在使用 AGAS 時遇到問題，幫我排查一下。\n\n【模組】{{module}}\n【問題描述】{{description}}\n【附件】見輸入框中的截圖。\n\n請幫我診斷原因並給出解決辦法。",
++      "diagnoseChatError": "我在 AGAS 對話過程中遇到了報錯，幫我排查一下。\n\n【報錯內容】{{error}}\n\n請幫我診斷原因並給出解決辦法。"
+     },
+     "solveWithButler": "找管家排查"
+   },
+@@ -1364,7 +1364,7 @@
+   "browserData": {
+     "title": "應用內瀏覽器",
+     "agentControlLabel": "允許 Agent 操作 APP 內的瀏覽器",
+-    "agentControlDesc": "開啟後，Agent 可以在應用內瀏覽器裡替你開啟網頁、點擊和填寫表單，例如查資料或完成某個網站流程。它只能操作應用內瀏覽器這一個頁面，碰不到 AionUi 介面本身，也不會開啟獨立的 Chrome 視窗。關閉後瀏覽器仍可自行使用，只是 Agent 無法操作。",
++    "agentControlDesc": "開啟後，Agent 可以在應用內瀏覽器裡替你開啟網頁、點擊和填寫表單，例如查資料或完成某個網站流程。它只能操作應用內瀏覽器這一個頁面，碰不到 AGAS 介面本身，也不會開啟獨立的 Chrome 視窗。關閉後瀏覽器仍可自行使用，只是 Agent 無法操作。",
+     "agentControlSaved": "設定已儲存",
+     "agentControlFailed": "設定儲存失敗",
+     "agentControlRestartRequired": "此設定需重新啟動應用後生效。",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/update.json b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/update.json
+index 0b8a403..2c02f52 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/zh-TW/update.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/zh-TW/update.json
+@@ -30,7 +30,7 @@
+   "errorTitle": "更新失敗",
+   "installerLastFailure": {
+     "title": "上次更新未完成",
+-    "description": "上次靜默更新時未能關閉 AionUi。你可以重試更新、查看安裝日誌，或傳送回饋。",
++    "description": "上次靜默更新時未能關閉 AGAS。你可以重試更新、查看安裝日誌，或傳送回饋。",
+     "retryUpdate": "重試更新",
+     "viewLog": "查看日誌"
+   },
+@@ -64,7 +64,7 @@
+   "migration": {
+     "capsule": "致用戶的一封信",
+     "letter": {
+-      "title": "來自 AionUi 團隊的一封信",
++      "title": "來自 AGAS 團隊的一封信",
+       "whyTitle": "為什麼要這樣做？",
+       "whyLead": "過去「打包分發、各自本地運行」的方式，一直難以支撐我們想帶給您的體驗：",
+       "whyReason1": "安裝包一旦發出，我們就無法再觸達它——修復無法及時送達，最新的技能與助手也無法為您同步；",
+@@ -75,20 +75,20 @@
+       "promise3": "新版本沒有綁定消費：現在怎麼用，以後還怎麼用；現在免費的功能，以後也都是免費的；",
+       "choicesTitle": "您依舊可以自由選擇：",
+       "choice2": "如果您更喜歡本地 DIY，可以持續更新開源原始碼，自行打包使用。",
+-      "closing": "最後，感謝您陪 AionUi 走到今天，期待在新版與您相遇。",
+-      "signature": "AionUi 團隊",
++      "closing": "最後，感謝您陪 AGAS 走到今天，期待在新版與您相遇。",
++      "signature": "AGAS 團隊",
+       "downloadNew": "前往官網下載新版",
+-      "greeting": "親愛的 AionUi 用戶：",
++      "greeting": "親愛的 AGAS 用戶：",
+       "whyOutroPrefix": "因此，",
+       "whyOutroBold": "新版本需要登入後使用",
+-      "whyOutroSuffix": "（支援 Google 登入，更多登入方式正在路上）。我們希望把 AionUi 真正當作一個產品認真做下去，有了帳號，這些才有了起點；您回報的問題，我們也能更好地回應。",
+-      "choice1Bold": "如果您日常使用 AionUi，建議您升級到新版本",
++      "whyOutroSuffix": "（支援 Google 登入，更多登入方式正在路上）。我們希望把 AGAS 真正當作一個產品認真做下去，有了帳號，這些才有了起點；您回報的問題，我們也能更好地回應。",
++      "choice1Bold": "如果您日常使用 AGAS，建議您升級到新版本",
+       "choice1Rest": "：今後新的能力、技能與助手都會第一時間到達您手上，後續基於帳號的資料同步等服務，也都會為您順暢開啟；",
+       "promise1Bold": "您的對話與檔案依舊只在本地",
+       "promise1Rest": "：Agent 在您自己的電腦上運行，對話內容與檔案不會上傳到我們的伺服器；",
+-      "introPrefix": "感謝您一直以來對 AionUi 的支持，",
+-      "introBold": "這是一封 AionUi 新版本的下載邀請信",
+-      "introSuffix": "：今後 AionUi 的安裝包與更新將由官網提供，不再走 GitHub Release 渠道，我們誠邀您移步官網下載新版。",
++      "introPrefix": "感謝您一直以來對 AGAS 的支持，",
++      "introBold": "這是一封 AGAS 新版本的下載邀請信",
++      "introSuffix": "：今後 AGAS 的安裝包與更新將由官網提供，不再走 GitHub Release 渠道，我們誠邀您移步官網下載新版。",
+       "promise4": "開源倉庫持續更新，核心功能保持同步，開源精神不變。",
+       "noRush": "如果您暫不升級，當前版本仍可照常使用，只是不會再收到更新；而一旦在新版本完成首次登入，本地資料便已遷移過去，請以新版本作為日常入口。"
+     }
+diff --git a/public/manifest.webmanifest b/public/manifest.webmanifest
+index 83aebe7..45e1801 100644
+--- a/public/manifest.webmanifest
++++ b/public/manifest.webmanifest
+@@ -1,7 +1,7 @@
+ {
+-  "name": "AionUi",
+-  "short_name": "AionUi",
+-  "description": "AionUi WebUI for mobile and desktop browsers.",
++  "name": "AGAS",
++  "short_name": "AGAS",
++  "description": "AGAS WebUI for mobile and desktop browsers.",
+   "start_url": "./",
+   "scope": "./",
+   "display": "standalone",
+diff --git a/tests/unit/process/services/agas/workspacePolicy.test.ts b/tests/unit/process/services/agas/workspacePolicy.test.ts
+new file mode 100644
+index 0000000..c6aa4d4
+--- /dev/null
++++ b/tests/unit/process/services/agas/workspacePolicy.test.ts
+@@ -0,0 +1,26 @@
++import { describe, expect, it } from 'vitest';
++import { validateWorkspaceId, validateWorkspaceUrl } from '@/process/services/agas/workspacePolicy';
++
++describe('native workspace policy', () => {
++  it('accepts an explicit loopback application address', () => {
++    expect(validateWorkspaceUrl('http://127.0.0.1:3100/')).toBe('http://127.0.0.1:3100/');
++    expect(validateWorkspaceUrl('http://[::1]:3000/')).toBe('http://[::1]:3000/');
++  });
++
++  it.each([
++    'https://example.com/',
++    'http://192.168.1.2:3100/',
++    'file:///etc/passwd',
++    'http://user:secret@localhost:3100/',
++    'http://localhost:3100/?token=secret',
++    'http://localhost:3100/#private',
++    'http://127.0.0.1.evil.test:3100/',
++  ])('rejects a nonlocal or credential-bearing address: %s', (address) => {
++    expect(() => validateWorkspaceUrl(address)).toThrow();
++  });
++
++  it('accepts only known application identifiers', () => {
++    expect(() => validateWorkspaceId('paperclip')).not.toThrow();
++    expect(() => validateWorkspaceId('other-app')).toThrow('Unknown native workspace');
++  });
++});
+diff --git a/tests/unit/process/services/autoUpdaterService.test.ts b/tests/unit/process/services/autoUpdaterService.test.ts
+index 2849de0..467d150 100644
+--- a/tests/unit/process/services/autoUpdaterService.test.ts
++++ b/tests/unit/process/services/autoUpdaterService.test.ts
+@@ -9,6 +9,8 @@ import { rmSync } from 'fs';
+ 
+ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+ 
++vi.mock('@/process/services/agas/brandPolicy', () => ({ AGAS_AUTO_UPDATE_ENABLED: true }));
++
+ const autoUpdaterMock = vi.hoisted(() => ({
+   logger: null as unknown,
+   autoDownload: true,
+diff --git a/tests/unit/renderer/documentTitle.dom.test.tsx b/tests/unit/renderer/documentTitle.dom.test.tsx
+index 075bed2..839e0ec 100644
+--- a/tests/unit/renderer/documentTitle.dom.test.tsx
++++ b/tests/unit/renderer/documentTitle.dom.test.tsx
+@@ -25,9 +25,9 @@ describe('titleForPath', () => {
+ 
+   it('uses the login title on the login route only', () => {
+     expect(titleForPath('/login', t)).toBe('t(login.pageTitle)');
+-    expect(titleForPath('/guid', t)).toBe('AionUi');
+-    expect(titleForPath('/conversation/abc', t)).toBe('AionUi');
+-    expect(titleForPath('/settings/agent', t)).toBe('AionUi');
++    expect(titleForPath('/guid', t)).toBe('AGAS');
++    expect(titleForPath('/conversation/abc', t)).toBe('AGAS');
++    expect(titleForPath('/settings/agent', t)).toBe('AGAS');
+   });
+ });
+ 
+@@ -41,7 +41,7 @@ describe('DocumentTitle', () => {
+         <DocumentTitle />
+       </MemoryRouter>
+     );
+-    expect(document.title).toBe('AionUi');
++    expect(document.title).toBe('AGAS');
+   });
+ 
+   it('sets the localised login title on the login route', () => {
+diff --git a/tests/unit/updateBridgeCdnRewrite.test.ts b/tests/unit/updateBridgeCdnRewrite.test.ts
+index e13d1b5..5328b29 100644
+--- a/tests/unit/updateBridgeCdnRewrite.test.ts
++++ b/tests/unit/updateBridgeCdnRewrite.test.ts
+@@ -6,6 +6,8 @@
+ 
+ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+ 
++vi.mock('@/process/services/agas/brandPolicy', () => ({ AGAS_AUTO_UPDATE_ENABLED: true }));
++
+ vi.mock('@/common/platform/bridge', () => ({
+   bridge: {
+     buildProvider: vi.fn(() => {
