@@ -8,6 +8,27 @@ AGAS is being rebuilt as a real desktop application on the pinned AionUI/AionCor
 
 Prerequisites: Node.js 24.11+, Python 3, Bun, Corepack (for pnpm 9.15.4), and Rust/Cargo. The pinned sources are recorded in [runtime/foundations.lock.json](runtime/foundations.lock.json). Setup fetches those commits, applies the checked AGAS desktop patch, installs development dependencies, builds Paperclip's native runner and the local AionCore command, and creates the AGAS icons. First-time setup compiles substantial Rust code. This is a **source development setup**, not a one-click installer.
 
+On Ubuntu, prepare these tools before running setup. Use the official [Node.js/nvm](https://github.com/nvm-sh/nvm#install--update-script), [Bun](https://bun.sh/docs/installation), and [Rust](https://www.rust-lang.org/tools/install) installers if they are not already installed:
+
+```bash
+sudo apt update
+sudo apt install -y curl unzip python3 git build-essential
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.8/install.sh | bash
+export NVM_DIR="$HOME/.nvm"
+. "$NVM_DIR/nvm.sh"
+nvm install 24
+nvm use 24
+npm install --global corepack
+curl -fsSL https://bun.com/install | bash
+export PATH="$HOME/.bun/bin:$PATH"
+if ! command -v cargo >/dev/null 2>&1; then
+  curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
+fi
+[ ! -s "$HOME/.cargo/env" ] || . "$HOME/.cargo/env"
+```
+
+Run `node -v`, `bun --version`, `corepack --version`, and `cargo --version` to verify your shell sees each tool. In a new terminal, run `nvm use` from this checkout to select the version in `.nvmrc`. If the source checkouts were downloaded during an earlier failed attempt, keep your existing clone: `npm run setup` reuses the pinned sources. The setup preflight now reports missing tools before fetching sources, and `npm run build:desktop` explains missing AionUI dependencies before using `sharp`.
+
 ```bash
 npm run setup
 npm start
