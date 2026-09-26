@@ -1,0 +1,253 @@
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/uk-UA/common.json b/packages/desktop/src/renderer/services/i18n/locales/uk-UA/common.json
+index eeb89cc..5c3cce4 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/uk-UA/common.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/uk-UA/common.json
+@@ -67,10 +67,10 @@
+   "more": "Більше",
+   "refresh": "Оновити",
+   "readOnly": "Лише читання",
+-  "tray.showWindow": "Показати AionUi",
++  "tray.showWindow": "Показати AGAS",
+   "tray.newChat": "Новий чат",
+   "tray.closeToTray": "Згорнути в трей",
+-  "tray.about": "Про AionUi",
++  "tray.about": "Про AGAS",
+   "tray.restart": "Перезапустити програму",
+   "tray.quit": "Вийти",
+   "tray.runningTasks": "Запущені завдання",
+@@ -81,39 +81,39 @@
+   "backendStartup": {
+     "incompatibleRuntime": {
+       "title": "Ця система не підтримується вбудованим backend",
+-      "description": "AionUi відкрився, але локальний backend AionCore не може працювати в цій версії Linux. Оновіться до підтримуваного дистрибутива Linux і перезапустіть AionUi.",
++      "description": "AGAS відкрився, але локальний backend AionCore не може працювати в цій версії Linux. Оновіться до підтримуваного дистрибутива Linux і перезапустіть AGAS.",
+       "requiredVersions": "Потрібні символи середовища виконання: {{versions}}"
+     },
+     "incompleteInstallation": {
+-      "title": "Встановлення AionUi неповне",
+-      "description": "У цьому встановленні бракує потрібних локальних ресурсів, тому AionCore не може запуститися. Завантажте та перевстановіть останню версію AionUi. Якщо проблема повториться після перевстановлення, перевірте, чи захисне або антивірусне ПЗ не помістило AionCore у карантин.",
++      "title": "Встановлення AGAS неповне",
++      "description": "У цьому встановленні бракує потрібних локальних ресурсів, тому AionCore не може запуститися. Завантажте та перевстановіть останню версію AGAS. Якщо проблема повториться після перевстановлення, перевірте, чи захисне або антивірусне ПЗ не помістило AionCore у карантин.",
+       "downloadLatest": "Завантажити останню версію",
+       "sendDiagnostics": "Надіслати діагностику",
+       "diagnosticsSent": "Діагностику надіслано",
+       "diagnosticsReportSuccess": "Діагностичний звіт надіслано",
+       "diagnosticsReportFailed": "Не вдалося надіслати діагностичний звіт",
+-      "runtimeComponentDescription": "У цій інсталяції бракує потрібних вбудованих компонентів середовища виконання, тому {{resource}} не може запуститися. Перевстановіть найновіший пакет AionUi. Якщо проблема повториться після перевстановлення, перевірте, чи не помістило програмне забезпечення безпеки або антивірус компоненти AionUi у карантин."
++      "runtimeComponentDescription": "У цій інсталяції бракує потрібних вбудованих компонентів середовища виконання, тому {{resource}} не може запуститися. Перевстановіть найновіший пакет AGAS. Якщо проблема повториться після перевстановлення, перевірте, чи не помістило програмне забезпечення безпеки або антивірус компоненти AGAS у карантин."
+     },
+     "packageArchitectureMismatch": {
+-      "title": "AionUi package architecture mismatch",
+-      "description": "This AionUi package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
++      "title": "AGAS package architecture mismatch",
++      "description": "This AGAS package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
+     },
+     "dataMigration": {
+       "title": "Local data migration failed",
+-      "description": "AionUi opened, but AionCore stopped while initializing local data. Reinstalling AionUi may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
++      "description": "AGAS opened, but AionCore stopped while initializing local data. Reinstalling AGAS may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+       "diagnosticsReportFailed": "Failed to send diagnostics report"
+     },
+     "databaseNewerThanApp": {
+-      "title": "Потрібна новіша версія AionUi",
+-      "description": "Ваші локальні дані створено новішою версією AionUi, і ця версія не може їх відкрити. Оновіть AionUi до останньої версії, щоб продовжити — дані цілі, перевстановлення чи скидання не потрібні.",
+-      "descriptionWithVersion": "Ваші локальні дані створено версією AionUi, новішою за встановлену зараз (v{{currentVersion}}), тому ця версія не може їх відкрити. Оновіть AionUi до останньої версії, щоб продовжити — дані цілі, перевстановлення чи скидання не потрібні."
++      "title": "Потрібна новіша версія AGAS",
++      "description": "Ваші локальні дані створено новішою версією AGAS, і ця версія не може їх відкрити. Оновіть AGAS до останньої версії, щоб продовжити — дані цілі, перевстановлення чи скидання не потрібні.",
++      "descriptionWithVersion": "Ваші локальні дані створено версією AGAS, новішою за встановлену зараз (v{{currentVersion}}), тому ця версія не може їх відкрити. Оновіть AGAS до останньої версії, щоб продовжити — дані цілі, перевстановлення чи скидання не потрібні."
+     },
+     "localDataRepair": {
+       "title": "Local data repair failed",
+-      "description": "AionUi відкрився, але AionCore зупинився під час підготовки локальних даних запуску, як-от записи assistants або агентів. Повторне встановлення AionUi може не вирішити проблему. Надішліть діагностичний звіт або зверніться до підтримки, щоб можна було перевірити локальну базу даних.",
++      "description": "AGAS відкрився, але AionCore зупинився під час підготовки локальних даних запуску, як-от записи assistants або агентів. Повторне встановлення AGAS може не вирішити проблему. Надішліть діагностичний звіт або зверніться до підтримки, щоб можна було перевірити локальну базу даних.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+@@ -121,7 +121,7 @@
+     },
+     "startupDirectory": {
+       "title": "Startup directory is unavailable",
+-      "description": "AionUi opened, but AionCore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart AionUi.",
++      "description": "AGAS opened, but AionCore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart AGAS.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+@@ -129,7 +129,7 @@
+     },
+     "recoverableDatabaseCorruption": {
+       "title": "Локальні дані пошкоджено",
+-      "description": "AionUi виявив пошкодження локальної бази даних і не може продовжити запуск. Після підтвердження стару базу даних буде збережено як резервну копію, а для продовження запуску буде створено нову локальну базу даних. Попередні розмови більше не відображатимуться, стара база даних збережеться як файл резервної копії.",
++      "description": "AGAS виявив пошкодження локальної бази даних і не може продовжити запуск. Після підтвердження стару базу даних буде збережено як резервну копію, а для продовження запуску буде створено нову локальну базу даних. Попередні розмови більше не відображатимуться, стара база даних збережеться як файл резервної копії.",
+       "confirmRebuild": "Зберегти стару БД і створити нову",
+       "sendDiagnostics": "Надіслати діагностику",
+       "diagnosticsHint": "Надсилання діагностики не змінить локальну базу даних.",
+@@ -145,8 +145,8 @@
+       }
+     },
+     "transientConcurrentStartup": {
+-      "title": "AionUi запускається",
+-      "description": "Коли це вікно відкрилося, інший процес запуску AionUi усе ще використовував локальні дані. Це тимчасово, і ваші дані в безпеці — перевстановлення не потрібне. Зачекайте трохи та повторіть спробу або перезапустіть AionUi.",
++      "title": "AGAS запускається",
++      "description": "Коли це вікно відкрилося, інший процес запуску AGAS усе ще використовував локальні дані. Це тимчасово, і ваші дані в безпеці — перевстановлення не потрібне. Зачекайте трохи та повторіть спробу або перезапустіть AGAS.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+@@ -205,5 +205,27 @@
+   },
+   "selectedCount": "Вибрано {{count}}",
+   "selectedSkills": "Вибрані навички",
+-  "aiAssistant": "ШІ-асистент"
++  "aiAssistant": "ШІ-асистент",
++  "agas": {
++    "title": "Агенти AGAS",
++    "subtitle": "Accessible General AI System · BY RAGHUNATH.D",
++    "native": "Нативні застосунки",
++    "agents": "Локальні агенти",
++    "workspace": "Застосунок",
++    "url": "Локальна URL-адреса",
++    "open": "Відкрити",
++    "refresh": "Оновити",
++    "desktopOnly": "Для нативних застосунків потрібна настільна версія AGAS.",
++    "nativeHelp": "Запустіть застосунок локально, введіть адресу зворотного зв’язку, збережіть і відкрийте його тут.",
++    "unconfigured": "Не налаштовано",
++    "reachable": "Застосунок відповідає",
++    "unreachable": "Застосунок не відповідає",
++    "nativeRegion": "Перегляд нативного застосунку",
++    "empty": "Оберіть і відкрийте застосунок, щоб користуватися його справжнім інтерфейсом.",
++    "catalog": "Каталог Agency",
++    "catalogCount": "Оригінальних фахівців Agency: {{count}}",
++    "catalogMissing": "Каталог Agency відсутній. Запустіть крок створення каталогу.",
++    "search": "Пошук фахівців",
++    "inspect": "Переглянути початковий запит"
++  }
+ }
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/uk-UA/conversation.json b/packages/desktop/src/renderer/services/i18n/locales/uk-UA/conversation.json
+index dc6bfc7..fc4adc6 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/uk-UA/conversation.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/uk-UA/conversation.json
+@@ -12,10 +12,10 @@
+     "clearWorkspace": "Видалити проєкт",
+     "openFolder": "Відкрити папку",
+     "none": "Немає",
+-    "quickActionsTitle": "Що вміє AionUi?",
++    "quickActionsTitle": "Що вміє AGAS?",
+     "quickActionFeedback": "Повідомити про проблему",
+     "quickActionStar": "Подобається? Поставте нам зірку!",
+-    "skillsMarket": "Маркет навичок AionUi",
++    "skillsMarket": "Маркет навичок AGAS",
+     "skillsMarketDesc": "Шукайте та активуйте навички спільноти за запитом. Налаштуйте один раз — доступно для всіх агентів.",
+     "skillsMarketDetails": "Докладніше >>"
+   },
+@@ -323,7 +323,7 @@
+       },
+       "MCP_HTTP_RESPONSE_READ_FAILED": {
+         "title": "Failed to read the team helper response",
+-        "body": "AionUi could not read the local team helper response. Retry once, and if it keeps happening, restart the app."
++        "body": "AGAS could not read the local team helper response. Retry once, and if it keeps happening, restart the app."
+       },
+       "MCP_TOOL_REMOTE_ERROR": {
+         "title": "The local team helper rejected the request",
+@@ -331,11 +331,11 @@
+       },
+       "MCP_TOOL_RESPONSE_UNEXPECTED": {
+         "title": "The team helper returned an unexpected response",
+-        "body": "AionUi received an unexpected response from the local team helper. Retry once, and report it if the problem persists."
++        "body": "AGAS received an unexpected response from the local team helper. Retry once, and report it if the problem persists."
+       },
+       "MCP_TCP_READ_FAILED": {
+         "title": "Failed to read from the local team helper",
+-        "body": "AionUi could not read the local team helper TCP response. Retry once, and restart the app if it keeps failing."
++        "body": "AGAS could not read the local team helper TCP response. Retry once, and restart the app if it keeps failing."
+       },
+       "TEAM_SERVICE_UNAVAILABLE": {
+         "title": "Team service is not ready yet",
+@@ -627,13 +627,13 @@
+         "body": "Кроків завершилося невдало: {{count}}; вони НЕ були виконані. agy все одно позначає такі ходи як успішні — перевіряйте фактичний результат, а не відповідь."
+       },
+       "CLI_VERSION_OLDER": {
+-        "body": "Встановлена версія {{cli}} старіша за перевірену AionUi; деякі можливості можуть бути відсутні. Радимо оновити {{cli}}. (встановлено: {{reported}} / перевірено AionUi: {{verified}})"
++        "body": "Встановлена версія {{cli}} старіша за перевірену AGAS; деякі можливості можуть бути відсутні. Радимо оновити {{cli}}. (встановлено: {{reported}} / перевірено AGAS: {{verified}})"
+       },
+       "CLI_VERSION_NEWER": {
+-        "body": "Встановлена версія {{cli}} новіша за перевірену AionUi. Зазвичай усе працює; повідомте про дивну поведінку. (встановлено: {{reported}} / перевірено AionUi: {{verified}})"
++        "body": "Встановлена версія {{cli}} новіша за перевірену AGAS. Зазвичай усе працює; повідомте про дивну поведінку. (встановлено: {{reported}} / перевірено AGAS: {{verified}})"
+       },
+       "CODEX_RETRYING": {
+-        "body": "{{detail}} (спроба {{attempts}}, минуло {{elapsed}} — провайдер агента постійно обриває з'єднання, AionUi очікує відновлення.)"
++        "body": "{{detail}} (спроба {{attempts}}, минуло {{elapsed}} — провайдер агента постійно обриває з'єднання, AGAS очікує відновлення.)"
+       }
+     }
+   },
+@@ -713,7 +713,7 @@
+         "conflicted": "!",
+         "unknown": "?"
+       },
+-      "conflictedHint": "Спершу розв’яжіть цей конфлікт поза AionUi",
++      "conflictedHint": "Спершу розв’яжіть цей конфлікт поза AGAS",
+       "opaqueHint": "Цей стан надійшов від новішої версії сервера — лише для перегляду",
+       "degraded": "Оновлення виконується в повільнішому режимі: не вдається записати індекс git",
+       "truncated": "Занадто багато змін — показано лише першу частину",
+@@ -732,7 +732,7 @@
+         "discard": "Скасувати зміни",
+         "stageAll": "Проіндексувати все",
+         "unstageAll": "Прибрати все з індексу",
+-        "blockedHint": "Спершу розв’яжіть конфлікт поза AionUi, потім індексуйте або скасовуйте",
++        "blockedHint": "Спершу розв’яжіть конфлікт поза AGAS, потім індексуйте або скасовуйте",
+         "confirmDiscardTitle": "Скасувати зміни?",
+         "confirmDiscardTracked": "Правки у {{count}} файлах буде втрачено. Це не можна скасувати.",
+         "confirmDiscardUntracked": "{{count}} нових файлів буде переміщено до смітника.",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/uk-UA/cron.json b/packages/desktop/src/renderer/services/i18n/locales/uk-UA/cron.json
+index c4fa92a..380120a 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/uk-UA/cron.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/uk-UA/cron.json
+@@ -14,7 +14,7 @@
+     "error": "Помилка",
+     "unread": "Нове виконання",
+     "unconfigured": "Немає запланованих завдань",
+-    "defaultPrompt": "Кожного дня о 10 ранку шукай останні новини про ШІ, роби резюме та виводь аналітичний звіт. (Будь ласка, використай навичку /cron, щоб створити заплановане завдання в AionUi.)"
++    "defaultPrompt": "Кожного дня о 10 ранку шукай останні новини про ШІ, роби резюме та виводь аналітичний звіт. (Будь ласка, використай навичку /cron, щоб створити заплановане завдання в AGAS.)"
+   },
+   "actions": {
+     "goTo": "Переглянути чат",
+@@ -54,10 +54,10 @@
+     "newTask": "Нове завдання",
+     "createViaChat": "Створити через чат",
+     "createManually": "Створити вручну",
+-    "description": "Запускайте завдання за розкладом. Ви також можете попросити AionUi у будь-якому діалозі створити завдання для вас.",
++    "description": "Запускайте завдання за розкладом. Ви також можете попросити AGAS у будь-якому діалозі створити завдання для вас.",
+     "awakeBanner": "Заплановані завдання запускаються лише тоді, коли ваш комп'ютер увімкнений.",
+     "keepAwake": "Не дозволяти засинати",
+-    "keepAwakeTooltip": "Якщо увімкнено, AionUi не дозволить вашому комп'ютеру перейти в режим сну",
++    "keepAwakeTooltip": "Якщо увімкнено, AGAS не дозволить вашому комп'ютеру перейти в режим сну",
+     "createTask": "Створити заплановане завдання",
+     "editTask": "Редагувати заплановане завдання",
+     "createSuccess": "Завдання успішно створено",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/uk-UA/login.json b/packages/desktop/src/renderer/services/i18n/locales/uk-UA/login.json
+index d2dc649..40b5a00 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/uk-UA/login.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/uk-UA/login.json
+@@ -1,6 +1,6 @@
+ {
+-  "pageTitle": "AionUi — Вхід",
+-  "brand": "AionUi",
++  "pageTitle": "AGAS — Вхід",
++  "brand": "AGAS",
+   "subtitle": "З поверненням, будь ласка, увійдіть у свій обліковий запис",
+   "username": "Ім'я користувача",
+   "usernamePlaceholder": "Введіть ім'я користувача",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/uk-UA/preview.json b/packages/desktop/src/renderer/services/i18n/locales/uk-UA/preview.json
+index 5f9ecac..1204da0 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/uk-UA/preview.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/uk-UA/preview.json
+@@ -87,7 +87,7 @@
+       "outsideSandbox": "Цей файл знаходиться поза межами поточної пісочниці проєкту."
+     },
+     "serverInstall": {
+-      "hint": "AionUi працює на сервері. Компонент попереднього перегляду потрібно встановити на цьому сервері. Виконайте на сервері таку команду та повторіть спробу:",
++      "hint": "AGAS працює на сервері. Компонент попереднього перегляду потрібно встановити на цьому сервері. Виконайте на сервері таку команду та повторіть спробу:",
+       "icuNote": "Якщо запуск усе ще не вдається, встановіть на сервері бібліотеку ICU (Debian/Ubuntu: apt-get install -y libicu-dev)."
+     }
+   },

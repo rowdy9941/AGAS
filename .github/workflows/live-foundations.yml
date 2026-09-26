@@ -1,0 +1,27 @@
+name: Live foundations (preview)
+
+on:
+  push:
+    branches: [rebuild/agas-foundations]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-preview-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.95.0'
+      - run: npm install --global corepack
+      - run: npm run setup
+      - run: npm run build:desktop
+      - run: npm run smoke:preview

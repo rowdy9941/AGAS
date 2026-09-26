@@ -1,0 +1,35 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 16px 24px;
+  gap: 8px;
+  color: var(--text-primary);
+}
+.native {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  gap: 12px;
+}
+.host {
+  flex: 1;
+  min-height: 240px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: var(--text-secondary);
+}
+.agents {
+  overflow: auto;
+  flex: 1;
+}

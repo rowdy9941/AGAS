@@ -1,0 +1,513 @@
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/ko-KR/login.json b/packages/desktop/src/renderer/services/i18n/locales/ko-KR/login.json
+index 41d8b76..429ac4d 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/ko-KR/login.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/ko-KR/login.json
+@@ -1,6 +1,6 @@
+ {
+-  "pageTitle": "AionUi - 로그인",
+-  "brand": "AionUi",
++  "pageTitle": "AGAS - 로그인",
++  "brand": "AGAS",
+   "subtitle": "다시 오신 것을 환영합니다. 계정에 로그인하세요",
+   "username": "사용자 이름",
+   "usernamePlaceholder": "사용자 이름을 입력하세요",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/ko-KR/preview.json b/packages/desktop/src/renderer/services/i18n/locales/ko-KR/preview.json
+index 44077ef..513d76d 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/ko-KR/preview.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/ko-KR/preview.json
+@@ -85,7 +85,7 @@
+       "outsideSandbox": "이 파일은 현재 프로젝트 샌드박스 범위 밖에 있습니다."
+     },
+     "serverInstall": {
+-      "hint": "AionUi가 서버에서 실행 중입니다. 미리보기 구성 요소는 해당 서버에 설치해야 합니다. 서버에서 다음 명령을 실행한 후 다시 시도하세요:",
++      "hint": "AGAS가 서버에서 실행 중입니다. 미리보기 구성 요소는 해당 서버에 설치해야 합니다. 서버에서 다음 명령을 실행한 후 다시 시도하세요:",
+       "icuNote": "설치 후에도 시작되지 않으면 서버에 ICU 라이브러리를 설치하세요(Debian/Ubuntu: apt-get install -y libicu-dev)."
+     }
+   },
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/ko-KR/settings.json b/packages/desktop/src/renderer/services/i18n/locales/ko-KR/settings.json
+index a1545a2..53c60fb 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/ko-KR/settings.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/ko-KR/settings.json
+@@ -120,7 +120,7 @@
+     "officialSkillsEmpty": "사용 가능한 공식 스킬이 없습니다.",
+     "noSearchResults": "일치하는 스킬이 없습니다.",
+     "customHint": "스킬 폴더, 상위 폴더 또는 zip을 가져올 수 있으며, 파일당 최대 {{maxFileSize}}, 스킬당 최대 {{maxTotalSize}}입니다. 같은 이름으로 가져오면 기존 스킬을 덮어씁니다.",
+-    "officialHint": "AionUi에 기본 제공되는 공식 스킬입니다. 바로 사용할 수 있고 읽기 전용이며 버전마다 업데이트됩니다.",
++    "officialHint": "AGAS에 기본 제공되는 공식 스킬입니다. 바로 사용할 수 있고 읽기 전용이며 버전마다 업데이트됩니다.",
+     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
+   },
+   "authMethod": "인증",
+@@ -182,8 +182,8 @@
+   "assistantGroupCli": "CLI 어시스턴트",
+   "assistantGroupCreated": "사용자 지정 어시스턴트",
+   "myAssistantsEmpty": "아직 어시스턴트가 없습니다. 공식 어시스턴트를 활성화하거나 로컬 CLI 도구를 연결하세요.",
+-  "officialAssistantsHint": "공식 어시스턴트는 AionUi가 지속적으로 관리하며 릴리스마다 업데이트됩니다. 활성화하면 목록에서 사용할 수 있습니다. 나만의 버전으로 다듬으려면 내 어시스턴트로 복제하세요.",
+-  "officialAssistantsHintShort": "AionUi에 내장된 공식 어시스턴트로, 공식적으로 지속 관리되며 버전마다 업데이트됩니다. \"내 어시스턴트\"로 복제하면 자유롭게 편집할 수 있습니다.",
++  "officialAssistantsHint": "공식 어시스턴트는 AGAS가 지속적으로 관리하며 릴리스마다 업데이트됩니다. 활성화하면 목록에서 사용할 수 있습니다. 나만의 버전으로 다듬으려면 내 어시스턴트로 복제하세요.",
++  "officialAssistantsHintShort": "AGAS에 내장된 공식 어시스턴트로, 공식적으로 지속 관리되며 버전마다 업데이트됩니다. \"내 어시스턴트\"로 복제하면 자유롭게 편집할 수 있습니다.",
+   "customEmptyTitle": "아직 사용자 지정 어시스턴트가 없습니다",
+   "customEmptyBody": "채팅을 통해 만들거나 공식 어시스턴트를 복제하세요.",
+   "customEmptyCreate": "채팅으로 만들기",
+@@ -325,7 +325,7 @@
+   "language": "언어",
+   "saveUploadToWorkspace": "업로드 파일을 프로젝트 폴더에 저장",
+   "startOnBoot": "시작 시 자동 실행",
+-  "startOnBootDesc": "macOS 또는 Windows 로그인 시 AionUi를 자동으로 실행합니다.",
++  "startOnBootDesc": "macOS 또는 Windows 로그인 시 AGAS를 자동으로 실행합니다.",
+   "startOnBootUnsupported": "패키징된 macOS 및 Windows 앱에서만 사용할 수 있습니다.",
+   "startOnBootUpdateFailed": "시작 시 자동 실행 설정을 업데이트하지 못했습니다",
+   "closeToTray": "트레이로 닫기",
+@@ -334,7 +334,7 @@
+   "hardwareAccelerationAutoDisabled": "GPU가 반복적으로 충돌하여 자동으로 비활성화되었습니다.",
+   "hardwareAccelerationAutoDisabledTitle": "하드웨어 가속이 비활성화됨",
+   "hardwareAccelerationAutoDisabledNotice": "그래픽 렌더링이 반복적으로 충돌하여 앱 안정성을 위해 하드웨어 가속을 자동으로 껐습니다. 설정 → 시스템에서 다시 켤 수 있습니다.",
+-  "hardwareAccelerationRestartConfirm": "새 하드웨어 가속 설정을 적용하려면 AionUi를 다시 시작하시겠습니까?",
++  "hardwareAccelerationRestartConfirm": "새 하드웨어 가속 설정을 적용하려면 AGAS를 다시 시작하시겠습니까?",
+   "hardwareAccelerationUpdateFailed": "하드웨어 가속 설정을 업데이트하지 못했습니다",
+   "browserNotification": {
+     "enable": "브라우저 알림 활성화",
+@@ -477,7 +477,7 @@
+   "installed": "설치됨",
+   "builtin": "내장",
+   "channels": "채널",
+-  "webui.description": "AionUi를 '24시간 원격 어시스턴트'로 사용 - 언제 어디서나 원격 장치로 작업을 예약할 수 있습니다.",
++  "webui.description": "AGAS를 '24시간 원격 어시스턴트'로 사용 - 언제 어디서나 원격 장치로 작업을 예약할 수 있습니다.",
+   "webui.steps": "단계 1. WebUI 켜기; 단계 2. 접근 URL 복사; 단계 3. 원격 브라우저에서 열기",
+   "webui.configuration": "WebUI 구성",
+   "webui.enable": "WebUI 활성화",
+@@ -555,13 +555,13 @@
+   "webui.passwordHint": "Password is shown in console on first startup. Use \"Change Password\" to reset",
+   "webui.checkConsoleForPassword": "Check application console for initial password",
+   "webui.browserNotSupported": "브라우저에서는 WebUI 설정에 접근할 수 없습니다",
+-  "webui.browserNotSupportedDesc": "보안상의 이유로 WebUI 설정은 데스크톱 앱에서만 관리할 수 있습니다. AionUi 데스크톱 앱에서 설정 패널을 열어 구성해 주세요.",
++  "webui.browserNotSupportedDesc": "보안상의 이유로 WebUI 설정은 데스크톱 앱에서만 관리할 수 있습니다. AGAS 데스크톱 앱에서 설정 패널을 열어 구성해 주세요.",
+   "webui.passwordHidden": "******",
+   "webui.passwordOnlyFirstTime": "비밀번호는 처음 시작할 때만 표시되며 이후에는 숨겨집니다",
+   "webui.resetPasswordWarning": "재설정된 비밀번호를 잘 보관하세요!",
+-  "webui.featureRemoteDesc": "WebUI를 활성화하면 휴대폰이나 원격 브라우저에서 AionUi에 접속할 수 있습니다.",
++  "webui.featureRemoteDesc": "WebUI를 활성화하면 휴대폰이나 원격 브라우저에서 AGAS에 접속할 수 있습니다.",
+   "webui.featureChannelsTitle": "Messaging Control",
+-  "webui.featureChannelsDesc": "Telegram, Lark, DingTalk, WeChat을 연결해 IM 앱에서 AionUi와 상호작용하세요.",
++  "webui.featureChannelsDesc": "Telegram, Lark, DingTalk, WeChat을 연결해 IM 앱에서 AGAS와 상호작용하세요.",
+   "webui.goToChannels": "Channels로 이동",
+   "assistant.telegramConfig": "Telegram Bot Configuration",
+   "assistant.botToken": "Bot Token",
+@@ -612,24 +612,24 @@
+   "assistant.step4": "Once approved, you can start chatting with Gemini through Telegram!",
+   "channels.title": "Channels",
+   "channels.telegramTitle": "Telegram",
+-  "channels.telegramDesc": "Chat with AionUi assistant via Telegram",
++  "channels.telegramDesc": "Chat with AGAS assistant via Telegram",
+   "channels.slackTitle": "Slack",
+-  "channels.slackDesc": "Chat with AionUi assistant via Slack",
++  "channels.slackDesc": "Chat with AGAS assistant via Slack",
+   "channels.discordTitle": "Discord",
+-  "channels.discordDesc": "Chat with AionUi assistant via Discord",
++  "channels.discordDesc": "Chat with AGAS assistant via Discord",
+   "channels.larkTitle": "Lark",
+-  "channels.larkDesc": "Chat with AionUi assistant via Lark",
++  "channels.larkDesc": "Chat with AGAS assistant via Lark",
+   "channels.dingtalkTitle": "DingTalk",
+-  "channels.dingtalkDesc": "Chat with AionUi assistant via DingTalk",
++  "channels.dingtalkDesc": "Chat with AGAS assistant via DingTalk",
+   "channels.weixinTitle": "WeChat",
+-  "channels.weixinDesc": "WeChat을 통해 AionUi 어시스턴트와 대화하세요",
++  "channels.weixinDesc": "WeChat을 통해 AGAS 어시스턴트와 대화하세요",
+   "channels.wecomTitle": "WeCom",
+-  "channels.wecomDesc": "WeCom(기업 WeChat) AI 봇으로 AionUi 어시스턴트와 대화",
++  "channels.wecomDesc": "WeCom(기업 WeChat) AI 봇으로 AGAS 어시스턴트와 대화",
+   "channels.comingSoon": "Coming Soon",
+   "channels.comingSoonDesc": "Support for {{channel}} is coming soon",
+   "channels.notConfigured": "Not configured",
+   "channels.configured": "Configured",
+-  "channels.guide": "메신저 앱을 연결해 언제든 AionUi와 대화하세요.",
++  "channels.guide": "메신저 앱을 연결해 언제든 AGAS와 대화하세요.",
+   "channels.selectFirst": "채널을 선택하고 인증 정보를 설정하세요.",
+   "channels.enableAfterConfig": "설정 후 채널을 활성화하면 AI 어시스턴트와 대화를 시작할 수 있습니다.",
+   "channels.extension.requiredField": "필수 항목을 입력하세요: {{field}}",
+@@ -707,18 +707,18 @@
+   "mcpDisconnected": "테스트 안 함",
+   "mcpError": "최근 테스트 실패",
+   "mcpErrorNodeCommandNotFound": "명령 {{command}}을(를) 준비하지 못했습니다. AionCore는 보통 관리형 Node 런타임을 자동으로 준비합니다. 연결 테스트를 다시 시도하고, 계속 실패하면 백엔드 로그를 확인하거나 이 MCP 서버에 절대 명령 경로를 설정하세요.",
+-  "mcpErrorBunCommandNotFound": "Command {{command}} was not found. Install Bun (which includes bun/bunx), restart AionUI, or configure this MCP server to use an absolute command path.",
+-  "mcpErrorUvCommandNotFound": "Command {{command}} was not found. Install uv, restart AionUI, or configure this MCP server to use an absolute command path.",
+-  "mcpErrorPythonCommandNotFound": "Command {{command}} was not found. Install Python, restart AionUI, or configure this MCP server to use an absolute command path.",
+-  "mcpErrorDenoCommandNotFound": "Command {{command}} was not found. Install Deno, restart AionUI, or configure this MCP server to use an absolute command path.",
++  "mcpErrorBunCommandNotFound": "Command {{command}} was not found. Install Bun (which includes bun/bunx), restart AGAS, or configure this MCP server to use an absolute command path.",
++  "mcpErrorUvCommandNotFound": "Command {{command}} was not found. Install uv, restart AGAS, or configure this MCP server to use an absolute command path.",
++  "mcpErrorPythonCommandNotFound": "Command {{command}} was not found. Install Python, restart AGAS, or configure this MCP server to use an absolute command path.",
++  "mcpErrorDenoCommandNotFound": "Command {{command}} was not found. Install Deno, restart AGAS, or configure this MCP server to use an absolute command path.",
+   "mcpErrorCommandNotFound": "Command {{command}} was not found. Install it or configure this MCP server to use an absolute command path.",
+-  "mcpErrorCommandPermissionDenied": "AionUI cannot execute {{command}} because permission was denied.",
+-  "mcpErrorCommandStartFailed": "AionUI failed to start {{command}}.",
++  "mcpErrorCommandPermissionDenied": "AGAS cannot execute {{command}} because permission was denied.",
++  "mcpErrorCommandStartFailed": "AGAS failed to start {{command}}.",
+   "mcpErrorTimeout": "Connection test timed out after {{seconds}}s.",
+-  "mcpErrorConnectionFailed": "AionUI could not reach the MCP server.",
++  "mcpErrorConnectionFailed": "AGAS could not reach the MCP server.",
+   "mcpErrorHttp": "The MCP server returned HTTP {{status}}.",
+   "mcpErrorRpc": "The MCP server returned an RPC error while handling {{method}}.",
+-  "mcpErrorProtocol": "AionUI could not complete the MCP handshake.",
++  "mcpErrorProtocol": "AGAS could not complete the MCP handshake.",
+   "mcpLastCheckedAvailable": "도구 설정에서 최근 점검 결과: 사용 가능",
+   "mcpLastCheckedFailed": "도구 설정에서 최근 점검 결과: 실패",
+   "mcpCheckedAt": "점검 시간: {{time}}",
+@@ -734,7 +734,7 @@
+   "mcpImportSuccess": "가져오기 성공",
+   "mcpImportFailed": "가져오기 실패",
+   "mcpJsonInvalid": "유효하지 않은 JSON 형식",
+-  "mcpImportDescription": "CLI agents 에서 감지한 MCP 구성을 AionUi 로 가져옵니다.",
++  "mcpImportDescription": "CLI agents 에서 감지한 MCP 구성을 AGAS 로 가져옵니다.",
+   "mcpStepSelectAgent": "에이전트 선택",
+   "mcpStepFetchTools": "MCP 가져오기",
+   "mcpStepImportSuccess": "가져오기 성공",
+@@ -751,8 +751,8 @@
+   "mcpStatusReady": "가져오기 예정",
+   "mcpStatusImported": "가져옴",
+   "mcpStatusSkipped": "건너뜀",
+-  "mcpWillImport": "AionUi로 가져옵니다",
+-  "mcpImported": "AionUi로 가져왔습니다",
++  "mcpWillImport": "AGAS로 가져옵니다",
++  "mcpImported": "AGAS로 가져왔습니다",
+   "mcpImportSkipped": "지원 안 함",
+   "mcpImportSkippedAlreadyExists": "이미 가져옴",
+   "mcpImportSkippedPluginManaged": "CLI 플러그인이 관리하는 MCP라 여기서 가져올 수 없습니다",
+@@ -809,7 +809,7 @@
+   "needHelpTooltip": "도움이 필요하시면 확인하세요",
+   "googleCloudProjectPlaceholder": "Google Cloud 프로젝트 ID 입력",
+   "noAvailableModels": "사용 가능한 모델 없음",
+-  "appDescription": "One desktop. Your AI agents, actually coworking.",
++  "appDescription": "Accessible General AI System — BY RAGHUNATH.D",
+   "helpDocumentation": "도움말 문서",
+   "updateLog": "업데이트 로그",
+   "feedback": "피드백",
+@@ -1216,8 +1216,8 @@
+       "managed_runtime_unavailable": "Repair or reinstall {{resource}}, then retry the connection test.",
+       "auth_required": "에이전트에 연결할 수 있지만 로그인이 필요합니다. CLI에서 로그인하거나 「환경 변수」에 필요한 API 키를 추가한 후 연결 테스트를 다시 시도하세요.",
+       "no_provider": "모델 제공자가 구성되지 않았습니다. 설정에서 제공자를 추가하고 활성화한 후 연결 테스트를 다시 시도하세요.",
+-      "version_drift_older": "설치된 CLI가 AionUi가 검증한 버전보다 낮아 일부 기능이 없을 수 있습니다. 업그레이드를 권장합니다.",
+-      "version_drift_newer": "설치된 CLI가 AionUi가 검증한 버전보다 높습니다. 대개 정상 동작하지만 이상이 있으면 알려주세요."
++      "version_drift_older": "설치된 CLI가 AGAS가 검증한 버전보다 낮아 일부 기능이 없을 수 있습니다. 업그레이드를 권장합니다.",
++      "version_drift_newer": "설치된 CLI가 AGAS가 검증한 버전보다 높습니다. 대개 정상 동작하지만 이상이 있으면 알려주세요."
+     },
+     "boundAssistantsTitle": "이 에이전트를 사용하는 어시스턴트",
+     "boundAssistantsCount": "어시스턴트 {{count}}개",
+@@ -1346,16 +1346,16 @@
+     "addViaChat": "대화로 추가",
+     "addManually": "수동으로 추가",
+     "solveViaChat": "대화로 해결",
+-    "enabledToast": "AionUi 집사를 활성화했습니다",
++    "enabledToast": "AGAS 집사를 활성화했습니다",
+     "prompt": {
+       "createAssistant": "새 어시스턴트를 만들고 설정을 안내해 주세요.",
+       "addCustomAgent": "사용자 지정 Agent 추가를 도와주세요.",
+       "addModel": "새 LLM 공급자와 API 키를 추가하고 기본 모델로 설정해 주세요.",
+       "addMcp": "MCP 서버 설정을 도와주세요.",
+       "addSkill": "스킬을 가져와 어시스턴트에 연결해 주세요.",
+-      "setupRemote": "휴대폰이나 외부에서 AionUi를 열 수 있도록 원격 접속을 설정해 주세요.",
+-      "diagnose": "AionUi 사용 중 문제가 발생했습니다. 진단을 도와주세요.\n\n[모듈] {{module}}\n[문제 설명] {{description}}\n[첨부] 입력창의 스크린샷 참조.\n\n원인을 진단하고 해결 방법을 알려주세요.",
+-      "diagnoseChatError": "AionUi 대화 중 오류가 발생했습니다. 진단을 도와주세요.\n\n[오류 내용] {{error}}\n\n원인을 진단하고 해결 방법을 알려주세요."
++      "setupRemote": "휴대폰이나 외부에서 AGAS를 열 수 있도록 원격 접속을 설정해 주세요.",
++      "diagnose": "AGAS 사용 중 문제가 발생했습니다. 진단을 도와주세요.\n\n[모듈] {{module}}\n[문제 설명] {{description}}\n[첨부] 입력창의 스크린샷 참조.\n\n원인을 진단하고 해결 방법을 알려주세요.",
++      "diagnoseChatError": "AGAS 대화 중 오류가 발생했습니다. 진단을 도와주세요.\n\n[오류 내용] {{error}}\n\n원인을 진단하고 해결 방법을 알려주세요."
+     },
+     "solveWithButler": "집사에게 문의"
+   },
+@@ -1364,7 +1364,7 @@
+   "browserData": {
+     "title": "앱 내 브라우저",
+     "agentControlLabel": "앱 내 브라우저의 에이전트 조작 허용",
+-    "agentControlDesc": "켜면 에이전트가 앱 내 브라우저에서 페이지를 열고 클릭하거나 양식을 채워 줍니다(자료 검색, 웹사이트 절차 완료 등). 조작 대상은 앱 내 브라우저 화면 하나뿐이며, AionUi 인터페이스 자체에는 접근할 수 없고 별도의 Chrome 창도 열지 않습니다. 끄면 브라우저는 계속 직접 사용할 수 있고 에이전트만 조작할 수 없게 됩니다.",
++    "agentControlDesc": "켜면 에이전트가 앱 내 브라우저에서 페이지를 열고 클릭하거나 양식을 채워 줍니다(자료 검색, 웹사이트 절차 완료 등). 조작 대상은 앱 내 브라우저 화면 하나뿐이며, AGAS 인터페이스 자체에는 접근할 수 없고 별도의 Chrome 창도 열지 않습니다. 끄면 브라우저는 계속 직접 사용할 수 있고 에이전트만 조작할 수 없게 됩니다.",
+     "agentControlSaved": "설정이 저장되었습니다",
+     "agentControlFailed": "설정 저장에 실패했습니다",
+     "agentControlRestartRequired": "이 설정은 앱을 다시 시작한 후 적용됩니다.",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/ko-KR/update.json b/packages/desktop/src/renderer/services/i18n/locales/ko-KR/update.json
+index ba353e7..870b085 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/ko-KR/update.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/ko-KR/update.json
+@@ -30,7 +30,7 @@
+   "errorTitle": "업데이트 실패",
+   "installerLastFailure": {
+     "title": "이전 업데이트가 완료되지 않았습니다",
+-    "description": "이전 무음 업데이트 중 AionUi를 닫지 못했습니다. 업데이트를 다시 시도하거나 설치 로그를 확인하거나 피드백을 보낼 수 있습니다.",
++    "description": "이전 무음 업데이트 중 AGAS를 닫지 못했습니다. 업데이트를 다시 시도하거나 설치 로그를 확인하거나 피드백을 보낼 수 있습니다.",
+     "retryUpdate": "업데이트 다시 시도",
+     "viewLog": "로그 보기"
+   },
+@@ -64,7 +64,7 @@
+   "migration": {
+     "capsule": "사용자에게 드리는 편지",
+     "letter": {
+-      "title": "AionUi 팀이 보내는 편지",
++      "title": "AGAS 팀이 보내는 편지",
+       "whyTitle": "왜 이렇게 하나요?",
+       "whyLead": "기존의 \"설치 파일 배포 후 각자 로컬 실행\" 방식으로는 저희가 전하고 싶은 경험을 뒷받침하기 어려웠습니다.",
+       "whyReason1": "설치 파일은 배포되고 나면 더 이상 손이 닿지 않아, 수정 사항을 제때 전달할 수도, 최신 스킬과 어시스턴트를 동기화할 수도 없습니다.",
+@@ -75,20 +75,20 @@
+       "promise3": "새 버전에 소비 강요는 없습니다. 지금처럼 사용하시던 방식 그대로이며, 지금 무료인 기능은 앞으로도 무료입니다.",
+       "choicesTitle": "여전히 자유롭게 선택하실 수 있습니다:",
+       "choice2": "로컬 DIY를 선호하신다면, 오픈소스 코드를 계속 받아 직접 빌드하시면 됩니다.",
+-      "closing": "끝으로, 지금까지 AionUi와 함께해 주셔서 감사합니다. 새 버전에서 뵙기를 기대합니다.",
+-      "signature": "AionUi 팀",
++      "closing": "끝으로, 지금까지 AGAS와 함께해 주셔서 감사합니다. 새 버전에서 뵙기를 기대합니다.",
++      "signature": "AGAS 팀",
+       "downloadNew": "공식 사이트에서 새 버전 받기",
+-      "greeting": "친애하는 AionUi 사용자님께,",
++      "greeting": "친애하는 AGAS 사용자님께,",
+       "whyOutroPrefix": "따라서 ",
+       "whyOutroBold": "새 버전은 로그인 후 사용할 수 있습니다",
+-      "whyOutroSuffix": " (Google 로그인 지원, 더 많은 방식이 준비 중입니다). 저희는 AionUi를 하나의 제품으로서 진지하게 만들어 가고자 합니다. 계정이 그 출발점이 되며, 보내 주시는 문제에도 더 잘 대응할 수 있게 됩니다.",
+-      "choice1Bold": "AionUi를 일상적으로 사용하신다면 새 버전으로의 업그레이드를 권장합니다",
++      "whyOutroSuffix": " (Google 로그인 지원, 더 많은 방식이 준비 중입니다). 저희는 AGAS를 하나의 제품으로서 진지하게 만들어 가고자 합니다. 계정이 그 출발점이 되며, 보내 주시는 문제에도 더 잘 대응할 수 있게 됩니다.",
++      "choice1Bold": "AGAS를 일상적으로 사용하신다면 새 버전으로의 업그레이드를 권장합니다",
+       "choice1Rest": ". 새로운 기능·스킬·어시스턴트를 가장 먼저 받아 보실 수 있고, 데이터 동기화 등 계정 기반 서비스도 원활하게 이용하실 수 있습니다.",
+       "promise1Bold": "대화와 파일은 여전히 로컬에만 있습니다",
+       "promise1Rest": ": 에이전트는 사용자님의 컴퓨터에서 실행되며, 대화 내용과 파일은 저희 서버로 업로드되지 않습니다.",
+-      "introPrefix": "AionUi를 아껴 주셔서 감사합니다. ",
+-      "introBold": "이 편지는 AionUi 새 버전 다운로드 초대장입니다",
+-      "introSuffix": ". 앞으로 AionUi의 설치 파일과 업데이트는 GitHub Release가 아닌 공식 웹사이트를 통해 제공됩니다. 공식 웹사이트에서 새 버전을 받아 보시기를 진심으로 권해 드립니다.",
++      "introPrefix": "AGAS를 아껴 주셔서 감사합니다. ",
++      "introBold": "이 편지는 AGAS 새 버전 다운로드 초대장입니다",
++      "introSuffix": ". 앞으로 AGAS의 설치 파일과 업데이트는 GitHub Release가 아닌 공식 웹사이트를 통해 제공됩니다. 공식 웹사이트에서 새 버전을 받아 보시기를 진심으로 권해 드립니다.",
+       "promise4": "오픈소스 저장소는 계속 업데이트되며, 핵심 기능은 동기화되고, 오픈소스 정신은 변하지 않습니다.",
+       "noRush": "아직 업그레이드하지 않으셔도 현재 버전은 평소처럼 사용할 수 있으며, 다만 업데이트는 제공되지 않습니다. 그러나 새 버전에서 첫 로그인을 마치면 로컬 데이터는 이미 그쪽으로 이전되므로, 이후에는 새 버전을 평소 사용 입구로 삼아 주세요."
+     }
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/pt-BR/common.json b/packages/desktop/src/renderer/services/i18n/locales/pt-BR/common.json
+index feb0615..91808a7 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/pt-BR/common.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/pt-BR/common.json
+@@ -65,10 +65,10 @@
+   "more": "Mais",
+   "refresh": "Atualizar",
+   "readOnly": "Somente leitura",
+-  "tray.showWindow": "Mostrar AionUi",
++  "tray.showWindow": "Mostrar AGAS",
+   "tray.newChat": "Novo Chat",
+   "tray.closeToTray": "Ocultar na Bandeja",
+-  "tray.about": "Sobre o AionUi",
++  "tray.about": "Sobre o AGAS",
+   "tray.restart": "Reiniciar Aplicativo",
+   "tray.quit": "Sair",
+   "tray.runningTasks": "Tarefas em Execução",
+@@ -79,39 +79,39 @@
+   "backendStartup": {
+     "incompatibleRuntime": {
+       "title": "Este sistema não é suportado pelo backend integrado",
+-      "description": "O AionUi abriu, mas o backend local do AionCore não pode ser executado nesta versão do Linux. Por favor, atualize para uma distribuição Linux suportada e reinicie o AionUi.",
++      "description": "O AGAS abriu, mas o backend local do AionCore não pode ser executado nesta versão do Linux. Por favor, atualize para uma distribuição Linux suportada e reinicie o AGAS.",
+       "requiredVersions": "Símbolos de runtime necessários: {{versions}}"
+     },
+     "incompleteInstallation": {
+-      "title": "A instalação do AionUi está incompleta",
+-      "description": "Esta instalação está faltando recursos locais necessários, portanto o AionCore não pode ser iniciado. Por favor, baixe e reinstale a versão mais recente do AionUi.",
++      "title": "A instalação do AGAS está incompleta",
++      "description": "Esta instalação está faltando recursos locais necessários, portanto o AionCore não pode ser iniciado. Por favor, baixe e reinstale a versão mais recente do AGAS.",
+       "downloadLatest": "Baixar mais recente",
+       "sendDiagnostics": "Enviar diagnósticos",
+       "diagnosticsSent": "Diagnósticos enviados",
+       "diagnosticsReportSuccess": "Relatório de diagnóstico enviado",
+       "diagnosticsReportFailed": "Falha ao enviar o relatório de diagnóstico",
+-      "runtimeComponentDescription": "Esta instalação não tem os componentes de runtime integrados necessários, portanto {{resource}} não pode iniciar. Reinstale o pacote mais recente do AionUi. Se isso continuar após a reinstalação, verifique se algum software de segurança ou antivírus colocou componentes do AionUi em quarentena."
++      "runtimeComponentDescription": "Esta instalação não tem os componentes de runtime integrados necessários, portanto {{resource}} não pode iniciar. Reinstale o pacote mais recente do AGAS. Se isso continuar após a reinstalação, verifique se algum software de segurança ou antivírus colocou componentes do AGAS em quarentena."
+     },
+     "packageArchitectureMismatch": {
+-      "title": "AionUi package architecture mismatch",
+-      "description": "This AionUi package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
++      "title": "AGAS package architecture mismatch",
++      "description": "This AGAS package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
+     },
+     "dataMigration": {
+       "title": "Local data migration failed",
+-      "description": "AionUi opened, but AionCore stopped while initializing local data. Reinstalling AionUi may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
++      "description": "AGAS opened, but AionCore stopped while initializing local data. Reinstalling AGAS may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+       "diagnosticsReportFailed": "Failed to send diagnostics report"
+     },
+     "databaseNewerThanApp": {
+-      "title": "É necessária uma versão mais recente do AionUi",
+-      "description": "Seus dados locais foram criados por uma versão mais recente do AionUi e esta versão não consegue abri-los. Atualize o AionUi para a versão mais recente para continuar; seus dados estão intactos e não é preciso reinstalar nem redefinir nada.",
+-      "descriptionWithVersion": "Seus dados locais foram criados por uma versão do AionUi mais recente do que a instalada agora (v{{currentVersion}}), então esta versão não consegue abri-los. Atualize o AionUi para a versão mais recente para continuar; seus dados estão intactos e não é preciso reinstalar nem redefinir nada."
++      "title": "É necessária uma versão mais recente do AGAS",
++      "description": "Seus dados locais foram criados por uma versão mais recente do AGAS e esta versão não consegue abri-los. Atualize o AGAS para a versão mais recente para continuar; seus dados estão intactos e não é preciso reinstalar nem redefinir nada.",
++      "descriptionWithVersion": "Seus dados locais foram criados por uma versão do AGAS mais recente do que a instalada agora (v{{currentVersion}}), então esta versão não consegue abri-los. Atualize o AGAS para a versão mais recente para continuar; seus dados estão intactos e não é preciso reinstalar nem redefinir nada."
+     },
+     "localDataRepair": {
+       "title": "Local data repair failed",
+-      "description": "O AionUi abriu, mas o AionCore parou ao preparar dados locais de inicialização, como registros de assistants ou agentes. Reinstalar o AionUi pode não corrigir o problema. Envie um relatório de diagnóstico ou entre em contato com o suporte para que o banco de dados local possa ser inspecionado.",
++      "description": "O AGAS abriu, mas o AionCore parou ao preparar dados locais de inicialização, como registros de assistants ou agentes. Reinstalar o AGAS pode não corrigir o problema. Envie um relatório de diagnóstico ou entre em contato com o suporte para que o banco de dados local possa ser inspecionado.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+@@ -119,7 +119,7 @@
+     },
+     "startupDirectory": {
+       "title": "Diretório de inicialização indisponível",
+-      "description": "O AionUi abriu, mas o AionCore não pôde iniciar porque o diretório de trabalho ou de logs configurado não existe, está indisponível ou foi bloqueado por permissões. Verifique se os diretórios existem e permitem escrita, depois reinicie o AionUi.",
++      "description": "O AGAS abriu, mas o AionCore não pôde iniciar porque o diretório de trabalho ou de logs configurado não existe, está indisponível ou foi bloqueado por permissões. Verifique se os diretórios existem e permitem escrita, depois reinicie o AGAS.",
+       "sendDiagnostics": "Enviar diagnóstico",
+       "diagnosticsSent": "Diagnóstico enviado",
+       "diagnosticsReportSuccess": "Relatório de diagnóstico enviado",
+@@ -127,7 +127,7 @@
+     },
+     "recoverableDatabaseCorruption": {
+       "title": "Os dados locais estão corrompidos",
+-      "description": "O AionUi detectou que o banco de dados local está corrompido e não pode continuar a inicialização. Após a confirmação, o banco de dados antigo será salvo como backup e um novo banco de dados local será criado para continuar a inicialização. As conversas anteriores não serão mais exibidas, e o banco antigo será mantido como arquivo de backup.",
++      "description": "O AGAS detectou que o banco de dados local está corrompido e não pode continuar a inicialização. Após a confirmação, o banco de dados antigo será salvo como backup e um novo banco de dados local será criado para continuar a inicialização. As conversas anteriores não serão mais exibidas, e o banco antigo será mantido como arquivo de backup.",
+       "confirmRebuild": "Fazer backup do DB antigo e criar novo DB",
+       "sendDiagnostics": "Enviar diagnóstico",
+       "diagnosticsHint": "Enviar diagnóstico não modificará o banco de dados local.",
+@@ -143,8 +143,8 @@
+       }
+     },
+     "transientConcurrentStartup": {
+-      "title": "O AionUi está iniciando",
+-      "description": "Quando esta janela foi aberta, outra inicialização do AionUi ainda estava usando os dados locais. Isso é temporário e seus dados estão seguros — não é necessário reinstalar. Aguarde um momento e tente novamente ou reinicie o AionUi.",
++      "title": "O AGAS está iniciando",
++      "description": "Quando esta janela foi aberta, outra inicialização do AGAS ainda estava usando os dados locais. Isso é temporário e seus dados estão seguros — não é necessário reinstalar. Aguarde um momento e tente novamente ou reinicie o AGAS.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+@@ -202,5 +202,27 @@
+   },
+   "selectedCount": "{{count}} selecionado(s)",
+   "selectedSkills": "Habilidades selecionadas",
+-  "aiAssistant": "Assistente de IA"
++  "aiAssistant": "Assistente de IA",
++  "agas": {
++    "title": "Agentes AGAS",
++    "subtitle": "Accessible General AI System · BY RAGHUNATH.D",
++    "native": "Aplicativos nativos",
++    "agents": "Agentes locais",
++    "workspace": "Aplicativo",
++    "url": "URL local",
++    "open": "Abrir",
++    "refresh": "Atualizar",
++    "desktopOnly": "Os aplicativos nativos exigem o AGAS para computador.",
++    "nativeHelp": "Inicie o aplicativo localmente, informe o endereço de loopback, salve e abra aqui.",
++    "unconfigured": "Não configurado",
++    "reachable": "Aplicativo disponível",
++    "unreachable": "Aplicativo indisponível",
++    "nativeRegion": "Área do aplicativo nativo",
++    "empty": "Selecione e abra um aplicativo para usar sua interface real.",
++    "catalog": "Catálogo Agency",
++    "catalogCount": "{{count}} especialistas originais do Agency",
++    "catalogMissing": "O catálogo Agency está ausente. Execute a geração do catálogo.",
++    "search": "Buscar especialistas",
++    "inspect": "Ver prompt original"
++  }
+ }
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/pt-BR/conversation.json b/packages/desktop/src/renderer/services/i18n/locales/pt-BR/conversation.json
+index 486026a..e4bdf6d 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/pt-BR/conversation.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/pt-BR/conversation.json
+@@ -12,10 +12,10 @@
+     "clearWorkspace": "Remover projeto",
+     "openFolder": "Abrir Pasta",
+     "none": "Nenhum",
+-    "quickActionsTitle": "O que o AionUi pode fazer?",
++    "quickActionsTitle": "O que o AGAS pode fazer?",
+     "quickActionFeedback": "Reportar Problema",
+     "quickActionStar": "Gostou? Nos dê uma estrela!",
+-    "skillsMarket": "Mercado de Habilidades AionUi",
++    "skillsMarket": "Mercado de Habilidades AGAS",
+     "skillsMarketDesc": "Pesquise e ative as Habilidades da comunidade sob demanda. Configure uma vez, disponível para todos os agentes.",
+     "skillsMarketDetails": "Ver Mais >>"
+   },
+@@ -316,8 +316,8 @@
+       },
+       "WORKSPACE_PATH_CONTAINS_WHITESPACE_RUNTIME_UNSUPPORTED": {
+         "title": "Este caminho de projeto não é mais compatível com execução",
+-        "body": "Esta conversa ou tarefa existente usa um caminho de projeto cujos nomes de diretório contêm espaços ou outros caracteres de espaço em branco. O AionUi não oferece mais suporte ao envio de mensagens em caminhos desse tipo. Crie uma nova conversa ou tarefa com um caminho de projeto sem espaços em branco.",
+-        "bodyWithPath": "O caminho de projeto existente \"{{workspacePath}}\" contém espaços ou outros caracteres de espaço em branco. O AionUi não oferece mais suporte ao envio de mensagens em conversas ou tarefas que usam esse caminho. Crie uma nova conversa ou tarefa com um caminho de projeto sem espaços em branco."
++        "body": "Esta conversa ou tarefa existente usa um caminho de projeto cujos nomes de diretório contêm espaços ou outros caracteres de espaço em branco. O AGAS não oferece mais suporte ao envio de mensagens em caminhos desse tipo. Crie uma nova conversa ou tarefa com um caminho de projeto sem espaços em branco.",
++        "bodyWithPath": "O caminho de projeto existente \"{{workspacePath}}\" contém espaços ou outros caracteres de espaço em branco. O AGAS não oferece mais suporte ao envio de mensagens em conversas ou tarefas que usam esse caminho. Crie uma nova conversa ou tarefa com um caminho de projeto sem espaços em branco."
+       },
+       "UNKNOWN_UPSTREAM_ERROR": {
+         "title": "O agente ou provedor upstream falhou",
+@@ -325,7 +325,7 @@
+       },
+       "MCP_HTTP_RESPONSE_READ_FAILED": {
+         "title": "Failed to read the team helper response",
+-        "body": "AionUi could not read the local team helper response. Retry once, and if it keeps happening, restart the app."
++        "body": "AGAS could not read the local team helper response. Retry once, and if it keeps happening, restart the app."
+       },
+       "MCP_TOOL_REMOTE_ERROR": {
+         "title": "The local team helper rejected the request",
+@@ -333,11 +333,11 @@
+       },
+       "MCP_TOOL_RESPONSE_UNEXPECTED": {
+         "title": "The team helper returned an unexpected response",
+-        "body": "AionUi received an unexpected response from the local team helper. Retry once, and report it if the problem persists."
++        "body": "AGAS received an unexpected response from the local team helper. Retry once, and report it if the problem persists."
+       },
+       "MCP_TCP_READ_FAILED": {
+         "title": "Failed to read from the local team helper",
+-        "body": "AionUi could not read the local team helper TCP response. Retry once, and restart the app if it keeps failing."
++        "body": "AGAS could not read the local team helper TCP response. Retry once, and restart the app if it keeps failing."
+       },
+       "TEAM_SERVICE_UNAVAILABLE": {
+         "title": "Team service is not ready yet",
+@@ -625,13 +625,13 @@
+         "body": "{{count}} etapa(s) falharam e NÃO tiveram efeito. O agy encerra esses turnos como bem-sucedidos mesmo assim, então confira o resultado real em vez da resposta."
+       },
+       "CLI_VERSION_OLDER": {
+-        "body": "O {{cli}} instalado é anterior à versão verificada pelo AionUi; alguns recursos podem estar ausentes. Considere atualizar o {{cli}}. (instalado: {{reported}} / verificado pelo AionUi: {{verified}})"
++        "body": "O {{cli}} instalado é anterior à versão verificada pelo AGAS; alguns recursos podem estar ausentes. Considere atualizar o {{cli}}. (instalado: {{reported}} / verificado pelo AGAS: {{verified}})"
+       },
+       "CLI_VERSION_NEWER": {
+-        "body": "O {{cli}} instalado é posterior à versão verificada pelo AionUi. Deve continuar funcionando; relate qualquer comportamento estranho. (instalado: {{reported}} / verificado pelo AionUi: {{verified}})"
++        "body": "O {{cli}} instalado é posterior à versão verificada pelo AGAS. Deve continuar funcionando; relate qualquer comportamento estranho. (instalado: {{reported}} / verificado pelo AGAS: {{verified}})"
+       },
+       "CODEX_RETRYING": {
+-        "body": "{{detail}} (tentativa {{attempts}}, {{elapsed}} decorridos — o provedor do agente derruba a conexão repetidamente; o AionUi está aguardando.)"
++        "body": "{{detail}} (tentativa {{attempts}}, {{elapsed}} decorridos — o provedor do agente derruba a conexão repetidamente; o AGAS está aguardando.)"
+       }
+     }
+   },
+@@ -711,7 +711,7 @@
+         "conflicted": "!",
+         "unknown": "?"
+       },
+-      "conflictedHint": "Resolva este conflito fora do AionUi primeiro",
++      "conflictedHint": "Resolva este conflito fora do AGAS primeiro",
+       "opaqueHint": "Este estado vem de um backend mais novo — exibido somente leitura",
+       "degraded": "A atualização está em modo mais lento porque o índice do git não pode ser gravado",
+       "truncated": "Alterações demais para listar — mostrando apenas a primeira parte",
+@@ -730,7 +730,7 @@
+         "discard": "Descartar alterações",
+         "stageAll": "Preparar tudo",
+         "unstageAll": "Retirar tudo da preparação",
+-        "blockedHint": "Resolva o conflito fora do AionUi antes de preparar ou descartar",
++        "blockedHint": "Resolva o conflito fora do AGAS antes de preparar ou descartar",
+         "confirmDiscardTitle": "Descartar alterações?",
+         "confirmDiscardTracked": "As edições em {{count}} arquivos serão perdidas. Isso não pode ser desfeito.",
+         "confirmDiscardUntracked": "{{count}} novos arquivos serão movidos para a lixeira.",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/pt-BR/cron.json b/packages/desktop/src/renderer/services/i18n/locales/pt-BR/cron.json
+index 5894035..78a4884 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/pt-BR/cron.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/pt-BR/cron.json
+@@ -14,7 +14,7 @@
+     "error": "Erro",
+     "unread": "Nova execução",
+     "unconfigured": "Sem tarefa agendada",
+-    "defaultPrompt": "Todos os dias às 10h, pesquise as últimas notícias sobre IA, resuma e gere um relatório de insights. (Use a habilidade /cron para criar uma tarefa agendada no AionUi.)"
++    "defaultPrompt": "Todos os dias às 10h, pesquise as últimas notícias sobre IA, resuma e gere um relatório de insights. (Use a habilidade /cron para criar uma tarefa agendada no AGAS.)"
+   },
+   "actions": {
+     "goTo": "Ver Chat",
+@@ -54,10 +54,10 @@
+     "newTask": "Nova tarefa",
+     "createViaChat": "Criar via chat",
+     "createManually": "Criar manualmente",
+-    "description": "Execute tarefas agendadas. Você também pode pedir ao AionUi em qualquer conversa para criar uma para você.",
++    "description": "Execute tarefas agendadas. Você também pode pedir ao AGAS em qualquer conversa para criar uma para você.",
+     "awakeBanner": "As tarefas agendadas são executadas apenas enquanto o computador está ativo.",
+     "keepAwake": "Manter ativo",
+-    "keepAwakeTooltip": "Quando ativado, o AionUi impedirá que o computador durma",
++    "keepAwakeTooltip": "Quando ativado, o AGAS impedirá que o computador durma",
+     "createTask": "Criar Tarefa Agendada",
+     "editTask": "Editar Tarefa Agendada",
+     "createSuccess": "Tarefa criada com sucesso",

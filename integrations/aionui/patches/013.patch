@@ -1,0 +1,504 @@
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/common.json b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/common.json
+index 7f9c8ed..6ec15f6 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/common.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/common.json
+@@ -65,10 +65,10 @@
+   "more": "Daha Fazla",
+   "refresh": "Yenile",
+   "readOnly": "Salt okunur",
+-  "tray.showWindow": "AionUi'yi Göster",
++  "tray.showWindow": "AGAS'yi Göster",
+   "tray.newChat": "Yeni Sohbet",
+   "tray.closeToTray": "Tepsiye Gizle",
+-  "tray.about": "AionUi Hakkında",
++  "tray.about": "AGAS Hakkında",
+   "tray.restart": "Uygulamayı Yeniden Başlat",
+   "tray.quit": "Çıkış",
+   "tray.runningTasks": "Çalışan Görevler",
+@@ -79,39 +79,39 @@
+   "backendStartup": {
+     "incompatibleRuntime": {
+       "title": "Bu sistem paketlenmiş backend tarafından desteklenmiyor",
+-      "description": "AionUi açıldı, ancak yerel AionCore backend bu Linux sürümünde çalışamaz. Desteklenen bir Linux dağıtımına yükseltip AionUi'yi yeniden başlatın.",
++      "description": "AGAS açıldı, ancak yerel AionCore backend bu Linux sürümünde çalışamaz. Desteklenen bir Linux dağıtımına yükseltip AGAS'yi yeniden başlatın.",
+       "requiredVersions": "Gerekli çalışma zamanı sembolleri: {{versions}}"
+     },
+     "incompleteInstallation": {
+-      "title": "AionUi kurulumu eksik",
+-      "description": "Bu kurulumda gerekli yerel kaynaklar eksik, bu yüzden AionCore başlatılamıyor. Lütfen en son AionUi sürümünü indirip yeniden kurun. Yeniden kurulumdan sonra sorun tekrarlarsa güvenlik veya antivirüs yazılımının AionCore'u karantinaya alıp almadığını kontrol edin.",
++      "title": "AGAS kurulumu eksik",
++      "description": "Bu kurulumda gerekli yerel kaynaklar eksik, bu yüzden AionCore başlatılamıyor. Lütfen en son AGAS sürümünü indirip yeniden kurun. Yeniden kurulumdan sonra sorun tekrarlarsa güvenlik veya antivirüs yazılımının AionCore'u karantinaya alıp almadığını kontrol edin.",
+       "downloadLatest": "Son sürümü indir",
+       "sendDiagnostics": "Tanı raporu gönder",
+       "diagnosticsSent": "Tanı raporu gönderildi",
+       "diagnosticsReportSuccess": "Tanı raporu gönderildi",
+       "diagnosticsReportFailed": "Tanı raporu gönderilemedi",
+-      "runtimeComponentDescription": "Bu kurulumda gerekli yerleşik çalışma zamanı bileşenleri eksik olduğu için {{resource}} başlatılamıyor. En son AionUi paketini yeniden yükleyin. Yeniden yükledikten sonra da devam ederse güvenlik veya antivirüs yazılımının AionUi bileşenlerini karantinaya alıp almadığını kontrol edin."
++      "runtimeComponentDescription": "Bu kurulumda gerekli yerleşik çalışma zamanı bileşenleri eksik olduğu için {{resource}} başlatılamıyor. En son AGAS paketini yeniden yükleyin. Yeniden yükledikten sonra da devam ederse güvenlik veya antivirüs yazılımının AGAS bileşenlerini karantinaya alıp almadığını kontrol edin."
+     },
+     "packageArchitectureMismatch": {
+-      "title": "AionUi package architecture mismatch",
+-      "description": "This AionUi package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
++      "title": "AGAS package architecture mismatch",
++      "description": "This AGAS package is for {{packageArch}}, but this Mac is {{deviceArch}}. You may have downloaded the wrong package. Please download and install the {{expectedArch}} package."
+     },
+     "dataMigration": {
+       "title": "Local data migration failed",
+-      "description": "AionUi opened, but AionCore stopped while initializing local data. Reinstalling AionUi may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
++      "description": "AGAS opened, but AionCore stopped while initializing local data. Reinstalling AGAS may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+       "diagnosticsReportFailed": "Failed to send diagnostics report"
+     },
+     "databaseNewerThanApp": {
+-      "title": "Daha yeni bir AionUi sürümü gerekli",
+-      "description": "Yerel verileriniz AionUi'nin daha yeni bir sürümü tarafından oluşturuldu ve bu sürüm bunları açamıyor. Devam etmek için AionUi'yi en son sürüme güncelleyin; verileriniz sağlam, yeniden yükleme veya sıfırlama gerekmez.",
+-      "descriptionWithVersion": "Yerel verileriniz şu an yüklü olandan (v{{currentVersion}}) daha yeni bir AionUi sürümü tarafından oluşturuldu; bu sürüm bunları açamıyor. Devam etmek için AionUi'yi en son sürüme güncelleyin; verileriniz sağlam, yeniden yükleme veya sıfırlama gerekmez."
++      "title": "Daha yeni bir AGAS sürümü gerekli",
++      "description": "Yerel verileriniz AGAS'nin daha yeni bir sürümü tarafından oluşturuldu ve bu sürüm bunları açamıyor. Devam etmek için AGAS'yi en son sürüme güncelleyin; verileriniz sağlam, yeniden yükleme veya sıfırlama gerekmez.",
++      "descriptionWithVersion": "Yerel verileriniz şu an yüklü olandan (v{{currentVersion}}) daha yeni bir AGAS sürümü tarafından oluşturuldu; bu sürüm bunları açamıyor. Devam etmek için AGAS'yi en son sürüme güncelleyin; verileriniz sağlam, yeniden yükleme veya sıfırlama gerekmez."
+     },
+     "localDataRepair": {
+       "title": "Local data repair failed",
+-      "description": "AionUi açıldı, ancak AionCore assistant veya agent kayıtları gibi yerel başlangıç verilerini hazırlarken durdu. AionUi'yi yeniden yüklemek bu sorunu çözmeyebilir. Yerel veritabanının incelenebilmesi için tanılama raporu gönderin veya destek ekibiyle iletişime geçin.",
++      "description": "AGAS açıldı, ancak AionCore assistant veya agent kayıtları gibi yerel başlangıç verilerini hazırlarken durdu. AGAS'yi yeniden yüklemek bu sorunu çözmeyebilir. Yerel veritabanının incelenebilmesi için tanılama raporu gönderin veya destek ekibiyle iletişime geçin.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+@@ -119,7 +119,7 @@
+     },
+     "startupDirectory": {
+       "title": "Startup directory is unavailable",
+-      "description": "AionUi opened, but AionCore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart AionUi.",
++      "description": "AGAS opened, but AionCore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart AGAS.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+@@ -127,7 +127,7 @@
+     },
+     "recoverableDatabaseCorruption": {
+       "title": "Yerel veriler bozulmuş",
+-      "description": "AionUi yerel veritabanının bozulduğunu algıladı ve başlatmaya devam edemiyor. Onaydan sonra eski veritabanı yedeklenecek ve başlatmaya devam etmek için yeni bir yerel veritabanı oluşturulacak. Geçmiş sohbetler artık gösterilmeyecek ve eski veritabanı yedek dosyası olarak saklanacak.",
++      "description": "AGAS yerel veritabanının bozulduğunu algıladı ve başlatmaya devam edemiyor. Onaydan sonra eski veritabanı yedeklenecek ve başlatmaya devam etmek için yeni bir yerel veritabanı oluşturulacak. Geçmiş sohbetler artık gösterilmeyecek ve eski veritabanı yedek dosyası olarak saklanacak.",
+       "confirmRebuild": "Eski DB'yi yedekle ve yeni DB oluştur",
+       "sendDiagnostics": "Tanılama gönder",
+       "diagnosticsHint": "Tanılama göndermek yerel veritabanını değiştirmez.",
+@@ -143,8 +143,8 @@
+       }
+     },
+     "transientConcurrentStartup": {
+-      "title": "AionUi başlatılıyor",
+-      "description": "Bu pencere açıldığında başka bir AionUi başlatma işlemi yerel verileri hâlâ kullanıyordu. Bu geçicidir ve verileriniz güvende — yeniden yükleme gerekmez. Lütfen biraz bekleyip tekrar deneyin veya AionUi'yi yeniden başlatın.",
++      "title": "AGAS başlatılıyor",
++      "description": "Bu pencere açıldığında başka bir AGAS başlatma işlemi yerel verileri hâlâ kullanıyordu. Bu geçicidir ve verileriniz güvende — yeniden yükleme gerekmez. Lütfen biraz bekleyip tekrar deneyin veya AGAS'yi yeniden başlatın.",
+       "sendDiagnostics": "Send diagnostics",
+       "diagnosticsSent": "Diagnostics sent",
+       "diagnosticsReportSuccess": "Diagnostics report sent",
+@@ -202,5 +202,27 @@
+   },
+   "selectedCount": "{{count}} seçili",
+   "selectedSkills": "Seçili beceriler",
+-  "aiAssistant": "Yapay Zekâ Asistanı"
++  "aiAssistant": "Yapay Zekâ Asistanı",
++  "agas": {
++    "title": "AGAS Aracı Arayüzü",
++    "subtitle": "Accessible General AI System · BY RAGHUNATH.D",
++    "native": "Yerel uygulamalar",
++    "agents": "Yerel aracılar",
++    "workspace": "Uygulama",
++    "url": "Yerel URL",
++    "open": "Aç",
++    "refresh": "Yenile",
++    "desktopOnly": "Yerel uygulamalar için AGAS masaüstü uygulaması gerekir.",
++    "nativeHelp": "Uygulamayı yerel olarak başlatın, döngü adresini girip kaydedin ve burada açın.",
++    "unconfigured": "Yapılandırılmadı",
++    "reachable": "Uygulama yanıt veriyor",
++    "unreachable": "Uygulama yanıt vermiyor",
++    "nativeRegion": "Yerel uygulama görünümü",
++    "empty": "Gerçek arayüzünü kullanmak için bir uygulama seçip açın.",
++    "catalog": "Agency kataloğu",
++    "catalogCount": "{{count}} özgün Agency uzmanı",
++    "catalogMissing": "Agency kataloğu eksik. Katalog oluşturma adımını çalıştırın.",
++    "search": "Uzman ara",
++    "inspect": "Özgün istemi görüntüle"
++  }
+ }
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/conversation.json b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/conversation.json
+index 66606e7..b24708b 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/conversation.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/conversation.json
+@@ -12,10 +12,10 @@
+     "clearWorkspace": "Projeyi kaldır",
+     "openFolder": "Klasör Aç",
+     "none": "Hiçbiri",
+-    "quickActionsTitle": "AionUi neler yapabilir?",
++    "quickActionsTitle": "AGAS neler yapabilir?",
+     "quickActionFeedback": "Sorun Bildir",
+     "quickActionStar": "Bizi beğendiniz mi? Yıldız verin!",
+-    "skillsMarket": "AionUi Skills Market",
++    "skillsMarket": "AGAS Skills Market",
+     "skillsMarketDesc": "Topluluk Skills'lerini ihtiyaç duyduğunuzda arayın ve etkinleştirin. Bir kez yapılandırın, tüm Agent'larda kullanılabilir.",
+     "skillsMarketDetails": "Ayrıntılar >>"
+   },
+@@ -302,7 +302,7 @@
+       },
+       "MCP_HTTP_RESPONSE_READ_FAILED": {
+         "title": "Failed to read the team helper response",
+-        "body": "AionUi could not read the local team helper response. Retry once, and if it keeps happening, restart the app."
++        "body": "AGAS could not read the local team helper response. Retry once, and if it keeps happening, restart the app."
+       },
+       "MCP_TOOL_REMOTE_ERROR": {
+         "title": "The local team helper rejected the request",
+@@ -310,11 +310,11 @@
+       },
+       "MCP_TOOL_RESPONSE_UNEXPECTED": {
+         "title": "The team helper returned an unexpected response",
+-        "body": "AionUi received an unexpected response from the local team helper. Retry once, and report it if the problem persists."
++        "body": "AGAS received an unexpected response from the local team helper. Retry once, and report it if the problem persists."
+       },
+       "MCP_TCP_READ_FAILED": {
+         "title": "Failed to read from the local team helper",
+-        "body": "AionUi could not read the local team helper TCP response. Retry once, and restart the app if it keeps failing."
++        "body": "AGAS could not read the local team helper TCP response. Retry once, and restart the app if it keeps failing."
+       },
+       "TEAM_SERVICE_UNAVAILABLE": {
+         "title": "Team service is not ready yet",
+@@ -621,13 +621,13 @@
+         "body": "{{count}} adım başarısız oldu ve etkili OLMADI. agy bu turları yine de başarılı olarak bitirir; bu yüzden yanıta değil gerçek sonuca bakın."
+       },
+       "CLI_VERSION_OLDER": {
+-        "body": "Kurulu {{cli}} sürümü AionUi tarafından doğrulanan sürümden eski; bazı özellikler eksik olabilir. {{cli}} sürümünü yükseltmeyi düşünün. (kurulu: {{reported}} / AionUi tarafından doğrulanan: {{verified}})"
++        "body": "Kurulu {{cli}} sürümü AGAS tarafından doğrulanan sürümden eski; bazı özellikler eksik olabilir. {{cli}} sürümünü yükseltmeyi düşünün. (kurulu: {{reported}} / AGAS tarafından doğrulanan: {{verified}})"
+       },
+       "CLI_VERSION_NEWER": {
+-        "body": "Kurulu {{cli}} sürümü AionUi tarafından doğrulanan sürümden yeni. Genelde çalışır; tuhaf bir davranış görürseniz bildirin. (kurulu: {{reported}} / AionUi tarafından doğrulanan: {{verified}})"
++        "body": "Kurulu {{cli}} sürümü AGAS tarafından doğrulanan sürümden yeni. Genelde çalışır; tuhaf bir davranış görürseniz bildirin. (kurulu: {{reported}} / AGAS tarafından doğrulanan: {{verified}})"
+       },
+       "CODEX_RETRYING": {
+-        "body": "{{detail}} ({{attempts}}. deneme, {{elapsed}} geçti — aracının sağlayıcısı bağlantıyı sürekli kesiyor; AionUi bekliyor.)"
++        "body": "{{detail}} ({{attempts}}. deneme, {{elapsed}} geçti — aracının sağlayıcısı bağlantıyı sürekli kesiyor; AGAS bekliyor.)"
+       }
+     }
+   },
+@@ -707,7 +707,7 @@
+         "conflicted": "!",
+         "unknown": "?"
+       },
+-      "conflictedHint": "Bu çakışmayı önce AionUi dışında çözün",
++      "conflictedHint": "Bu çakışmayı önce AGAS dışında çözün",
+       "opaqueHint": "Bu durum daha yeni bir arka uçtan geliyor — salt okunur gösteriliyor",
+       "degraded": "git dizini güncellenemediği için yenileme daha yavaş bir modda çalışıyor",
+       "truncated": "Listelenecek çok fazla değişiklik var — yalnızca ilk kısım gösteriliyor",
+@@ -726,7 +726,7 @@
+         "discard": "Değişiklikleri sil",
+         "stageAll": "Tümünü hazırla",
+         "unstageAll": "Tümünün hazırlamasını geri al",
+-        "blockedHint": "Hazırlamadan veya silmeden önce çakışmayı AionUi dışında çözün",
++        "blockedHint": "Hazırlamadan veya silmeden önce çakışmayı AGAS dışında çözün",
+         "confirmDiscardTitle": "Değişiklikler silinsin mi?",
+         "confirmDiscardTracked": "{{count}} dosyadaki düzenlemeler kaybolacak. Bu geri alınamaz.",
+         "confirmDiscardUntracked": "{{count}} yeni dosya çöp kutusuna taşınacak.",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/cron.json b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/cron.json
+index 0f7f437..97c9eaa 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/cron.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/cron.json
+@@ -14,7 +14,7 @@
+     "error": "Error",
+     "unread": "New execution",
+     "unconfigured": "No scheduled task",
+-    "defaultPrompt": "Every day at 10am, search for the latest AI news, summarize and output an insight report. (AionUi'de zamanlanmış bir görev oluşturmak için lütfen /cron becerisini kullan.)"
++    "defaultPrompt": "Every day at 10am, search for the latest AI news, summarize and output an insight report. (AGAS'de zamanlanmış bir görev oluşturmak için lütfen /cron becerisini kullan.)"
+   },
+   "actions": {
+     "goTo": "View Chat",
+@@ -67,10 +67,10 @@
+     "newTask": "Yeni görev",
+     "createViaChat": "Sohbetle oluştur",
+     "createManually": "Manuel oluştur",
+-    "description": "Görevleri bir zamanlamayla çalıştırın. Ayrıca herhangi bir konuşmada AionUi'den sizin için bir görev oluşturmasını isteyebilirsiniz.",
++    "description": "Görevleri bir zamanlamayla çalıştırın. Ayrıca herhangi bir konuşmada AGAS'den sizin için bir görev oluşturmasını isteyebilirsiniz.",
+     "awakeBanner": "Zamanlanmış görevler yalnızca bilgisayarınız açıkken çalışır.",
+     "keepAwake": "Uyanık tut",
+-    "keepAwakeTooltip": "Etkinleştirildiğinde AionUi bilgisayarınızın uyku moduna geçmesini engeller",
++    "keepAwakeTooltip": "Etkinleştirildiğinde AGAS bilgisayarınızın uyku moduna geçmesini engeller",
+     "createTask": "Zamanlanmış Görev Oluştur",
+     "editTask": "Zamanlanmış Görevi Düzenle",
+     "createSuccess": "Görev başarıyla oluşturuldu",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/login.json b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/login.json
+index aa83f00..381d4a5 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/login.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/login.json
+@@ -1,6 +1,6 @@
+ {
+-  "pageTitle": "AionUi - Giriş Yap",
+-  "brand": "AionUi",
++  "pageTitle": "AGAS - Giriş Yap",
++  "brand": "AGAS",
+   "subtitle": "Tekrar hoş geldiniz, lütfen hesabınıza giriş yapın",
+   "username": "Kullanıcı Adı",
+   "usernamePlaceholder": "Kullanıcı adınızı girin",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/preview.json b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/preview.json
+index 15642d1..f9e09e5 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/preview.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/preview.json
+@@ -85,7 +85,7 @@
+       "outsideSandbox": "Bu dosya geçerli çalışma alanı sandbox'ının dışında."
+     },
+     "serverInstall": {
+-      "hint": "AionUi bir sunucuda çalışıyor. Önizleme bileşeni o sunucuya kurulmalıdır. Aşağıdaki komutu sunucuda çalıştırıp yeniden deneyin:",
++      "hint": "AGAS bir sunucuda çalışıyor. Önizleme bileşeni o sunucuya kurulmalıdır. Aşağıdaki komutu sunucuda çalıştırıp yeniden deneyin:",
+       "icuNote": "Yine de başlamazsa sunucuya ICU kitaplığını kurun (Debian/Ubuntu: apt-get install -y libicu-dev)."
+     }
+   },
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/settings.json b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/settings.json
+index 6287aea..cbe0c22 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/settings.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/settings.json
+@@ -120,7 +120,7 @@
+     "officialSkillsEmpty": "Kullanılabilir resmi beceri yok.",
+     "noSearchResults": "Eşleşen beceri yok.",
+     "customHint": "Bir beceri klasörü, üst klasör veya zip içe aktarın; dosya başına en fazla {{maxFileSize}} ve beceri başına {{maxTotalSize}}; aynı adla içe aktarma mevcut beceriyi değiştirir.",
+-    "officialHint": "AionUi ile birlikte gelen resmi beceriler — kullanıma hazır, salt okunur ve her sürümde güncellenir.",
++    "officialHint": "AGAS ile birlikte gelen resmi beceriler — kullanıma hazır, salt okunur ve her sürümde güncellenir.",
+     "deleteAffectsNewOnlyHint": "Deleting only affects new conversations. Skills already selected in existing conversations keep working."
+   },
+   "authMethod": "Kimlik Doğrulama",
+@@ -182,8 +182,8 @@
+   "assistantGroupCli": "CLI Asistanları",
+   "assistantGroupCreated": "Özel Asistanlar",
+   "myAssistantsEmpty": "Burada henüz asistan yok. Resmi bir asistanı etkinleştirin veya yerel bir CLI aracı bağlayın.",
+-  "officialAssistantsHint": "Resmi asistanlar AionUi tarafından sürdürülür ve her sürümle güncellenir. Listelerinizde kullanmak için birini etkinleştirin; kendinize özel bir sürüm uyarlamak için onu asistanınız olarak çoğaltın.",
+-  "officialAssistantsHintShort": "AionUi içine gömülü resmi asistanlar; resmi olarak sürdürülür ve her sürümle güncellenir. Serbestçe özelleştirmek için \"Asistanım\" olarak çoğaltın.",
++  "officialAssistantsHint": "Resmi asistanlar AGAS tarafından sürdürülür ve her sürümle güncellenir. Listelerinizde kullanmak için birini etkinleştirin; kendinize özel bir sürüm uyarlamak için onu asistanınız olarak çoğaltın.",
++  "officialAssistantsHintShort": "AGAS içine gömülü resmi asistanlar; resmi olarak sürdürülür ve her sürümle güncellenir. Serbestçe özelleştirmek için \"Asistanım\" olarak çoğaltın.",
+   "customEmptyTitle": "Henüz özel asistan yok",
+   "customEmptyBody": "Sohbet yoluyla bir tane oluşturun veya resmi bir asistanı çoğaltın.",
+   "customEmptyCreate": "Sohbetle oluştur",
+@@ -325,7 +325,7 @@
+   "language": "Dil",
+   "saveUploadToWorkspace": "Yüklemeleri Proje Klasörüne Kaydet",
+   "startOnBoot": "Açılışta Başlat",
+-  "startOnBootDesc": "macOS veya Windows oturumu açtığınızda AionUi'yi otomatik olarak başlatır.",
++  "startOnBootDesc": "macOS veya Windows oturumu açtığınızda AGAS'yi otomatik olarak başlatır.",
+   "startOnBootUnsupported": "Yalnızca paketlenmiş macOS ve Windows uygulamalarında kullanılabilir.",
+   "startOnBootUpdateFailed": "Açılışta başlat ayarı güncellenemedi",
+   "closeToTray": "Tepsiye Kapat",
+@@ -334,7 +334,7 @@
+   "hardwareAccelerationAutoDisabled": "Tekrarlanan GPU çökmeleri nedeniyle otomatik olarak devre dışı bırakıldı.",
+   "hardwareAccelerationAutoDisabledTitle": "Donanım hızlandırma devre dışı bırakıldı",
+   "hardwareAccelerationAutoDisabledNotice": "Tekrarlanan grafik çökmeleri algılandı; uygulamayı kararlı tutmak için donanım hızlandırma otomatik olarak kapatıldı. Ayarlar → Sistem bölümünden yeniden etkinleştirebilirsiniz.",
+-  "hardwareAccelerationRestartConfirm": "Yeni donanım hızlandırma ayarını uygulamak için AionUi yeniden başlatılsın mı?",
++  "hardwareAccelerationRestartConfirm": "Yeni donanım hızlandırma ayarını uygulamak için AGAS yeniden başlatılsın mı?",
+   "hardwareAccelerationUpdateFailed": "Donanım hızlandırma ayarı güncellenemedi",
+   "browserNotification": {
+     "enable": "Tarayıcı bildirimlerini etkinleştir",
+@@ -477,7 +477,7 @@
+   "installed": "Yüklü",
+   "builtin": "Yerleşik",
+   "channels": "Kanallar",
+-  "webui.description": "AionUi'nizi \"7/24 Uzaktan Asistan\" olarak kullanın - görevleri istediğiniz zaman, istediğiniz yerden herhangi bir uzak cihazdan düzenleyin.",
++  "webui.description": "AGAS'nizi \"7/24 Uzaktan Asistan\" olarak kullanın - görevleri istediğiniz zaman, istediğiniz yerden herhangi bir uzak cihazdan düzenleyin.",
+   "webui.steps": "Adım 1. Web Arayüzünü açın; Adım 2. Erişim URL'sini kopyalayın; Adım 3. Uzak tarayıcıda açın",
+   "webui.configuration": "Web Arayüzü Yapılandırması",
+   "webui.enable": "Web Arayüzünü Etkinleştir",
+@@ -555,13 +555,13 @@
+   "webui.passwordHint": "Şifre ilk açılışta konsolda gösterilir. Sıfırlamak için \"Şifreyi Değiştir\"i kullanın",
+   "webui.checkConsoleForPassword": "İlk şifre için uygulama konsolunu kontrol edin",
+   "webui.browserNotSupported": "Web Arayüzü ayarları tarayıcıda kullanılamaz",
+-  "webui.browserNotSupportedDesc": "Güvenlik nedeniyle, Web Arayüzü ayarları sadece masaüstü uygulamasında yönetilebilir. Yapılandırmak için lütfen AionUi masaüstü uygulamasında ayarlar panelini açın.",
++  "webui.browserNotSupportedDesc": "Güvenlik nedeniyle, Web Arayüzü ayarları sadece masaüstü uygulamasında yönetilebilir. Yapılandırmak için lütfen AGAS masaüstü uygulamasında ayarlar panelini açın.",
+   "webui.passwordHidden": "******",
+   "webui.passwordOnlyFirstTime": "Şifre sadece ilk açılışta gösterilir ve sonrasında gizlenir",
+   "webui.resetPasswordWarning": "Lütfen sıfırlanan şifreyi güvenli bir yerde saklayın!",
+-  "webui.featureRemoteDesc": "WebUI'yi etkinleştirerek telefonunuzdan veya uzak tarayıcıdan AionUi'ye erişebilirsiniz.",
++  "webui.featureRemoteDesc": "WebUI'yi etkinleştirerek telefonunuzdan veya uzak tarayıcıdan AGAS'ye erişebilirsiniz.",
+   "webui.featureChannelsTitle": "Messaging Control",
+-  "webui.featureChannelsDesc": "Telegram, Lark, DingTalk ve WeChat'i bağlayarak IM uygulamalarından AionUi ile etkileşime geçin.",
++  "webui.featureChannelsDesc": "Telegram, Lark, DingTalk ve WeChat'i bağlayarak IM uygulamalarından AGAS ile etkileşime geçin.",
+   "webui.goToChannels": "Channels'a Git",
+   "assistant.telegramConfig": "Telegram Bot Yapılandırması",
+   "assistant.botToken": "Bot Token",
+@@ -612,24 +612,24 @@
+   "assistant.step4": "Onaylandıktan sonra, Telegram üzerinden Gemini ile sohbet etmeye başlayabilirsiniz!",
+   "channels.title": "Kanallar",
+   "channels.telegramTitle": "Telegram",
+-  "channels.telegramDesc": "Telegram üzerinden AionUi asistanı ile sohbet edin",
++  "channels.telegramDesc": "Telegram üzerinden AGAS asistanı ile sohbet edin",
+   "channels.slackTitle": "Slack",
+-  "channels.slackDesc": "Slack üzerinden AionUi asistanı ile sohbet edin",
++  "channels.slackDesc": "Slack üzerinden AGAS asistanı ile sohbet edin",
+   "channels.discordTitle": "Discord",
+-  "channels.discordDesc": "Discord üzerinden AionUi asistanı ile sohbet edin",
++  "channels.discordDesc": "Discord üzerinden AGAS asistanı ile sohbet edin",
+   "channels.larkTitle": "Lark",
+-  "channels.larkDesc": "Lark üzerinden AionUi asistanı ile sohbet edin",
++  "channels.larkDesc": "Lark üzerinden AGAS asistanı ile sohbet edin",
+   "channels.dingtalkTitle": "DingTalk",
+-  "channels.dingtalkDesc": "Chat with AionUi assistant via DingTalk",
++  "channels.dingtalkDesc": "Chat with AGAS assistant via DingTalk",
+   "channels.weixinTitle": "WeChat",
+-  "channels.weixinDesc": "WeChat üzerinden AionUi asistanı ile sohbet edin",
++  "channels.weixinDesc": "WeChat üzerinden AGAS asistanı ile sohbet edin",
+   "channels.wecomTitle": "WeCom",
+-  "channels.wecomDesc": "WeCom (Kurumsal WeChat) AI botu ile AionUi asistanı ile sohbet edin",
++  "channels.wecomDesc": "WeCom (Kurumsal WeChat) AI botu ile AGAS asistanı ile sohbet edin",
+   "channels.comingSoon": "Çok Yakında",
+   "channels.comingSoonDesc": "{{channel}} desteği çok yakında",
+   "channels.notConfigured": "Yapılandırılmadı",
+   "channels.configured": "Yapılandırıldı",
+-  "channels.guide": "Mesajlaşma uygulamalarını bağlayın, AionUi ile her an sohbet edin.",
++  "channels.guide": "Mesajlaşma uygulamalarını bağlayın, AGAS ile her an sohbet edin.",
+   "channels.selectFirst": "Bir kanal seçin ve kimlik bilgilerini yapılandırın.",
+   "channels.enableAfterConfig": "Yapılandırmadan sonra kanalı etkinleştirin ve AI asistanınızla sohbet etmeye başlayın.",
+   "channels.extension.requiredField": "Lütfen zorunlu alanı doldurun: {{field}}",
+@@ -707,18 +707,18 @@
+   "mcpDisconnected": "Test edilmedi",
+   "mcpError": "Son test başarısız",
+   "mcpErrorNodeCommandNotFound": "{{command}} komutu hazırlanamadı. AionCore genellikle yönetilen Node çalışma zamanını otomatik olarak hazırlar. Bağlantı testini yeniden deneyin; sorun sürerse arka uç günlüklerini kontrol edin veya bu MCP sunucusu için mutlak komut yolu yapılandırın.",
+-  "mcpErrorBunCommandNotFound": "Command {{command}} was not found. Install Bun (which includes bun/bunx), restart AionUI, or configure this MCP server to use an absolute command path.",
+-  "mcpErrorUvCommandNotFound": "Command {{command}} was not found. Install uv, restart AionUI, or configure this MCP server to use an absolute command path.",
+-  "mcpErrorPythonCommandNotFound": "Command {{command}} was not found. Install Python, restart AionUI, or configure this MCP server to use an absolute command path.",
+-  "mcpErrorDenoCommandNotFound": "Command {{command}} was not found. Install Deno, restart AionUI, or configure this MCP server to use an absolute command path.",
++  "mcpErrorBunCommandNotFound": "Command {{command}} was not found. Install Bun (which includes bun/bunx), restart AGAS, or configure this MCP server to use an absolute command path.",
++  "mcpErrorUvCommandNotFound": "Command {{command}} was not found. Install uv, restart AGAS, or configure this MCP server to use an absolute command path.",
++  "mcpErrorPythonCommandNotFound": "Command {{command}} was not found. Install Python, restart AGAS, or configure this MCP server to use an absolute command path.",
++  "mcpErrorDenoCommandNotFound": "Command {{command}} was not found. Install Deno, restart AGAS, or configure this MCP server to use an absolute command path.",
+   "mcpErrorCommandNotFound": "Command {{command}} was not found. Install it or configure this MCP server to use an absolute command path.",
+-  "mcpErrorCommandPermissionDenied": "AionUI cannot execute {{command}} because permission was denied.",
+-  "mcpErrorCommandStartFailed": "AionUI failed to start {{command}}.",
++  "mcpErrorCommandPermissionDenied": "AGAS cannot execute {{command}} because permission was denied.",
++  "mcpErrorCommandStartFailed": "AGAS failed to start {{command}}.",
+   "mcpErrorTimeout": "Connection test timed out after {{seconds}}s.",
+-  "mcpErrorConnectionFailed": "AionUI could not reach the MCP server.",
++  "mcpErrorConnectionFailed": "AGAS could not reach the MCP server.",
+   "mcpErrorHttp": "The MCP server returned HTTP {{status}}.",
+   "mcpErrorRpc": "The MCP server returned an RPC error while handling {{method}}.",
+-  "mcpErrorProtocol": "AionUI could not complete the MCP handshake.",
++  "mcpErrorProtocol": "AGAS could not complete the MCP handshake.",
+   "mcpLastCheckedAvailable": "Araç ayarlarında son kontrol sonucu: Kullanılabilir",
+   "mcpLastCheckedFailed": "Araç ayarlarında son kontrol sonucu: Başarısız",
+   "mcpCheckedAt": "Kontrol zamanı: {{time}}",
+@@ -734,7 +734,7 @@
+   "mcpImportSuccess": "İçe aktarma başarılı",
+   "mcpImportFailed": "İçe aktarma başarısız",
+   "mcpJsonInvalid": "Geçersiz JSON formatı",
+-  "mcpImportDescription": "CLI agent'larınızda algılanan MCP yapılandırmalarını AionUi içine aktarın.",
++  "mcpImportDescription": "CLI agent'larınızda algılanan MCP yapılandırmalarını AGAS içine aktarın.",
+   "mcpStepSelectAgent": "Ajan Seç",
+   "mcpStepFetchTools": "MCP Getir",
+   "mcpStepImportSuccess": "İçe Aktarma Başarılı",
+@@ -751,8 +751,8 @@
+   "mcpStatusReady": "İçe aktarılacak",
+   "mcpStatusImported": "İçe aktarıldı",
+   "mcpStatusSkipped": "Atlandı",
+-  "mcpWillImport": "AionUi'ye içe aktarılacak",
+-  "mcpImported": "AionUi'ye içe aktarıldı",
++  "mcpWillImport": "AGAS'ye içe aktarılacak",
++  "mcpImported": "AGAS'ye içe aktarıldı",
+   "mcpImportSkipped": "Desteklenmiyor",
+   "mcpImportSkippedAlreadyExists": "Zaten içe aktarıldı",
+   "mcpImportSkippedPluginManaged": "Bu MCP bir CLI eklentisi tarafından yönetiliyor ve buradan içe aktarılamıyor",
+@@ -809,7 +809,7 @@
+   "needHelpTooltip": "Yardıma ihtiyacınız varsa, lütfen kontrol edin",
+   "googleCloudProjectPlaceholder": "Google Cloud Proje ID'nizi girin",
+   "noAvailableModels": "Mevcut model yok",
+-  "appDescription": "One desktop. Your AI agents, actually coworking.",
++  "appDescription": "Accessible General AI System — BY RAGHUNATH.D",
+   "helpDocumentation": "Yardım Dokümantasyonu",
+   "updateLog": "Güncelleme Günlüğü",
+   "feedback": "Geri Bildirim",
+@@ -1214,8 +1214,8 @@
+       "managed_runtime_unavailable": "Repair or reinstall {{resource}}, then retry the connection test.",
+       "auth_required": "Aracıya erişilebilir ancak oturum açılması gerekiyor. CLI üzerinden giriş yapın veya gerekli API anahtarını Ortam Değişkenleri altına ekleyin, ardından bağlantı testini yeniden deneyin.",
+       "no_provider": "Yapılandırılmış bir model sağlayıcısı yok. Ayarlar'da bir sağlayıcı ekleyip etkinleştirin, ardından bağlantı testini yeniden deneyin.",
+-      "version_drift_older": "Kurulu CLI, AionUi tarafından doğrulanan sürümden eski; bazı özellikler eksik olabilir. Yükseltmeyi düşünün.",
+-      "version_drift_newer": "Kurulu CLI, AionUi tarafından doğrulanan sürümden yeni. Genelde çalışır; tuhaf bir davranış görürseniz bildirin."
++      "version_drift_older": "Kurulu CLI, AGAS tarafından doğrulanan sürümden eski; bazı özellikler eksik olabilir. Yükseltmeyi düşünün.",
++      "version_drift_newer": "Kurulu CLI, AGAS tarafından doğrulanan sürümden yeni. Genelde çalışır; tuhaf bir davranış görürseniz bildirin."
+     },
+     "boundAssistantsTitle": "Bu ajanı kullanan asistanlar",
+     "boundAssistantsCount": "{{count}} asistan",
+@@ -1344,16 +1344,16 @@
+     "addViaChat": "Sohbetle ekle",
+     "addManually": "Elle ekle",
+     "solveViaChat": "Sohbetle çöz",
+-    "enabledToast": "AionUi Kâhyası sizin için etkinleştirildi",
++    "enabledToast": "AGAS Kâhyası sizin için etkinleştirildi",
+     "prompt": {
+       "createAssistant": "Yeni bir asistan oluşturmama ve kurulumunda bana yol göstermene yardım et.",
+       "addCustomAgent": "Özel bir Agent eklememe yardım et.",
+       "addModel": "Yeni bir LLM sağlayıcısı ve API anahtarı ekle, ardından varsayılan model olarak ayarla.",
+       "addMcp": "Bir MCP sunucusu kurmama yardım et.",
+       "addSkill": "Bir beceri içe aktarıp bir asistana eklememe yardım et.",
+-      "setupRemote": "Telefonumdan veya internetten AionUi’yi açabilmem için uzaktan erişimi ayarlamama yardım et.",
+-      "diagnose": "AionUi kullanırken bir sorunla karşılaştım, teşhis etmeme yardım et.\n\n[Modül] {{module}}\n[Açıklama] {{description}}\n[Ekler] giriş alanındaki ekran görüntülerine bakın.\n\nLütfen nedenini teşhis et ve nasıl düzelteceğimi söyle.",
+-      "diagnoseChatError": "AionUi sohbeti sırasında bir hatayla karşılaştım, teşhis etmeme yardım et.\n\n[Hata] {{error}}\n\nLütfen nedenini teşhis et ve nasıl düzelteceğimi söyle."
++      "setupRemote": "Telefonumdan veya internetten AGAS’yi açabilmem için uzaktan erişimi ayarlamama yardım et.",
++      "diagnose": "AGAS kullanırken bir sorunla karşılaştım, teşhis etmeme yardım et.\n\n[Modül] {{module}}\n[Açıklama] {{description}}\n[Ekler] giriş alanındaki ekran görüntülerine bakın.\n\nLütfen nedenini teşhis et ve nasıl düzelteceğimi söyle.",
++      "diagnoseChatError": "AGAS sohbeti sırasında bir hatayla karşılaştım, teşhis etmeme yardım et.\n\n[Hata] {{error}}\n\nLütfen nedenini teşhis et ve nasıl düzelteceğimi söyle."
+     },
+     "solveWithButler": "Kâhya'ya sor"
+   },
+@@ -1362,7 +1362,7 @@
+   "browserData": {
+     "title": "Uygulama içi tarayıcı",
+     "agentControlLabel": "Aracının uygulama içi tarayıcıyı kullanmasına izin ver",
+-    "agentControlDesc": "Açık olduğunda aracı, uygulama içi tarayıcıda sizin adınıza sayfa açabilir, tıklayabilir ve form doldurabilir; örneğin bir şey araştırmak veya bir sitedeki işlemi tamamlamak için. Yalnızca bu tek tarayıcı görünümünü kullanabilir: AionUi arayüzünün kendisine erişemez ve hiçbir zaman ayrı bir Chrome penceresi açmaz. Kapattığınızda tarayıcıyı kendiniz kullanmaya devam edebilirsiniz; erişimi yalnızca aracı kaybeder.",
++    "agentControlDesc": "Açık olduğunda aracı, uygulama içi tarayıcıda sizin adınıza sayfa açabilir, tıklayabilir ve form doldurabilir; örneğin bir şey araştırmak veya bir sitedeki işlemi tamamlamak için. Yalnızca bu tek tarayıcı görünümünü kullanabilir: AGAS arayüzünün kendisine erişemez ve hiçbir zaman ayrı bir Chrome penceresi açmaz. Kapattığınızda tarayıcıyı kendiniz kullanmaya devam edebilirsiniz; erişimi yalnızca aracı kaybeder.",
+     "agentControlSaved": "Ayar kaydedildi",
+     "agentControlFailed": "Ayar kaydedilemedi",
+     "agentControlRestartRequired": "Bu ayar, uygulamayı yeniden başlattıktan sonra geçerli olur.",
+diff --git a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/update.json b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/update.json
+index 467865f..8d28ba9 100644
+--- a/packages/desktop/src/renderer/services/i18n/locales/tr-TR/update.json
++++ b/packages/desktop/src/renderer/services/i18n/locales/tr-TR/update.json
+@@ -30,7 +30,7 @@
+   "errorTitle": "Güncelleme başarısız",
+   "installerLastFailure": {
+     "title": "Son güncelleme tamamlanmadı",
+-    "description": "Önceki sessiz güncelleme sırasında AionUi kapatılamadı. Güncellemeyi yeniden deneyebilir, kurulum günlüğünü görüntüleyebilir veya geri bildirim gönderebilirsiniz.",
++    "description": "Önceki sessiz güncelleme sırasında AGAS kapatılamadı. Güncellemeyi yeniden deneyebilir, kurulum günlüğünü görüntüleyebilir veya geri bildirim gönderebilirsiniz.",
+     "retryUpdate": "Güncellemeyi yeniden dene",
+     "viewLog": "Günlüğü görüntüle"
+   },
+@@ -64,7 +64,7 @@
+   "migration": {
+     "capsule": "Kullanıcılarımıza bir mektup",
+     "letter": {
+-      "title": "AionUi ekibinden bir mektup",
++      "title": "AGAS ekibinden bir mektup",
+       "whyTitle": "Neden bu değişiklik?",
+       "whyLead": "Eski \"yükleyiciyi dağıt, herkes yerelde çalıştırsın\" modeli, sunmak istediğimiz deneyimi taşıyamıyordu:",
+       "whyReason1": "Yükleyici dağıtıldıktan sonra ona bir daha ulaşamıyorduk — düzeltmeler zamanında ulaşamıyor, en yeni beceriler ve asistanlar eşitlenemiyordu;",
+@@ -72,22 +72,22 @@
+       "whyReason3": "Uzun süredir beklenen özellikler — çoklu hesap, veri eşitleme, daha güvenli mobil eşlik — daha güvenli ve profesyonel bir hizmet temeline ihtiyaç duyar.",
+       "promisesTitle": "Gönül rahatlığıyla güncelleyin:",
+       "promise2": "Yerel verileriniz olduğu gibi kalır: ilk oturum açmanızın ardından yeni sürüm mevcut konuşmalarınızı, ayarlarınızı ve API anahtarlarınızı yerinde devralır — yeniden yapılandırma gerekmez. Bu devralma tek seferlik bir taşımadır: tamamlandıktan sonra bu veriler yeni sürümde tutulur ve mevcut sürüm artık onların giriş noktası olmaz;",
+-      "promise3": "Yeni sürümde zorunlu harcama yok: AionUi'yi bugün nasıl kullanıyorsanız yarın da öyle kullanacaksınız; bugün ücretsiz olan her şey ücretsiz kalacak;",
++      "promise3": "Yeni sürümde zorunlu harcama yok: AGAS'yi bugün nasıl kullanıyorsanız yarın da öyle kullanacaksınız; bugün ücretsiz olan her şey ücretsiz kalacak;",
+       "choicesTitle": "Seçim yine de size ait:",
+       "choice2": "Yerel DIY'yi tercih ediyorsanız, açık kaynak kodu almaya ve kendiniz paketlemeye devam edebilirsiniz.",
+-      "closing": "Son olarak, AionUi ile bugüne kadar geldiğiniz için teşekkürler — yeni sürümde görüşmek dileğiyle.",
+-      "signature": "AionUi Ekibi",
++      "closing": "Son olarak, AGAS ile bugüne kadar geldiğiniz için teşekkürler — yeni sürümde görüşmek dileğiyle.",
++      "signature": "AGAS Ekibi",
+       "downloadNew": "Yeni sürümü indir",
+-      "greeting": "Sevgili AionUi kullanıcısı,",
++      "greeting": "Sevgili AGAS kullanıcısı,",
+       "whyOutroPrefix": "Bu nedenle ",
+       "whyOutroBold": "yeni sürümün kullanımı için oturum açmak gerekiyor",
+-      "whyOutroSuffix": " (Google ile oturum açma destekleniyor, daha fazla seçenek yolda). AionUi'yi uzun vadede gerçek bir ürün olarak geliştirmek istiyoruz — hesaplarla bunların nihayet bir başlangıç noktası oluyor ve bildirimlerinize çok daha iyi yanıt verebileceğiz.",
+-      "choice1Bold": "AionUi'yi günlük kullanıyorsanız yeni sürüme yükseltmenizi öneririz",
++      "whyOutroSuffix": " (Google ile oturum açma destekleniyor, daha fazla seçenek yolda). AGAS'yi uzun vadede gerçek bir ürün olarak geliştirmek istiyoruz — hesaplarla bunların nihayet bir başlangıç noktası oluyor ve bildirimlerinize çok daha iyi yanıt verebileceğiz.",
++      "choice1Bold": "AGAS'yi günlük kullanıyorsanız yeni sürüme yükseltmenizi öneririz",
+       "choice1Rest": ": yeni yetenekler, beceriler ve asistanlar önce size ulaşır; veri eşitleme gibi hesap tabanlı gelecek hizmetler de sizin için sorunsuzca açılır;",
+       "promise1Bold": "Konuşmalarınız ve dosyalarınız yerelde kalır",
+       "promise1Rest": ": ajanlar kendi bilgisayarınızda çalışır; konuşmalarınız ve dosyalarınız sunucularımıza asla yüklenmez;",
+-      "introPrefix": "AionUi'ye verdiğiniz sürekli destek için teşekkür ederiz. ",
+-      "introBold": "Bu, AionUi'nin yeni sürümünü indirmeniz için bir davettir",
++      "introPrefix": "AGAS'ye verdiğiniz sürekli destek için teşekkür ederiz. ",
++      "introBold": "Bu, AGAS'nin yeni sürümünü indirmeniz için bir davettir",
+       "introSuffix": ": bundan böyle yükleyiciler ve güncellemeler GitHub Releases yerine resmi web sitemiz üzerinden sunulacak. Yeni sürümü siteden edinmenizi içtenlikle rica ederiz.",
+       "promise4": "Açık kaynak deposu aktif olarak güncellenmeye devam eder, çekirdek özellikler eşzamanlı kalır, açık kaynak ruhu sürer.",
+       "noRush": "Şimdilik geçmek istemiyorsanız mevcut sürümü normal şekilde kullanmaya devam edebilirsiniz; yalnızca artık güncelleme almayacaktır. Ancak yeni sürümde ilk oturumu açtığınız anda yerel verileriniz oraya taşınmış olur; bundan sonra günlük kullanımınız için yeni sürümü giriş noktası olarak kullanın."

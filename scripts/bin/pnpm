@@ -1,0 +1,3 @@
+#!/bin/sh
+# Keep Paperclip's nested pnpm scripts on the version pinned by packageManager.
+exec corepack pnpm "$@"

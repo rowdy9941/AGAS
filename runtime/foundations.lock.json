@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    { "id": "aionui", "url": "https://github.com/rowdy9941/AionUi.git", "commit": "6744099b279b991c17e31c243f0920477bd31cb6", "path": "foundations/aionui", "packageManager": "bun" },
+    { "id": "aioncore", "url": "https://github.com/iOfficeAI/AionCore.git", "commit": "47e66d0d151123e973b3fd1e77afcb5671b3f8c5", "path": "foundations/aioncore", "packageManager": "cargo", "release": "v0.2.2" },
+    { "id": "paperclip", "url": "https://github.com/paperclipai/paperclip.git", "commit": "efce9356b553a08f77a5877bb0ceac68d2cc4ad8", "path": "foundations/paperclip", "packageManager": "pnpm@9.15.4" },
+    { "id": "agency", "url": "https://github.com/msitarzewski/agency-agents.git", "commit": "053ddbbf392a1688fc7043d81529f47ef2cf86c8", "path": "foundations/agency" }
+  ]
+}
