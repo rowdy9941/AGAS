@@ -82,14 +82,18 @@ process.on('SIGTERM', stop);
 
 async function waitFor(url, accept, label, deadlineMs) {
   const deadline = Date.now() + deadlineMs;
+  let lastObservation = 'connection not established';
   while (!stopping && Date.now() < deadline) {
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(2000) });
       if (response.ok && accept(await response.json())) return;
-    } catch { /* The real service is still starting. */ }
+      lastObservation = `HTTP ${response.status} or unexpected health response`;
+    } catch (error) {
+      lastObservation = error?.cause?.code ?? error?.name ?? 'connection failed';
+    }
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  throw new Error(`${label} did not become ready at ${url}`);
+  throw new Error(`${label} did not become ready at ${url} (${lastObservation})`);
 }
 
 const paperclip = start('corepack', [
@@ -110,7 +114,7 @@ paperclip.on('exit', (code) => {
 
 try {
   await waitFor(`${paperclipUrl}/api/health`,
-    (body) => body?.status === 'ok' && typeof body.serverVersion === 'string', 'Paperclip', 150_000);
+    (body) => body?.status === 'ok' && typeof body.serverVersion === 'string', 'Paperclip', 360_000);
   if (!stopping) {
     const web = start('bun', ['run', 'webui', '--no-build', '--no-open'], desktopDir);
     const webExited = new Promise((resolve) => web.once('exit', resolve));

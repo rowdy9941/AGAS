@@ -47,6 +47,10 @@ if (action === 'fetch') {
   run('bun', ['install', '--frozen-lockfile'], path.join(root, 'foundations/aionui'));
   process.env.PATH = paperclipPath;
   run('corepack', ['pnpm', 'install', '--frozen-lockfile'], path.join(root, 'foundations/paperclip'));
+  // Paperclip's dev runner builds these on first launch if absent. Build during
+  // setup so a cold native Rust compile cannot look like a failed health check.
+  run('corepack', ['pnpm', '--filter', '@paperclipai/paperclip-runner', 'build:typescript'], path.join(root, 'foundations/paperclip'));
+  run('corepack', ['pnpm', '--filter', '@paperclipai/paperclip-runner', 'build:binary'], path.join(root, 'foundations/paperclip'));
   run('corepack', ['pnpm', '--filter', '@paperclipai/plugin-sdk', 'build'], path.join(root, 'foundations/paperclip'));
   run('node', ['scripts/brand.mjs']);
   run('cargo', ['install', '--path', 'crates/aionui-app', '--locked'], path.join(root, 'foundations/aioncore'));

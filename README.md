@@ -6,7 +6,7 @@ AGAS is being rebuilt as a real desktop application on the pinned AionUI/AionCor
 
 ## Development setup
 
-Prerequisites: Node.js 24.11+, Python 3, Bun, Corepack (for pnpm 9.15.4), and Rust/Cargo. The pinned sources are recorded in [runtime/foundations.lock.json](runtime/foundations.lock.json). Setup fetches those commits, applies the checked AGAS desktop patch, installs development dependencies, creates the AGAS icons, and builds the local AionCore command. This is a **source development setup**, not a one-click installer.
+Prerequisites: Node.js 24.11+, Python 3, Bun, Corepack (for pnpm 9.15.4), and Rust/Cargo. The pinned sources are recorded in [runtime/foundations.lock.json](runtime/foundations.lock.json). Setup fetches those commits, applies the checked AGAS desktop patch, installs development dependencies, builds Paperclip's native runner and the local AionCore command, and creates the AGAS icons. First-time setup compiles substantial Rust code. This is a **source development setup**, not a one-click installer.
 
 ```bash
 npm run setup

@@ -34,7 +34,7 @@ async function probe(url, check) {
 }
 
 async function waitFor(name, url, check) {
-  const deadline = Date.now() + 180_000;
+  const deadline = Date.now() + 390_000;
   while (!exited && Date.now() < deadline) {
     try {
       if (await probe(url, check)) {

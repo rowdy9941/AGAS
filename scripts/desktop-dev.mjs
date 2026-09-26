@@ -37,7 +37,7 @@ paperclip.on('exit', (code) => {
 });
 
 async function ready() {
-  const deadline = Date.now() + 150_000;
+  const deadline = Date.now() + 360_000;
   while (!stopped && !paperclipExit && Date.now() < deadline) {
     try {
       const response = await fetch(`${url}/api/health`, { signal: AbortSignal.timeout(2000) });
