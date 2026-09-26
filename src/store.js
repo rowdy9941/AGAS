@@ -93,6 +93,12 @@ export class Store {
         status TEXT NOT NULL DEFAULT 'simulated', created_at TEXT NOT NULL,
         UNIQUE(account_id,request_id)
       );
+      CREATE TABLE IF NOT EXISTS paper_backtests (
+        id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES paper_accounts(id),
+        request_id TEXT NOT NULL, params_sha256 TEXT NOT NULL, inputs_sha256 TEXT NOT NULL,
+        receipt_json TEXT NOT NULL, receipt_sha256 TEXT NOT NULL, created_at TEXT NOT NULL,
+        UNIQUE(account_id,request_id)
+      );
       CREATE TABLE IF NOT EXISTS missions (
         id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), project TEXT NOT NULL DEFAULT '',
         title TEXT NOT NULL, objective TEXT NOT NULL, criteria TEXT NOT NULL,
@@ -473,7 +479,13 @@ export class Store {
     const costTotal=values.reduce((sum,item)=>sum+item.cost_paise,0);
     const valued=values.every(item=>item.mark&&Number.isSafeInteger(item.market_value_paise))&&
       [marketTotal,costTotal,account.cash_paise+marketTotal,marketTotal-costTotal].every(Number.isSafeInteger);
-    return {account,marks,positions:values,orders,
+    const backtests=this.db.prepare("SELECT id,request_id,created_at FROM paper_backtests WHERE account_id=? ORDER BY created_at DESC,id DESC LIMIT 12").all(id)
+      .map(row=>{
+        const saved=this.paperBacktest(id,row.id),receipt=saved.receipt;
+        return {id:row.id,request_id:row.request_id,sha256:saved.receipt_sha256,created_at:row.created_at,
+          symbol:receipt.symbol,ending_equity_paise:receipt.ending_equity_paise,trade_count:receipt.trades.length};
+      });
+    return {account,marks,positions:values,orders,backtests,
       valuation:valued?{
         equity_paise:account.cash_paise+marketTotal,
         unrealized_pnl_paise:marketTotal-costTotal,
@@ -503,6 +515,86 @@ export class Store {
       this.event("finance.mark.manual",markId,"finance",`Manual paper price recorded for ${symbol}; source not independently checked`);
     });
     return this.paperAccountDetail(id);
+  }
+  paperBacktest(id,backtestId) {
+    const row=this.db.prepare("SELECT * FROM paper_backtests WHERE id=? AND account_id=?").get(backtestId,id);
+    if(!row)throw new InputError("Paper replay not found",404);
+    let receipt;
+    try {receipt=JSON.parse(row.receipt_json)}catch{throw new InputError("Paper replay receipt integrity changed",409)}
+    const params={symbol:receipt.symbol,fast_window:receipt.fast_window,
+      slow_window:receipt.slow_window,fee_paise:receipt.fee_paise};
+    const hash=value=>createHash("sha256").update(JSON.stringify(value)).digest("hex");
+    if(createHash("sha256").update(row.receipt_json).digest("hex")!==row.receipt_sha256||
+      hash(params)!==row.params_sha256||receipt.inputs_sha256!==row.inputs_sha256||
+      hash({params,account_starting_cash_paise:receipt.starting_cash_paise,
+        max_trade_bps:receipt.max_trade_bps,marks:receipt.marks})!==row.inputs_sha256)
+      throw new InputError("Paper replay receipt integrity changed",409);
+    return {...row,receipt};
+  }
+  replayPaperBacktest(id,input) {
+    const requestId=nonempty(input.requestId,"requestId",120);
+    const symbol=nonempty(input.symbol,"symbol",32).toUpperCase();
+    if(!/^[A-Z0-9][A-Z0-9._:-]{0,31}$/.test(symbol))throw new InputError("Use a simple instrument symbol");
+    const fast=boundedInteger(input.fastWindow,"fastWindow",2,30);
+    const slow=boundedInteger(input.slowWindow,"slowWindow",fast+1,100);
+    const fee=boundedInteger(input.feePaise??0,"feePaise",0,1_000_000_000);
+    const params={symbol,fast_window:fast,slow_window:slow,fee_paise:fee};
+    const paramsSha=createHash("sha256").update(JSON.stringify(params)).digest("hex");
+    let row;
+    this.transaction(()=>{
+      const prior=this.db.prepare("SELECT id,params_sha256 FROM paper_backtests WHERE account_id=? AND request_id=?").get(id,requestId);
+      if(prior){
+        if(prior.params_sha256!==paramsSha)throw new InputError("Replay request ID has different settings",409);
+        row=this.paperBacktest(id,prior.id);return;
+      }
+      const account=this.db.prepare("SELECT * FROM paper_accounts WHERE id=?").get(id);
+      if(!account||account.version!==input.expectedVersion)throw new InputError("Paper account changed; reload",409);
+      const marks=this.db.prepare("SELECT id,as_of,price_paise,source_url FROM paper_marks WHERE account_id=? AND symbol=? ORDER BY as_of,rowid").all(id,symbol);
+      if(marks.length<slow+2||marks.length>500||marks.some((mark,index)=>index>0&&mark.as_of===marks[index-1].as_of))
+        throw new InputError("Replay needs 2–500 dated, distinct marks beyond the slow window",409);
+      const inputsSha=createHash("sha256").update(JSON.stringify({params,account_starting_cash_paise:account.starting_cash_paise,
+        max_trade_bps:account.max_trade_bps,marks})).digest("hex");
+      const cap=Number(BigInt(account.starting_cash_paise)*BigInt(account.max_trade_bps)/10_000n);
+      let cash=account.starting_cash_paise,quantity=0;
+      const trades=[],equity=[];
+      for(let i=slow;i<marks.length;i++){
+        const shortSum=marks.slice(i-fast,i).reduce((total,mark)=>total+mark.price_paise,0);
+        const longSum=marks.slice(i-slow,i).reduce((total,mark)=>total+mark.price_paise,0);
+        const long=shortSum*slow>longSum*fast,mark=marks[i],price=mark.price_paise;
+        if(long&&quantity===0){
+          const units=Math.floor(Math.min(cap,cash-fee)/price);
+          if(units>0){
+            const gross=units*price;
+            cash-=gross+fee;quantity=units;
+            trades.push({side:"buy",quantity:units,price_paise:price,fee_paise:fee,mark_id:mark.id,as_of:mark.as_of});
+          }
+        } else if(!long&&quantity>0){
+          const gross=quantity*price;
+          if(!Number.isSafeInteger(gross))throw new InputError("Replay sale exceeds the safe accounting range",409);
+          if(gross>=fee){
+            cash+=gross-fee;
+            trades.push({side:"sell",quantity,price_paise:price,fee_paise:fee,mark_id:mark.id,as_of:mark.as_of});
+            quantity=0;
+          }
+        }
+        const value=quantity*price,total=cash+value;
+        if(![cash,value,total].every(Number.isSafeInteger))throw new InputError("Replay valuation exceeds the safe accounting range",409);
+        equity.push({mark_id:mark.id,as_of:mark.as_of,equity_paise:total});
+      }
+      const ending=equity.at(-1).equity_paise;
+      const receipt={version:1,method:"prior-mark moving-average signal; next-observed-mark simulated fill",
+        symbol,fast_window:fast,slow_window:slow,fee_paise:fee,
+        starting_cash_paise:account.starting_cash_paise,max_trade_bps:account.max_trade_bps,
+        inputs_sha256:inputsSha,marks,trades,equity,ending_cash_paise:cash,ending_quantity:quantity,
+        ending_equity_paise:ending,pnl_paise:ending-account.starting_cash_paise,
+        limitations:"Manual sources unverified; observed prices are illustrative fills without spread, liquidity, corporate actions, taxes or live execution."};
+      const serialized=JSON.stringify(receipt),receiptSha=createHash("sha256").update(serialized).digest("hex"),backtestId=randomUUID();
+      this.db.prepare("INSERT INTO paper_backtests VALUES (?,?,?,?,?,?,?,?)")
+        .run(backtestId,id,requestId,paramsSha,inputsSha,serialized,receiptSha,now());
+      this.event("finance.paper-replay",backtestId,"finance",`Historical manual-mark replay for ${symbol}; no broker activity`);
+      row=this.paperBacktest(id,backtestId);
+    });
+    return row;
   }
   simulatePaperOrder(id,input) {
     const requestId=nonempty(input.requestId,"requestId",120);

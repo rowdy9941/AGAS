@@ -152,12 +152,15 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       }
       if(req.method==="POST"&&path==="/api/finance/paper-accounts")
         return json(res,201,{account:store.createPaperAccount(await body(req))});
-      const paperRoute=path.match(/^\/api\/finance\/paper-accounts\/([\da-f-]{36})(?:\/(marks|orders))?$/);
+      const paperReplay=path.match(/^\/api\/finance\/paper-accounts\/([\da-f-]{36})\/backtests\/([\da-f-]{36})$/);
+      if(req.method==="GET"&&paperReplay)return json(res,200,{backtest:store.paperBacktest(paperReplay[1],paperReplay[2])});
+      const paperRoute=path.match(/^\/api\/finance\/paper-accounts\/([\da-f-]{36})(?:\/(marks|orders|backtests))?$/);
       if(paperRoute){
         const [,id,action]=paperRoute;
         if(req.method==="GET"&&!action)return json(res,200,store.paperAccountDetail(id));
         if(req.method==="POST"&&action==="marks")return json(res,201,store.recordPaperMark(id,await body(req)));
         if(req.method==="POST"&&action==="orders")return json(res,201,store.simulatePaperOrder(id,await body(req)));
+        if(req.method==="POST"&&action==="backtests")return json(res,201,{backtest:store.replayPaperBacktest(id,await body(req))});
       }
       if(req.method==="POST"&&path==="/api/messages"){
         const input=await body(req);
