@@ -70,6 +70,13 @@ export async function projectVault(store, basePath) {
     await managed("03 Missions",`${mission.id}.md`,header({agas_id:`mission:${mission.id}`,type:"mission",hub_id:mission.hub_id,project:mission.project,goal_id:mission.goal_id,revision:mission.version,status:mission.status,provenance:"agas:mission"})+
       `# ${mission.title}\n\n${mission.objective}\n\nLinked goal: ${state.goals.find(g=>g.id===mission.goal_id)?.title||"None"}.\n\n## Acceptance criteria\n${criteria}\n\n## Tasks\n${tasks||"No tasks yet."}\n\n## Runs\n${runs||"No agent runs yet."}\n\n## Recorded files\n${artifacts||"No files yet."}\n\n## Evidence ledger\n${evidence||"No evidence yet."}\n\nFile integrity is checked for linked artifacts. Owner review remains separate from semantic or external verification. Full evidence stays in AGAS.\n`);
   }
+  for (const handoff of state.handoffs) {
+    await managed("09 Decisions and Evidence",`${handoff.id}.md`,header({agas_id:`handoff:${handoff.id}`,
+      type:"handoff",source_mission_id:handoff.source_mission_id,target_mission_id:handoff.target_mission_id,
+      source_evidence_id:handoff.source_evidence_id,from_hub_id:handoff.from_hub_id,to_hub_id:handoff.to_hub_id,
+      evidence_sha256:handoff.evidence_sha256,status:handoff.status,revision:handoff.version,provenance:"agas:handoff"})+
+      `# ${handoff.title}\n\n${handoff.purpose}\n\nResponse: ${handoff.response_note||"Pending recipient review"}.\n\nThe source evidence body is readable in its authorized AGAS mission.\n`);
+  }
   for (const note of store.allNotesForVault()) {
     const folder=note.scope==="private"?"01 People and Organizations":
       note.scope==="project"?"02 Projects":note.scope==="hub"?"04 Hubs":"07 Knowledge";

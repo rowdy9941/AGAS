@@ -93,6 +93,9 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
         }
       }
       if(req.method==="POST"&&path==="/api/projects")return json(res,201,{project:store.createProject(await body(req))});
+      if(req.method==="POST"&&path==="/api/handoffs")return json(res,201,{handoff:store.offerHandoff(await body(req))});
+      const handoffReview=path.match(/^\/api\/handoffs\/([\da-f-]{36})\/review$/);
+      if(req.method==="POST"&&handoffReview)return json(res,200,{handoff:store.reviewHandoff(handoffReview[1],await body(req))});
       if(req.method==="POST"&&path==="/api/goals")return json(res,201,{goal:store.createGoal(await body(req))});
       const achieve=path.match(/^\/api\/goals\/([\da-f-]{36})\/achieve$/);
       if(req.method==="POST"&&achieve)return json(res,200,{goal:store.completeGoal(achieve[1],await body(req))});

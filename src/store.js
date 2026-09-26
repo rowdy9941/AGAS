@@ -88,6 +88,16 @@ export class Store {
         run_id TEXT NOT NULL REFERENCES mission_runs(id), path TEXT NOT NULL,
         sha256 TEXT, bytes INTEGER, status TEXT NOT NULL, PRIMARY KEY(run_id,path)
       );
+      CREATE TABLE IF NOT EXISTS handoffs (
+        id TEXT PRIMARY KEY, source_mission_id TEXT NOT NULL REFERENCES missions(id),
+        source_evidence_id TEXT NOT NULL REFERENCES mission_evidence(id),
+        target_mission_id TEXT NOT NULL REFERENCES missions(id),
+        from_hub_id TEXT NOT NULL REFERENCES hubs(id), to_hub_id TEXT NOT NULL REFERENCES hubs(id),
+        title TEXT NOT NULL, purpose TEXT NOT NULL, evidence_sha256 TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'offered', version INTEGER NOT NULL DEFAULT 1,
+        response_note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, responded_at TEXT
+      );
+      CREATE INDEX IF NOT EXISTS handoffs_by_target ON handoffs(target_mission_id,created_at);
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), text TEXT NOT NULL,
         author TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL
@@ -164,6 +174,7 @@ export class Store {
       mediaCampaigns: all("SELECT * FROM media_campaigns ORDER BY created_at DESC"),
       missions: all("SELECT * FROM missions ORDER BY created_at DESC").map(m => ({ ...m,criteria:JSON.parse(m.criteria) })),
       runs: all("SELECT * FROM mission_runs ORDER BY created_at DESC LIMIT 80"),
+      handoffs: all("SELECT * FROM handoffs ORDER BY created_at DESC LIMIT 80"),
       messages: all("SELECT * FROM messages ORDER BY created_at DESC LIMIT 60"),
       notes: all("SELECT id,title,scope,owner_id,revision,created_at,updated_at FROM notes ORDER BY updated_at DESC LIMIT 100"),
       personas: all("SELECT path,title,description,emoji,division,source_commit,source_sha FROM personas ORDER BY title"),
@@ -311,11 +322,14 @@ export class Store {
     if(!mission)throw new InputError("Mission not found",404);
     return {
       mission:{...mission,criteria:JSON.parse(mission.criteria)},
-      tasks:this.db.prepare("SELECT * FROM mission_tasks WHERE mission_id=? ORDER BY created_at,id").all(id),
+      tasks:this.db.prepare("SELECT * FROM mission_tasks WHERE mission_id=? ORDER BY rowid").all(id),
       evidence:this.db.prepare("SELECT * FROM mission_evidence WHERE mission_id=? ORDER BY created_at,id").all(id),
       dependencies:this.db.prepare("SELECT d.* FROM task_dependencies d JOIN mission_tasks t ON t.id=d.task_id WHERE t.mission_id=?").all(id),
       runs:this.db.prepare("SELECT * FROM mission_runs WHERE mission_id=? ORDER BY created_at,id").all(id),
-      artifacts:this.db.prepare("SELECT a.* FROM run_artifacts a JOIN mission_runs r ON r.id=a.run_id WHERE r.mission_id=? ORDER BY a.run_id,a.path").all(id)
+      artifacts:this.db.prepare("SELECT a.* FROM run_artifacts a JOIN mission_runs r ON r.id=a.run_id WHERE r.mission_id=? ORDER BY a.run_id,a.path").all(id),
+      handoffs:this.db.prepare(`SELECT h.*,e.title AS source_evidence_title,e.content AS source_evidence_content
+        FROM handoffs h JOIN mission_evidence e ON e.id=h.source_evidence_id
+        WHERE h.source_mission_id=? OR h.target_mission_id=? ORDER BY h.created_at,h.id`).all(id,id)
     };
   }
   checkedMission(id,version) {
@@ -395,7 +409,63 @@ export class Store {
     const persona=this.db.prepare("SELECT * FROM personas WHERE path=?").get(assignment.persona_path);
     const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(detail.mission.project);
     const notes=this.notesFor({hubId:detail.mission.hub_id,project:detail.mission.project,principal:"worker"});
-    return {run,mission:detail.mission,task,assignment,persona,project,notes};
+    const handoffs=this.acceptedHandoffs(detail.mission.id);
+    return {run,mission:detail.mission,task,assignment,persona,project,notes,handoffs};
+  }
+  acceptedHandoffs(missionId) {
+    return this.db.prepare(`SELECT h.id,h.title,h.purpose,h.from_hub_id,h.evidence_sha256 AS receipt_sha256,e.title AS evidence_title,
+      e.content AS evidence_content,e.sha256 AS evidence_sha256,e.run_id,e.artifact_path,e.verified_sha256,
+      e.verification FROM handoffs h JOIN mission_evidence e ON e.id=h.source_evidence_id
+      WHERE h.target_mission_id=? AND h.status='accepted' ORDER BY h.created_at,h.id LIMIT 10`).all(missionId)
+      .filter(h=>createHash("sha256").update(h.evidence_content).digest("hex")===h.evidence_sha256&&
+        h.receipt_sha256===h.evidence_sha256&&
+        (h.verification!=="file-hash-verified"||this.verifyRecordedFile(h.run_id,h.artifact_path,h.verified_sha256)));
+  }
+  offerHandoff(input) {
+    const source=nonempty(input.sourceMissionId,"sourceMissionId",120);
+    const target=nonempty(input.targetMissionId,"targetMissionId",120);
+    const evidenceId=nonempty(input.evidenceId,"evidenceId",120);
+    const title=nonempty(input.title,"title",140),purpose=nonempty(input.purpose,"purpose",2000);
+    const id=randomUUID(),time=now();
+    this.transaction(()=>{
+      const from=this.missionDetail(source),to=this.missionDetail(target);
+      const evidence=from.evidence.find(item=>item.id===evidenceId);
+      const task=from.tasks.find(item=>item.id===evidence?.task_id);
+      if(from.mission.status!=="accepted"||!evidence||evidence.status!=="reviewed"||task?.status!=="accepted")
+        throw new InputError("Only reviewed evidence from an accepted mission and task can be handed off",409);
+      if(from.mission.hub_id===to.mission.hub_id||["accepted","cancelled"].includes(to.mission.status))
+        throw new InputError("Choose an open mission in a different receiving hub",409);
+      if(createHash("sha256").update(evidence.content).digest("hex")!==evidence.sha256||
+        evidence.verification==="file-hash-verified"&&!this.verifyRecordedFile(evidence.run_id,evidence.artifact_path,evidence.verified_sha256))
+        throw new InputError("Source evidence integrity check failed",409);
+      this.db.prepare(`INSERT INTO handoffs(id,source_mission_id,source_evidence_id,target_mission_id,
+        from_hub_id,to_hub_id,title,purpose,evidence_sha256,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+        .run(id,source,evidenceId,target,from.mission.hub_id,to.mission.hub_id,title,purpose,evidence.sha256,time);
+      this.event("handoff.offered",id,to.mission.hub_id,`${from.mission.hub_id} offered reviewed evidence to ${to.mission.hub_id}: ${title}`);
+    });
+    return this.db.prepare("SELECT * FROM handoffs WHERE id=?").get(id);
+  }
+  reviewHandoff(id,input) {
+    const decision=nonempty(input.decision,"decision",20),note=nonempty(input.responseNote,"responseNote",2000);
+    if(!["accepted","declined"].includes(decision))throw new InputError("Choose accepted or declined");
+    this.transaction(()=>{
+      const handoff=this.db.prepare("SELECT * FROM handoffs WHERE id=?").get(id);
+      if(!handoff)throw new InputError("Handoff not found",404);
+      if(handoff.status!=="offered"||handoff.version!==input.expectedVersion)
+        throw new InputError("Handoff changed; reload",409);
+      const target=this.missionDetail(handoff.target_mission_id).mission;
+      if(["accepted","cancelled"].includes(target.status))throw new InputError("Receiving mission is closed",409);
+      const evidence=this.db.prepare("SELECT * FROM mission_evidence WHERE id=?").get(handoff.source_evidence_id);
+      if(decision==="accepted"&&(!evidence||evidence.status!=="reviewed"||evidence.sha256!==handoff.evidence_sha256||
+        createHash("sha256").update(evidence.content).digest("hex")!==handoff.evidence_sha256||
+        evidence.verification==="file-hash-verified"&&!this.verifyRecordedFile(evidence.run_id,evidence.artifact_path,evidence.verified_sha256)))
+        throw new InputError("Source evidence changed; this handoff cannot be accepted",409);
+      this.db.prepare("UPDATE handoffs SET status=?,version=version+1,response_note=?,responded_at=? WHERE id=?")
+        .run(decision,note,now(),id);
+      this.advanceMission(target.id,target.status);
+      this.event(`handoff.${decision}`,id,target.hub_id,`Receiving hub ${decision} the evidence handoff: ${handoff.title}`);
+    });
+    return this.db.prepare("SELECT * FROM handoffs WHERE id=?").get(id);
   }
   claimRun(id) {
     this.transaction(()=>{

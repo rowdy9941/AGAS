@@ -123,8 +123,9 @@ export class ExecutionManager {
       {timeout:30000,maxBuffer:1024*1024,env:childEnv()});
     return workspace;
   }
-  prompt({mission,task,persona,notes}) {
+  prompt({mission,task,persona,notes,handoffs=[]}) {
     const scope=notes.slice(0,15).map(n=>`[${n.scope}:${n.owner_id} / ${n.title}]\n${n.content.slice(0,1600)}`).join("\n\n").slice(0,10000);
+    const received=handoffs.map(h=>`[${h.from_hub_id} → ${mission.hub_id} / ${h.title} / receipt ${h.id}]\nPurpose: ${h.purpose}\n${h.evidence_title}: ${h.evidence_content.slice(0,2000)}\nSHA-256: ${h.evidence_sha256}`).join("\n\n").slice(0,12000);
     return [
       `You are the AGAS specialist: ${persona.title}.`,
       `Agency source: ${persona.path} at ${persona.source_commit} (${persona.source_sha}).`,
@@ -134,6 +135,7 @@ export class ExecutionManager {
       `Task: ${task.title}\nRequested result: ${task.objective}`,
       `Acceptance criteria:\n${mission.criteria.map((item,index)=>`${index+1}. ${item}`).join("\n")}`,
       `Authorized context for this hub and project:\n${scope||"No approved notes."}`,
+      `Explicitly accepted cross-hub evidence:\n${received||"No cross-hub handoffs."}`,
       "Work only in this isolated Git worktree. Make the requested changes, run relevant local checks and report the exact files and results. Do not deploy, publish, access unrelated user data or claim that AGAS has accepted your work. AGAS will record your actual file changes separately."
     ].join("\n\n");
   }

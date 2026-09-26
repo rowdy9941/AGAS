@@ -53,6 +53,14 @@ function missionPage(){
     `<div class="section-head"><h2>Recorded files</h2><span>${artifacts.filter(a=>a.status==="recorded").length} hashed</span></div><div class="mission-table">${artifacts.length?artifacts.map(a=>`<article class="card work-card"><div><strong>${esc(a.path)}</strong><small>${esc(a.status)} · ${esc(a.sha256||"no hash")} · ${esc(a.bytes??"?")} bytes</small></div><div class="work-actions">${open&&a.status==="recorded"&&runs.find(r=>r.id===a.run_id)?.status==="succeeded"?`<button class="secondary" data-action="prove-artifact" data-id="${esc(a.run_id)}" data-path="${esc(a.path)}">Use as evidence</button>`:""}</div></article>`).join(""):`<div class="panel empty">Completed runs will list changed files and their hashes here.</div>`}</div>`+
     `<div class="section-head"><h2>Evidence ledger</h2><span>${evidence.length} entries</span></div><div class="mission-table">${evidence.length?evidence.map(e=>`<article class="card evidence-card"><div><strong>${esc(e.title)}</strong><small>Criterion ${e.criterion_index+1} · ${esc(e.kind)} · SHA-256 ${esc(e.sha256)}${e.verification==="file-hash-verified"?" · recorded file hash verified":" · unverified submission"}</small><p>${esc(e.content)}</p>${e.review_note?`<p>Owner review: ${esc(e.review_note)}</p>`:""}</div><div class="work-actions"><span class="badge ${e.status==="reviewed"?"":"warn"}">${esc(e.status)}</span>${open&&e.status==="submitted"?`<button class="secondary" data-action="review-evidence" data-id="${esc(e.id)}">Review</button>`:""}</div></article>`).join(""):`<div class="panel empty">No evidence submitted. Completing a task requires real output and owner review.</div>`}</div>`;
 }
+function handoffsPanel(d) {
+  const {mission:m,handoffs}=d;
+  const approved=d.evidence.some(e=>e.status==="reviewed"&&d.tasks.some(t=>t.id===e.task_id&&t.status==="accepted"));
+  const targets=state.data.missions.some(other=>other.hub_id!==m.hub_id&&!["accepted","cancelled"].includes(other.status));
+  const action=m.status==="accepted"&&approved&&targets?'<button class="secondary" data-action="offer-handoff">Offer reviewed evidence →</button>':"";
+  const rows=handoffs.map(h=>`<article class="card work-card"><div><strong>${esc(h.title)}</strong><p>${esc(h.purpose)}</p><small>${esc(h.from_hub_id)} → ${esc(h.to_hub_id)} · ${esc(h.source_evidence_title)} · SHA-256 ${esc(h.evidence_sha256)}</small>${h.response_note?`<p>Response: ${esc(h.response_note)}</p>`:""}</div><div class="work-actions"><span class="badge ${h.status==="accepted"?"":"warn"}">${esc(h.status)}</span>${h.target_mission_id===m.id&&h.status==="offered"?`<button class="secondary" data-action="review-handoff" data-id="${esc(h.id)}">Inspect & review</button>`:""}<button class="ghost" data-action="open-mission" data-id="${esc(h.source_mission_id===m.id?h.target_mission_id:h.source_mission_id)}">${h.source_mission_id===m.id?"Receiving":"Source"} mission →</button></div></article>`).join("");
+  return `<div class="section-head"><h2>Cross-hub handoffs</h2>${action}</div><div class="mission-table">${rows||'<div class="panel empty">No evidence handoffs for this mission yet.</div>'}</div>`;
+}
 function dashboard() {
   const d=state.data;
   const stats=[["Hubs",hubs().length,"Permanent departments"],["Projects",d.projects.length,"Owned by a hub"],["Open missions",d.missions.filter(m=>m.status!=="accepted").length,"Intake and active work"],["Agency roles",d.personas.length,`of ${d.agency.count} catalogued`]];
@@ -156,7 +164,7 @@ function renderInspector() {
     $("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">KNOWLEDGE</span><h3 style="margin-top:13px">Loading scoped note…</h3></div>`;
     api("/api/notes/"+encodeURIComponent(selected.id)).then(result=>{const n=result.note;if(n&&state.inspected?.id===selected.id)$("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">${esc(n.scope)} · ${esc(n.owner_id)}</span><h3 style="margin-top:14px">${esc(n.title)}</h3><p style="white-space:pre-wrap">${esc(n.content)}</p><div class="kv"><span>Revision</span><strong>${n.revision}</strong></div></div>`}).catch(error=>notify(error.message,true));return;
   }
-  $("#inspector-content").innerHTML=`<div class="inspector-section"><img class="logo-large" src="/assets/agas-logo.jpg" alt=""><h3>Your command center</h3><p>One organization, seven hub chiefs, one shared context with clear boundaries. AGAS reports actual state, so a configured role does not appear as a working agent.</p></div><div class="inspector-section"><h3>Workspace state</h3><div class="kv"><span>Organization</span><strong>AGAS</strong></div><div class="kv"><span>Hubs</span><strong>${hubs().length}</strong></div><div class="kv"><span>Runtime ready</span><strong>${state.data.runtimes.filter(r=>r.ready).length} on this host</strong></div><div class="kv"><span>Pending CEO requests</span><strong>${state.data.messages.length}</strong></div></div><div class="inspector-section"><h3>On this machine</h3><div class="stack">${state.data.runtimes.map(r=>`<div class="runtime-chip"><strong>${esc(r.icon)} ${esc(r.name)}</strong><span class="${r.ready||r.state==="detected"?"":"off"}">${esc(r.state)}</span></div>`).join("")}</div></div><div class="inspector-section"><h3>Current milestone</h3><p>Dev tasks can launch in isolated Git worktrees when a local Codex CLI confirms authentication. Other runtimes and cross-agent handoffs are still pending.</p></div>`;
+  $("#inspector-content").innerHTML=`<div class="inspector-section"><img class="logo-large" src="/assets/agas-logo.jpg" alt=""><h3>Your command center</h3><p>One organization, seven hub chiefs, one shared context with clear boundaries. AGAS reports actual state, so a configured role does not appear as a working agent.</p></div><div class="inspector-section"><h3>Workspace state</h3><div class="kv"><span>Organization</span><strong>AGAS</strong></div><div class="kv"><span>Hubs</span><strong>${hubs().length}</strong></div><div class="kv"><span>Runtime ready</span><strong>${state.data.runtimes.filter(r=>r.ready).length} on this host</strong></div><div class="kv"><span>Pending CEO requests</span><strong>${state.data.messages.length}</strong></div></div><div class="inspector-section"><h3>On this machine</h3><div class="stack">${state.data.runtimes.map(r=>`<div class="runtime-chip"><strong>${esc(r.icon)} ${esc(r.name)}</strong><span class="${r.ready||r.state==="detected"?"":"off"}">${esc(r.state)}</span></div>`).join("")}</div></div><div class="inspector-section"><h3>Current milestone</h3><p>Dev tasks can launch in isolated Git worktrees when a local Codex CLI confirms authentication. Manual cross-hub receipts are available; automatic second-runtime dispatch is pending.</p></div>`;
 }
 function render() {
   if(!state.data)return;
@@ -164,6 +172,7 @@ function render() {
   document.querySelectorAll(".nav").forEach(button=>button.classList.toggle("active",button.dataset.view===state.view));
   $("#hub-nav").innerHTML=hubs().map(h=>`<button class="hub-link ${state.view==="hubs"&&state.hub===h.id?"active":""}" data-action="hub" data-id="${esc(h.id)}"><span>${esc(h.icon)}</span>${esc(h.name)}</button>`).join("");
   $("#content").innerHTML=({overview:dashboard,organization,goals:goalsPage,projects:projectsPage,missions:missionsPage,mission:missionPage,hubs:hubsPage,agents:agentsPage,windows:windowsPage,knowledge:knowledgePage,activity:activityPage}[state.view]||dashboard)();
+  if(state.view==="mission"&&state.detail)$("#content").insertAdjacentHTML("beforeend",handoffsPanel(state.detail));
   if(state.view==="hubs"&&state.hub==="content")$("#content").insertAdjacentHTML("beforeend",mediaPanels());
   renderInspector();
 }
@@ -197,6 +206,22 @@ function reviewEvidence(evidenceId){
   openModal("Review evidence","This records an owner decision. AGAS has not independently verified external claims.",
     `<label class="field">Decision<select name="decision"><option value="reviewed">Supports the criterion</option><option value="rejected">Reject and request a better result</option></select></label><label class="field">Reason<textarea name="reviewNote" required maxlength="2000" placeholder="What did you inspect and why? Did the actual result meet the criterion?"></textarea></label>`,
     data=>api(`/api/missions/${m.id}/evidence/${evidenceId}/review`,{method:"POST",body:JSON.stringify({decision:data.get("decision"),reviewNote:data.get("reviewNote"),expectedVersion:state.detail.mission.version})}));
+}
+function offerHandoff(){
+  const {mission:m,tasks,evidence}=state.detail;
+  const targets=state.data.missions.filter(other=>other.hub_id!==m.hub_id&&!["accepted","cancelled"].includes(other.status));
+  const accepted=evidence.filter(e=>e.status==="reviewed"&&tasks.some(t=>t.id===e.task_id&&t.status==="accepted"));
+  if(m.status!=="accepted"||!targets.length||!accepted.length)return notify("Accept source work and create an open receiving mission first.",true);
+  openModal("Offer reviewed evidence","Choose the exact evidence and receiving mission. The receiving team must acknowledge it before an agent may read it.",
+    `<label class="field">Receiving mission<select name="targetMissionId">${targets.map(item=>`<option value="${esc(item.id)}">${esc(hub(item.hub_id)?.name)} · ${esc(item.title)}</option>`).join("")}</select></label><label class="field">Accepted source evidence<select name="evidenceId">${accepted.map(e=>`<option value="${esc(e.id)}">${esc(e.title)} · criterion ${e.criterion_index+1}</option>`).join("")}</select></label><label class="field">Handoff title<input name="title" required maxlength="140"></label><label class="field">Purpose<textarea name="purpose" required maxlength="2000" placeholder="What should the receiving team do with it?"></textarea></label>`,
+    data=>api("/api/handoffs",{method:"POST",body:JSON.stringify({sourceMissionId:m.id,targetMissionId:data.get("targetMissionId"),evidenceId:data.get("evidenceId"),title:data.get("title"),purpose:data.get("purpose")})}));
+}
+function reviewHandoff(id){
+  const handoff=state.detail.handoffs.find(h=>h.id===id);
+  if(!handoff)return notify("Handoff not found; refresh the mission.",true);
+  openModal("Review cross-hub evidence","This decision grants the receiving mission explicit use of the source evidence.",
+    `<p>${esc(handoff.source_evidence_title)} · SHA-256 ${esc(handoff.evidence_sha256)}</p><p>${esc(handoff.source_evidence_content)}</p><label class="field">Decision<select name="decision"><option value="accepted">Accept for this mission</option><option value="declined">Decline</option></select></label><label class="field">Reason<textarea name="responseNote" required maxlength="2000"></textarea></label>`,
+    data=>api(`/api/handoffs/${id}/review`,{method:"POST",body:JSON.stringify({decision:data.get("decision"),responseNote:data.get("responseNote"),expectedVersion:handoff.version})}));
 }
 async function missionAction(action){
   try {await api(`/api/missions/${state.missionId}/${action}`,{method:"POST",body:JSON.stringify({expectedVersion:state.detail.mission.version})});await refresh();notify("Mission record updated.")}
@@ -287,6 +312,8 @@ document.addEventListener("click",async event=>{
   else if(type==="stop-run"&&window.confirm("Stop this run? Its partial worktree will be kept for inspection."))missionAction(`runs/${id}/stop`);
   else if(type==="add-evidence")addEvidence(id);
   else if(type==="review-evidence")reviewEvidence(id);
+  else if(type==="offer-handoff")offerHandoff();
+  else if(type==="review-handoff")reviewHandoff(id);
   else if(type==="accept-task")missionAction(`tasks/${id}/accept`);
   else if(type==="accept-mission")missionAction("accept");
   else if(type==="cancel-mission"&&window.confirm("Cancel this mission and all its open tasks?"))missionAction("cancel");
