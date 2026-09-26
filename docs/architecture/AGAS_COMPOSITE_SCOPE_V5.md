@@ -29,7 +29,7 @@ Each supported runtime receives an **agent window** tab in AGAS, with health, as
 | Codex | CLI and external Codex application; AGAS run/log inspector | First noninteractive Git worktree adapter implemented; local authenticated CLI and GUI integration unverified. |
 | Hermes | Hermes dashboard (local web), TUI and desktop app | CLI discovery only; dashboard window/launch and authenticated task adapter pending. |
 | OpenClaw | Gateway Control UI (local web) | CLI discovery only; controlled window/launch and scoped Gateway adapter pending. |
-| OpenCode | Its local web UI or terminal | CLI discovery only; endpoint configuration and task adapter pending. |
+| OpenCode | Its local web UI or terminal | Noninteractive 1.x Git worktree adapter and process test; real authenticated provider run and native window framing unverified. |
 | Claude Code | CLI or separate native/web application | CLI discovery only; approved CLI adapter and external app launch pending. |
 | Other agents | New versioned adapter contract | No assertion that arbitrary agents already work. Add capability probe, authenticated invocation, bounded cancellation, artifacts and receipt verification before reporting ready. |
 
@@ -48,7 +48,7 @@ The selected runtime window is a view, not a permission grant. Third-party crede
 | Gate | Evidence required | Present state |
 |---|---|---|
 | Foundation | Seven durable hubs, roles, scoped missions and vault | Implemented with automated persistence/scope checks; vault authoring import still absent. |
-| Execution | Two **real** authenticated agent runtimes, cancellation, recovery, receipts | One Codex code path and process fixture tests; live Codex and second runtime not verified. |
+| Execution | Two **real** authenticated agent runtimes, cancellation, recovery, receipts | Codex and OpenCode 1.x code paths and process fixture tests, including a second end-to-end worktree/artifact flow; neither live provider is installed or authenticated here. |
 | Teamwork | CEO replies and two-runtime acknowledged handoff, permissions and durable approvals | Manual cross-hub evidence receipt and acknowledgement implemented; automatic two-runtime handoffs, CEO replies and effect approvals pending. |
 | Domains | Dev integration/release; Media publish receipt; Finance, Business, Health, Security and Maintenance domain tests | Dev worktree slice and media planning records; full workflows pending. |
 | Experience | Actual browser interaction, agent window capability tests, secure access and three clean OS installs | UI exists; automated browser binary and target OS installs unavailable in this workspace. |

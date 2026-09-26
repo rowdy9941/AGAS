@@ -64,13 +64,53 @@ export class CodexAdapter {
   }
 }
 
+export class OpenCodeAdapter {
+  constructor({binary=null,environment=process.env}={}) {this.binary=binary;this.environment=environment}
+  executable() {return this.binary||detectRuntimes(this.environment).find(item=>item.id==="opencode")?.path}
+  async probe() {
+    const binary=this.executable();
+    if(!binary)return {id:"opencode",ready:false,reason:"OpenCode CLI is not installed on this host"};
+    try {
+      const env=childEnv(this.environment);
+      const version=(await execFile(binary,["--version"],{env,timeout:5000,maxBuffer:4096})).stdout.trim();
+      const major=Number(version.match(/(?:^|\s)v?(\d+)\./)?.[1]);
+      if(major!==1)return {id:"opencode",ready:false,reason:"AGAS currently supports the OpenCode 1.x CLI protocol",version};
+      const help=(await execFile(binary,["run","--help"],{env,timeout:5000,maxBuffer:16384})).stdout;
+      if(!help.includes("--format"))throw new Error("JSON run events unavailable");
+      const output=(await execFile(binary,["auth","list"],{env,timeout:5000,maxBuffer:8192})).stdout
+        .replace(/\u001b\[[0-9;]*m/g,"");
+      if(!/\b[1-9]\d*\s+credentials?\b/i.test(output))
+        return {id:"opencode",ready:false,reason:"OpenCode has no confirmed stored provider credential; run opencode auth list locally",version};
+      return {id:"opencode",ready:true,version,path:binary};
+    } catch {
+      return {id:"opencode",ready:false,reason:"OpenCode did not confirm its JSON run protocol and stored provider login"};
+    }
+  }
+  launch(workspace,prompt) {
+    const binary=this.executable();
+    if(!binary)throw new InputError("OpenCode CLI is missing",409);
+    const env={...childEnv(this.environment),OPENCODE_PERMISSION:JSON.stringify({
+      "*":"deny",read:"allow",edit:"allow",glob:"allow",grep:"allow",external_directory:"deny"
+    }),OPENCODE_AUTO_SHARE:"false",OPENCODE_DISABLE_AUTOUPDATE:"true",
+      OPENCODE_DISABLE_LSP_DOWNLOAD:"true",OPENCODE_DISABLE_DEFAULT_PLUGINS:"true"};
+    return spawn(binary,["--pure","run","--format","json",prompt+"\n\nAGAS permits only local file read, edit and search in this worktree. Shell tools and external directories are disabled. State honestly when checks could not be run."],{
+      cwd:workspace,env,stdio:["ignore","pipe","pipe"],shell:false,detached:process.platform!=="win32"
+    });
+  }
+}
+
 export class ExecutionManager {
-  constructor(store,{workspaces="data/workspaces",adapter=new CodexAdapter()}={}) {
-    this.store=store;this.root=resolve(workspaces);this.adapter=adapter;
+  constructor(store,{workspaces="data/workspaces",adapter,adapters}={}) {
+    this.store=store;this.root=resolve(workspaces);
+    this.adapters=adapters||(adapter?{codex:adapter}:{codex:new CodexAdapter(),opencode:new OpenCodeAdapter()});
     this.active=null;this.busy=false;this.stopping=false;
     this.store.recoverRuns();
   }
-  async readiness() {return this.adapter.probe()}
+  async readiness(id="codex") {
+    const adapter=this.adapters[id];
+    if(!adapter)return {id,ready:false,reason:"AGAS has no executable adapter for this runtime"};
+    return adapter.probe();
+  }
   resumeQueued(){this.enqueue()}
   enqueue() {
     if(this.busy||this.stopping)return;
@@ -158,10 +198,10 @@ export class ExecutionManager {
     if(channel==="agent") {
       try {
         const event=JSON.parse(line);
-        const item=event.item||{};
+        const item=event.item||event.part||{};
         const summary=[event.type,item.type,item.status,item.command,item.text,event.message]
           .filter(value=>typeof value==="string"&&value.trim()).join(" · ");
-        this.store.appendRunLog(runId,"agent",summary||"Codex event");
+        this.store.appendRunLog(runId,"agent",summary||"Agent event");
       } catch {this.store.appendRunLog(runId,"agent",line)}
     } else this.store.appendRunLog(runId,"progress",line);
   }
@@ -191,14 +231,16 @@ export class ExecutionManager {
     try {
       const context=this.store.claimRun(id);
       this.active={id,child:null};
-      const ready=await this.adapter.probe();
+      const adapter=this.adapters[context.run.runtime];
+      if(!adapter)throw new Error(`No adapter installed for ${context.run.runtime}`);
+      const ready=await adapter.probe();
       if(!ready.ready)throw new Error(ready.reason||"Assigned runtime is not ready");
       workspace=await this.prepare(context);
       if(this.stopping||terminal.has(this.store.runContext(id).run.status))return;
-      child=this.adapter.launch(workspace,this.prompt(context));
+      child=adapter.launch(workspace,this.prompt(context));
       this.active.child=child;
       this.store.runningRun(id,child.pid||null);
-      this.store.appendRunLog(id,"system",`Codex launched in isolated worktree at ${context.run.id}`);
+      this.store.appendRunLog(id,"system",`${context.run.runtime} launched in isolated worktree at ${context.run.id}`);
       const budget={used:0};
       this.logStream(id,"agent",child.stdout,budget);
       this.logStream(id,"progress",child.stderr,budget);

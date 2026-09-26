@@ -383,7 +383,8 @@ export class Store {
       if(this.db.prepare("SELECT 1 FROM mission_runs WHERE task_id=? AND status IN ('queued','starting','running')").get(taskId))
         throw new InputError("This task already has an active run",409);
       const assignment=this.db.prepare("SELECT * FROM assignments WHERE id=?").get(task.assignment_id);
-      if(assignment?.hub_id!=="dev"||assignment.runtime!=="codex")throw new InputError("The assigned Codex runtime is required for this adapter");
+      if(assignment?.hub_id!=="dev"||!["codex","opencode"].includes(assignment.runtime))
+        throw new InputError("Assign a supported Codex or OpenCode specialist");
       const prerequisites=this.db.prepare("SELECT t.status FROM task_dependencies d JOIN mission_tasks t ON t.id=d.prerequisite_id WHERE d.task_id=?").all(taskId);
       if(prerequisites.some(item=>item.status!=="accepted"))throw new InputError("Accept prerequisite tasks before running this task",409);
       if(project.monthly_run_limit!==null){
@@ -392,10 +393,10 @@ export class Store {
         if(count>=project.monthly_run_limit)throw new InputError("Project monthly run quota reached",409);
       }
       this.db.prepare("INSERT INTO mission_runs(id,mission_id,task_id,assignment_id,runtime,status,timeout_seconds,created_at) VALUES (?,?,?,?,?,'queued',?,?)")
-        .run(runId,id,taskId,assignment.id,"codex",timeout,now());
+        .run(runId,id,taskId,assignment.id,assignment.runtime,timeout,now());
       this.db.prepare("UPDATE mission_tasks SET status='queued',updated_at=? WHERE id=?").run(now(),taskId);
       this.advanceMission(id,"planned");
-      this.event("run.queued",runId,"dev",`Codex run queued for task ${task.title}`);
+      this.event("run.queued",runId,"dev",`${assignment.runtime} run queued for task ${task.title}`);
     });
     return this.db.prepare("SELECT * FROM mission_runs WHERE id=?").get(runId);
   }
@@ -510,7 +511,7 @@ export class Store {
       this.db.prepare("UPDATE mission_tasks SET status=?,updated_at=? WHERE id=?")
         .run(status==="succeeded"?"awaiting-review":"blocked",now(),task.id);
       this.advanceMission(mission.id,status==="succeeded"?"in-review":"blocked");
-      this.event(`run.${status}`,id,"dev",`Codex run ${status} for task ${task.title}; outcome needs review`);
+      this.event(`run.${status}`,id,"dev",`${run.runtime} run ${status} for task ${task.title}; outcome needs review`);
     });
   }
   stopRun(missionId,runId,input) {

@@ -30,9 +30,9 @@ async function body(req) {
 }
 
 export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault",token="agas-dev-token",
-  workspaces="data/workspaces",adapter}={}) {
+  workspaces="data/workspaces",adapter,adapters}={}) {
   const store=new Store(resolve(database));
-  const executor=new ExecutionManager(store,{workspaces,adapter});
+  const executor=new ExecutionManager(store,{workspaces,adapter,adapters});
   const server=createServer(async(req,res)=>{
     res.setHeader("x-content-type-options","nosniff");
     res.setHeader("referrer-policy","no-referrer");
@@ -48,11 +48,12 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       if(!path.startsWith("/api/"))return json(res,404,{error:"Not found"});
       if(!safeToken(req.headers.authorization?.replace(/^Bearer /i,""),token))return json(res,401,{error:"Authentication required"});
       const runtimes=async()=>{
-        const codex=await executor.readiness();
-        return detectRuntimes().map(runtime=>runtime.id==="codex"?{
-          ...runtime,ready:codex.ready,state:codex.ready?"ready":runtime.state,
-          reason:codex.reason||"",version:codex.version||""
-        }:runtime);
+        const checks=await Promise.all([executor.readiness("codex"),executor.readiness("opencode")]);
+        return detectRuntimes().map(runtime=>{
+          const check=checks.find(item=>item.id===runtime.id);
+          return check?{...runtime,ready:check.ready,state:check.ready?"ready":runtime.state,
+            reason:check.reason||"",version:check.version||""}:runtime;
+        });
       };
       if(req.method==="GET"&&path==="/api/overview")return json(res,200,{...store.overview(),runtimes:await runtimes()});
       if(req.method==="GET"&&path==="/api/runtimes")return json(res,200,{runtimes:await runtimes()});
@@ -78,8 +79,11 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
           }
           const launch=action?.match(/^tasks\/([\da-f-]{36})\/run$/);
           if(launch){
-            const ready=await executor.readiness();
-            if(!ready.ready)throw new InputError(ready.reason||"Codex runtime is not ready",409);
+            const detail=store.missionDetail(id);
+            const task=detail.tasks.find(item=>item.id===launch[1]);
+            const runtime=store.overview().assignments.find(item=>item.id===task?.assignment_id)?.runtime;
+            const ready=await executor.readiness(runtime);
+            if(!ready.ready)throw new InputError(ready.reason||"Assigned runtime is not ready",409);
             const run=store.queueRun(id,launch[1],input);
             executor.enqueue();
             return json(res,202,{run,mission:store.missionDetail(id)});
