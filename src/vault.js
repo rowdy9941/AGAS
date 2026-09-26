@@ -9,6 +9,46 @@ const FOLDERS = [
 const q = value => JSON.stringify(value);
 const header = properties => `---\n${Object.entries(properties).map(([key,value])=>`${key}: ${q(value)}`).join("\n")}\n---\n`;
 const sha256 = text => createHash("sha256").update(text).digest("hex");
+const noteFolder=note=>note.scope==="private"?"01 People and Organizations":
+  note.scope==="project"?"02 Projects":note.scope==="hub"?"04 Hubs":"07 Knowledge";
+
+export async function importVaultNotes(store,basePath) {
+  const root=resolve(basePath),conflicts=[],imported=[];
+  const rootInfo=await lstat(root).catch(error=>{if(error.code==="ENOENT")return null;throw error});
+  if(!rootInfo)return {imported,conflicts};
+  if(rootInfo.isSymbolicLink()||!rootInfo.isDirectory())throw new Error("Vault root must be a regular directory");
+  for(const note of store.allNotesForVault()) {
+    const relative=join(noteFolder(note),`${note.id}.md`),path=resolve(root,relative);
+    if(!path.startsWith(root+sep)){conflicts.push(relative);continue}
+    try {
+      const folder=await lstat(resolve(root,noteFolder(note)));
+      const file=await lstat(path);
+      if(folder.isSymbolicLink()||!folder.isDirectory()||file.isSymbolicLink()||!file.isFile()||file.size>65536)
+        throw new Error("Vault note is not a bounded regular file");
+      const body=await readFile(path,"utf8"),sourceHash=sha256(body),baselineHash=store.projectionHash(relative);
+      if(sourceHash===baselineHash)continue;
+      if(!baselineHash)throw new Error("No AGAS projection baseline");
+      const match=body.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+      if(!match)throw new Error("Malformed note metadata");
+      const metadata=Object.fromEntries(match[1].split("\n").map(line=>{
+        const divider=line.indexOf(": ");
+        if(divider<1)throw new Error("Malformed metadata field");
+        return [line.slice(0,divider),JSON.parse(line.slice(divider+2))];
+      }));
+      if(metadata.agas_id!==`note:${note.id}`||metadata.type!=="note"||metadata.scope!==note.scope||
+        metadata.owner_id!==note.owner_id||metadata.revision!==note.revision||metadata.provenance!=="agas:context")
+        throw new Error("Vault metadata or note revision changed");
+      const content=match[2].match(/^# ([^\n]+)\n\n([\s\S]*)\n$/);
+      if(!content)throw new Error("Note must contain a title and body");
+      store.importNoteEdit({id:note.id,title:content[1],content:content[2],scope:note.scope,
+        ownerId:note.owner_id,revision:note.revision,path:relative,sourceHash,baselineHash});
+      imported.push(relative);
+    } catch(error) {
+      if(error.code!=="ENOENT")conflicts.push(relative);
+    }
+  }
+  return {imported,conflicts};
+}
 
 export async function projectVault(store, basePath) {
   const root = resolve(basePath);
@@ -67,8 +107,9 @@ export async function projectVault(store, basePath) {
     const evidence=detail.evidence.map(e=>`- Criterion ${e.criterion_index+1}: ${e.title} · ${e.status} · SHA-256 ${e.sha256}`).join("\n");
     const runs=detail.runs.map(r=>`- ${r.runtime} run ${r.id} · ${r.status} · base ${r.base_commit||"pending"}${r.result?` · ${r.result}`:""}`).join("\n");
     const artifacts=detail.artifacts.map(a=>`- ${a.path} · ${a.status} · SHA-256 ${a.sha256||"not recorded"}`).join("\n");
+    const branches=detail.reviewBranches.map(b=>`- ${b.branch} · commit ${b.commit_sha} · base ${b.base_commit}`).join("\n");
     await managed("03 Missions",`${mission.id}.md`,header({agas_id:`mission:${mission.id}`,type:"mission",hub_id:mission.hub_id,project:mission.project,goal_id:mission.goal_id,revision:mission.version,status:mission.status,provenance:"agas:mission"})+
-      `# ${mission.title}\n\n${mission.objective}\n\nLinked goal: ${state.goals.find(g=>g.id===mission.goal_id)?.title||"None"}.\n\n## Acceptance criteria\n${criteria}\n\n## Tasks\n${tasks||"No tasks yet."}\n\n## Runs\n${runs||"No agent runs yet."}\n\n## Recorded files\n${artifacts||"No files yet."}\n\n## Evidence ledger\n${evidence||"No evidence yet."}\n\nFile integrity is checked for linked artifacts. Owner review remains separate from semantic or external verification. Full evidence stays in AGAS.\n`);
+      `# ${mission.title}\n\n${mission.objective}\n\nLinked goal: ${state.goals.find(g=>g.id===mission.goal_id)?.title||"None"}.\n\n## Acceptance criteria\n${criteria}\n\n## Tasks\n${tasks||"No tasks yet."}\n\n## Runs\n${runs||"No agent runs yet."}\n\n## Recorded files\n${artifacts||"No files yet."}\n\n## Review branches\n${branches||"No local review branch yet."}\n\n## Evidence ledger\n${evidence||"No evidence yet."}\n\nFile integrity is checked for linked artifacts. Owner review remains separate from semantic or external verification. Full evidence stays in AGAS.\n`);
   }
   for (const handoff of state.handoffs) {
     await managed("09 Decisions and Evidence",`${handoff.id}.md`,header({agas_id:`handoff:${handoff.id}`,
@@ -78,8 +119,7 @@ export async function projectVault(store, basePath) {
       `# ${handoff.title}\n\n${handoff.purpose}\n\nResponse: ${handoff.response_note||"Pending recipient review"}.\n\nThe source evidence body is readable in its authorized AGAS mission.\n`);
   }
   for (const note of store.allNotesForVault()) {
-    const folder=note.scope==="private"?"01 People and Organizations":
-      note.scope==="project"?"02 Projects":note.scope==="hub"?"04 Hubs":"07 Knowledge";
+    const folder=noteFolder(note);
     await managed(folder,`${note.id}.md`,header({agas_id:`note:${note.id}`,type:"note",scope:note.scope,owner_id:note.owner_id,revision:note.revision,provenance:"agas:context"})+
       `# ${note.title}\n\n${note.content}\n`);
   }

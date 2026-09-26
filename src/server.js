@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { timingSafeEqual } from "node:crypto";
 import { Store, InputError } from "./store.js";
-import { projectVault } from "./vault.js";
+import { importVaultNotes, projectVault } from "./vault.js";
 import { detectRuntimes } from "./runtimes.js";
 import { ExecutionManager, validateRepository } from "./execution.js";
 import { ConversationManager } from "./conversation.js";
@@ -70,6 +70,12 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
         if(req.method==="GET"&&logs)return json(res,200,store.runLogs(id,logs[1]));
         if(req.method==="POST"){
           const input=await body(req);
+          const reviewBranch=action?.match(/^runs\/([\da-f-]{36})\/review-branch$/);
+          if(reviewBranch){
+            if(store.missionDetail(id).mission.version!==input.expectedVersion)
+              throw new InputError("Mission changed; reload before creating a review branch",409);
+            return json(res,201,{receipt:await executor.createReviewBranch(id,reviewBranch[1])});
+          }
           if(action==="tasks")return json(res,201,store.createTask(id,input));
           if(action==="evidence")return json(res,201,store.submitEvidence(id,input));
           if(action==="artifact-evidence")return json(res,201,store.submitRunArtifact(id,input));
@@ -137,6 +143,11 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       if(req.method==="POST"&&path==="/api/notes")return json(res,201,{note:store.createNote(await body(req))});
       if(req.method==="POST"&&path==="/api/assignments")return json(res,201,{assignment:store.assignPersona(await body(req))});
       if(req.method==="POST"&&path==="/api/vault/project")return json(res,200,await projectVault(store,vault));
+      if(req.method==="POST"&&path==="/api/vault/import"){
+        const result=await importVaultNotes(store,vault);
+        const projection=await projectVault(store,vault);
+        return json(res,200,{...result,projected:projection.written,projectionConflicts:projection.conflicts});
+      }
       return json(res,404,{error:"Unknown API route"});
     }catch(error){
       const status=error instanceof InputError?error.status:500;

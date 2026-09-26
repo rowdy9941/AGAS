@@ -24,6 +24,14 @@ async function git(cwd,...args) {
   return stdout.trim();
 }
 
+async function changedPaths(workspace) {
+  const [tracked,untracked]=await Promise.all([
+    git(workspace,"diff","--no-renames","HEAD","--name-only","-z"),
+    git(workspace,"ls-files","-o","--exclude-standard","-z")
+  ]);
+  return [...new Set((tracked+untracked).split("\0").filter(Boolean))];
+}
+
 export async function validateRepository(path) {
   if(typeof path!=="string"||!isAbsolute(path))throw new InputError("Choose an absolute Git repository path");
   let root;
@@ -122,7 +130,7 @@ export class ExecutionManager {
   constructor(store,{workspaces="data/workspaces",adapter,adapters}={}) {
     this.store=store;this.root=resolve(workspaces);
     this.adapters=adapters||(adapter?{codex:adapter}:{codex:new CodexAdapter(),opencode:new OpenCodeAdapter()});
-    this.active=null;this.busy=false;this.stopping=false;
+    this.active=null;this.busy=false;this.stopping=false;this.promoting=new Set();
     this.store.recoverRuns();
   }
   async readiness(id="codex") {
@@ -225,8 +233,7 @@ export class ExecutionManager {
     } else this.store.appendRunLog(runId,"progress",line);
   }
   async artifacts(workspace,root) {
-    const paths=(await git(workspace,"ls-files","-m","-d","-o","--exclude-standard","-z"))
-      .split("\0").filter(Boolean);
+    const paths=await changedPaths(workspace);
     const output=[];
     for(const path of [...new Set(paths)].slice(0,MAX_ARTIFACTS)) {
       const full=resolve(workspace,path);
@@ -244,6 +251,43 @@ export class ExecutionManager {
     }
     if(paths.length>MAX_ARTIFACTS)this.store.appendRunLog(root,"system",`Only the first ${MAX_ARTIFACTS} changed paths were recorded`);
     return output;
+  }
+  async createReviewBranch(missionId,runId) {
+    if(this.promoting.has(runId))throw new InputError("Review branch creation is already underway",409);
+    this.promoting.add(runId);
+    try {
+      const {mission,project,run,artifacts,existing}=this.store.reviewBranchContext(missionId,runId);
+      if(existing)return existing;
+      const root=await validateRepository(project.repository_path);
+      const workspace=await realpath(run.workspace);
+      if(workspace!==join(this.root,runId)||await git(workspace,"rev-parse","--show-toplevel")!==workspace)
+        throw new InputError("Run worktree is no longer in AGAS's workspace directory",409);
+      const ref=`refs/heads/agas/${mission.id}/${runId}`;
+      let commit;
+      try {commit=await git(root,"rev-parse","--verify",ref)} catch {}
+      if(commit) {
+        const message=await git(root,"show","-s","--format=%B",commit);
+        if(!message.split("\n").includes(`AGAS-Run-ID: ${runId}`)||
+          await git(root,"rev-parse",`${commit}^`)!==run.base_commit||
+          await git(workspace,"rev-parse","HEAD")!==commit)
+          throw new InputError("A different review branch already has this name",409);
+      } else {
+        if(await git(workspace,"rev-parse","HEAD")!==run.base_commit)
+          throw new InputError("The agent changed Git history; inspect the worktree manually",409);
+        const actual=await changedPaths(workspace),expected=artifacts.map(item=>item.path);
+        if(actual.length!==expected.length||actual.some(path=>!expected.includes(path)))
+          throw new InputError("Worktree files changed since the accepted run; review fresh evidence",409);
+        await git(workspace,"add","--",...expected);
+        await git(workspace,"-c","user.name=AGAS","-c","user.email=agas@users.noreply.github.com",
+          "-c",`core.hooksPath=${process.platform==="win32"?"NUL":"/dev/null"}`,
+          "-c","commit.gpgsign=false","commit","-m",`AGAS review: ${mission.title}`,
+          "-m",`AGAS-Run-ID: ${runId}`);
+        commit=await git(workspace,"rev-parse","HEAD");
+        try {await git(root,"update-ref",ref,commit,"0".repeat(40))}
+        catch {throw new InputError("Review branch could not be created; inspect the linked repository",409)}
+      }
+      return this.store.recordReviewBranch(missionId,runId,ref,commit,run.base_commit);
+    } finally {this.promoting.delete(runId)}
   }
   async execute(id) {
     let workspace,child,timeoutTimer,timedOut=false;

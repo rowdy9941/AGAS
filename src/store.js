@@ -88,6 +88,10 @@ export class Store {
         run_id TEXT NOT NULL REFERENCES mission_runs(id), path TEXT NOT NULL,
         sha256 TEXT, bytes INTEGER, status TEXT NOT NULL, PRIMARY KEY(run_id,path)
       );
+      CREATE TABLE IF NOT EXISTS project_review_branches (
+        run_id TEXT PRIMARY KEY REFERENCES mission_runs(id), mission_id TEXT NOT NULL REFERENCES missions(id),
+        branch TEXT NOT NULL, commit_sha TEXT NOT NULL, base_commit TEXT NOT NULL, created_at TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS handoffs (
         id TEXT PRIMARY KEY, source_mission_id TEXT NOT NULL REFERENCES missions(id),
         source_evidence_id TEXT NOT NULL REFERENCES mission_evidence(id),
@@ -179,6 +183,7 @@ export class Store {
       mediaCampaigns: all("SELECT * FROM media_campaigns ORDER BY created_at DESC"),
       missions: all("SELECT * FROM missions ORDER BY created_at DESC").map(m => ({ ...m,criteria:JSON.parse(m.criteria) })),
       runs: all("SELECT * FROM mission_runs ORDER BY created_at DESC LIMIT 80"),
+      reviewBranches: all("SELECT * FROM project_review_branches ORDER BY created_at DESC LIMIT 80"),
       handoffs: all("SELECT * FROM handoffs ORDER BY created_at DESC LIMIT 80"),
       messages: all("SELECT m.*,r.runtime,r.reply,r.error,r.completed_at FROM messages m LEFT JOIN ceo_replies r ON r.message_id=m.id ORDER BY m.created_at DESC LIMIT 60"),
       notes: all("SELECT id,title,scope,owner_id,revision,created_at,updated_at FROM notes ORDER BY updated_at DESC LIMIT 100"),
@@ -332,6 +337,7 @@ export class Store {
       dependencies:this.db.prepare("SELECT d.* FROM task_dependencies d JOIN mission_tasks t ON t.id=d.task_id WHERE t.mission_id=?").all(id),
       runs:this.db.prepare("SELECT * FROM mission_runs WHERE mission_id=? ORDER BY created_at,id").all(id),
       artifacts:this.db.prepare("SELECT a.* FROM run_artifacts a JOIN mission_runs r ON r.id=a.run_id WHERE r.mission_id=? ORDER BY a.run_id,a.path").all(id),
+      reviewBranches:this.db.prepare("SELECT * FROM project_review_branches WHERE mission_id=? ORDER BY created_at").all(id),
       handoffs:this.db.prepare(`SELECT h.*,e.title AS source_evidence_title,e.content AS source_evidence_content
         FROM handoffs h JOIN mission_evidence e ON e.id=h.source_evidence_id
         WHERE h.source_mission_id=? OR h.target_mission_id=? ORDER BY h.created_at,h.id`).all(id,id)
@@ -570,6 +576,35 @@ export class Store {
       return createHash("sha256").update(readFileSync(full)).digest("hex")===expectedSha;
     } catch {return false}
   }
+  reviewBranchContext(missionId,runId) {
+    const detail=this.missionDetail(missionId),run=detail.runs.find(item=>item.id===runId);
+    const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(detail.mission.project);
+    if(detail.mission.status!=="accepted"||detail.mission.hub_id!=="dev"||!project?.repository_path||
+      run?.status!=="succeeded"||!run.workspace||!run.base_commit||
+      !detail.tasks.some(task=>task.id===run.task_id&&task.status==="accepted"))
+      throw new InputError("Accept the Dev mission and its completed run before creating a review branch",409);
+    const artifacts=detail.artifacts.filter(item=>item.run_id===runId);
+    if(!artifacts.length||artifacts.some(item=>item.status!=="recorded"||
+      !this.verifyRecordedFile(runId,item.path,item.sha256)||
+      !detail.evidence.some(e=>e.run_id===runId&&e.artifact_path===item.path&&e.status==="reviewed"&&
+        e.verification==="file-hash-verified"&&e.verified_sha256===item.sha256)))
+      throw new InputError("Every changed file needs a reviewed, unchanged artifact receipt",409);
+    return {mission:detail.mission,project,run,artifacts,
+      existing:detail.reviewBranches.find(item=>item.run_id===runId)};
+  }
+  recordReviewBranch(missionId,runId,branch,commitSha,baseCommit) {
+    this.transaction(()=>{
+      const context=this.reviewBranchContext(missionId,runId);
+      if(context.existing){
+        if(context.existing.branch===branch&&context.existing.commit_sha===commitSha)return;
+        throw new InputError("This run already has a different review branch",409);
+      }
+      this.db.prepare("INSERT INTO project_review_branches VALUES (?,?,?,?,?,?)")
+        .run(runId,missionId,branch,commitSha,baseCommit,now());
+      this.event("project.review-branch",runId,"dev",`Owner created ${branch} for accepted mission ${context.mission.title}`);
+    });
+    return this.db.prepare("SELECT * FROM project_review_branches WHERE run_id=?").get(runId);
+  }
   submitRunArtifact(id,input) {
     const taskId=nonempty(input.taskId,"taskId",120),runId=nonempty(input.runId,"runId",120);
     const path=nonempty(input.path,"path",1000),title=nonempty(input.title,"title",140);
@@ -746,6 +781,20 @@ export class Store {
     const note=this.db.prepare("SELECT * FROM notes WHERE id=?").get(id);
     if(!note)throw new InputError("Note not found",404);
     return note;
+  }
+  importNoteEdit({id,title,content,scope,ownerId,revision,path,sourceHash,baselineHash}) {
+    this.transaction(()=>{
+      const note=this.noteForOwner(id);
+      if(note.scope!==scope||note.owner_id!==ownerId||note.revision!==revision||
+        this.projectionHash(path)!==baselineHash)
+        throw new InputError("Vault note revision or scope changed; resolve the conflict in AGAS",409);
+      const nextTitle=nonempty(title,"title",140),nextContent=nonempty(content,"content",30000);
+      this.db.prepare("UPDATE notes SET title=?,content=?,revision=revision+1,updated_at=? WHERE id=?")
+        .run(nextTitle,nextContent,now(),id);
+      this.recordProjection(path,sourceHash);
+      this.event("note.imported",id,note.scope==="hub"?note.owner_id:null,`Reviewed vault edit imported: ${nextTitle}`);
+    });
+    return this.noteForOwner(id);
   }
   projectionHash(path) {
     return this.db.prepare("SELECT sha256 FROM vault_projection WHERE path=?").get(path)?.sha256||null;

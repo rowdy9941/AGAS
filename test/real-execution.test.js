@@ -28,13 +28,15 @@ async function until(fn) {
   throw new Error("Timed out waiting for a run state");
 }
 
-function fakeAdapter({hang=false,prompts=[]}={}) {
+function fakeAdapter({hang=false,stage=false,prompts=[]}={}) {
   return {
     async probe(){return {id:"codex",ready:true,version:"test process"}},
     launch(workspace,prompt) {
       prompts.push(prompt);
       const script=hang?"setInterval(()=>{},1000)":
-        "require('node:fs').writeFileSync('result.txt','Actual worker file\\n'); console.log(JSON.stringify({type:'turn.completed',item:{type:'agent_message',text:'Wrote result.txt'}}))";
+        "require('node:fs').writeFileSync('result.txt','Actual worker file\\n');"+
+        (stage?"require('node:child_process').execFileSync('git',['add','result.txt']);":"")+
+        "console.log(JSON.stringify({type:'turn.completed',item:{type:'agent_message',text:'Wrote result.txt'}}))";
       return spawn(process.execPath,["-e",script],{cwd:workspace,stdio:["ignore","pipe","pipe"],detached:process.platform!=="win32"});
     }
   };
@@ -103,14 +105,46 @@ test("a real child process runs in an isolated worktree and a file hash is check
       decision:"reviewed",reviewNote:"Checked recorded bytes",expectedVersion:latest+1})).status,200);
     assert.equal((await current.request(`/api/missions/${mission.id}/tasks/${task.id}/accept`,"POST",{
       expectedVersion:latest+2})).status,200);
-    assert.equal((await current.request(`/api/missions/${mission.id}/accept`,"POST",{
-      expectedVersion:latest+3})).data.mission.status,"accepted");
+    const accepted=(await current.request(`/api/missions/${mission.id}/accept`,"POST",{
+      expectedVersion:latest+3})).data;
+    assert.equal(accepted.mission.status,"accepted");
+    await writeFile(join(detail.runs[0].workspace,"result.txt"),"Tampered after acceptance\n");
+    assert.equal((await current.request(`/api/missions/${mission.id}/runs/${id}/review-branch`,"POST",{
+      expectedVersion:accepted.mission.version})).status,409);
+    await writeFile(join(detail.runs[0].workspace,"result.txt"),"Actual worker file\n");
+    const promoted=await current.request(`/api/missions/${mission.id}/runs/${id}/review-branch`,"POST",{
+      expectedVersion:accepted.mission.version});
+    assert.equal(promoted.status,201);
+    assert.equal(promoted.data.receipt.branch,`refs/heads/agas/${mission.id}/${id}`);
+    const commit=execFileSync("git",["-C",repo,"rev-parse",promoted.data.receipt.branch],{encoding:"utf8"}).trim();
+    assert.equal(commit,promoted.data.receipt.commit_sha);
+    assert.equal(execFileSync("git",["-C",repo,"show",`${commit}:result.txt`],{encoding:"utf8"}),"Actual worker file\n");
+    assert.equal((await readFile(join(repo,"README.md"),"utf8")),"Original source\n");
+    await assert.rejects(stat(join(repo,"result.txt")),{code:"ENOENT"});
+    assert.equal((await current.request(`/api/missions/${mission.id}/runs/${id}/review-branch`,"POST",{
+      expectedVersion:accepted.mission.version})).data.receipt.commit_sha,commit);
     await current.close();
     const restored=new Store(join(root,"agas.db"));
     assert.equal(restored.missionDetail(mission.id).runs[0].status,"succeeded");
     assert.equal(restored.missionDetail(mission.id).evidence[0].verification,"file-hash-verified");
+    assert.equal(restored.missionDetail(mission.id).reviewBranches[0].commit_sha,commit);
     restored.close();
   } finally {if(current.server.listening)await current.close()}
+});
+
+test("a file staged by the agent still receives a run artifact receipt",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"agas-staged-")),repo=await repository(root),current=await session(root,fakeAdapter({stage:true}));
+  try {
+    const {mission,task}=await missionFixture(current.request,repo);
+    assert.equal((await current.request(`/api/missions/${mission.id}/tasks/${task.id}/run`,"POST",{
+      expectedVersion:2,timeoutSeconds:30})).status,202);
+    const detail=await until(async()=>{
+      const response=(await current.request(`/api/missions/${mission.id}`)).data;
+      return response.runs[0]?.status==="succeeded"?response:null;
+    });
+    assert.equal(detail.artifacts[0].path,"result.txt");
+    assert.match(detail.artifacts[0].sha256,/^[0-9a-f]{64}$/);
+  } finally {await current.close()}
 });
 
 test("stopping a live run records cancellation and prevents late success",async()=>{
