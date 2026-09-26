@@ -47,6 +47,7 @@ if (action === 'fetch') {
   run('bun', ['install', '--frozen-lockfile'], path.join(root, 'foundations/aionui'));
   process.env.PATH = paperclipPath;
   run('corepack', ['pnpm', 'install', '--frozen-lockfile'], path.join(root, 'foundations/paperclip'));
+  run('corepack', ['pnpm', '--filter', '@paperclipai/plugin-sdk', 'build'], path.join(root, 'foundations/paperclip'));
   run('node', ['scripts/brand.mjs']);
   run('cargo', ['install', '--path', 'crates/aionui-app', '--locked'], path.join(root, 'foundations/aioncore'));
 } else if (action === 'desktop') {

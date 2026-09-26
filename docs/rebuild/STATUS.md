@@ -12,4 +12,6 @@ Checks in this workspace: TypeScript and lint passed (zero errors); all 13 i18n 
 
 ## Next product gates
 
+The source branch now also provides `npm run preview:web` and `npm run smoke:preview` for a loopback-only AionCore/Paperclip/WebUI development slice. The smoke check requires responses from real services. It cannot establish that native Electron views, Paperclip persistence, missions or a distributable installer work. This development preview has not yet been run end to end on this managed runner; its own script requires Bun, Cargo and executable downloads that are unavailable here.
+
 Verify actual desktop launch with Paperclip and AionCore on a host with Electron/Rust. Build runtime lifecycle and cancellation with real child processes; activate original Agency personas in native runtimes; implement persistent hubs and scoped context/MCP handoffs; execute missions with recipient acknowledgement and evidence-backed acceptance; assemble and test installers on clean supported operating systems. Simulated outcomes are not release evidence.

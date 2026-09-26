@@ -6,7 +6,7 @@ AGAS is being rebuilt as a real desktop application on the pinned AionUI/AionCor
 
 ## Development setup
 
-Prerequisites: Node.js 22+, Python 3, Bun, pnpm, and Rust/Cargo. The pinned sources are recorded in [runtime/foundations.lock.json](runtime/foundations.lock.json). Setup fetches those commits, applies the checked AGAS desktop patch, installs development dependencies, creates the AGAS icons, and builds the local AionCore command.
+Prerequisites: Node.js 24.11+, Python 3, Bun, Corepack (for pnpm 9.15.4), and Rust/Cargo. The pinned sources are recorded in [runtime/foundations.lock.json](runtime/foundations.lock.json). Setup fetches those commits, applies the checked AGAS desktop patch, installs development dependencies, creates the AGAS icons, and builds the local AionCore command. This is a **source development setup**, not a one-click installer.
 
 ```bash
 npm run setup
@@ -14,6 +14,16 @@ npm start
 ```
 
 `npm start` starts the real Paperclip development server at `http://127.0.0.1:3100`, checks its `/api/health` response, and starts the Electron desktop. In **Agent UI**, choose Paperclip to open its native interface; other local applications can be configured with their own loopback URLs. AGAS only accepts explicit `localhost`, `127.0.0.1`, or `[::1]` application addresses. A configured native app retains its own session and interface.
+
+For a **browser preview of the current AionUI foundation**, after `npm run setup`:
+
+```bash
+npm run build:desktop
+npm run smoke:preview
+npm run preview:web
+```
+
+Open `http://127.0.0.1:25809` on the same machine. The preview launches a real Paperclip development server and AionCore-backed AionUI WebUI, and stores its separate local development data in `data/web-preview/`. The first-run WebUI password is printed by AionUI in your terminal; change it after login. Paperclip is available separately at `http://127.0.0.1:3100`. The browser preview binds only to loopback. **Electron-only Agent UI embedding is unavailable in the browser**; use `npm start` to test native workspaces. This preview is not a publicly hosted AGAS release, and the smoke command checks service readiness only, not mission completion or restart persistence.
 
 ```bash
 npm run foundations:fetch   # fetch pinned source and apply the desktop patch

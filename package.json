@@ -15,6 +15,8 @@
     "foundations:fetch": "node scripts/foundations.mjs fetch",
     "catalog:build": "python3 scripts/catalog.py",
     "build:desktop": "node scripts/foundations.mjs build",
+    "preview:web": "node scripts/web-preview.mjs",
+    "smoke:preview": "node scripts/smoke-web-preview.mjs",
     "legacy:start": "node apps/control-plane/src/server.js",
     "backup": "node scripts/agas-backup.js",
     "restore": "node scripts/agas-restore.js",
