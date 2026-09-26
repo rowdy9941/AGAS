@@ -654,8 +654,8 @@ export class Store {
       if(this.db.prepare("SELECT 1 FROM mission_runs WHERE task_id=? AND status IN ('queued','starting','running')").get(taskId))
         throw new InputError("This task already has an active run",409);
       const assignment=this.db.prepare("SELECT * FROM assignments WHERE id=?").get(task.assignment_id);
-      if(assignment?.hub_id!==mission.hub_id||!(codeRun?["codex","opencode"].includes(assignment.runtime):assignment.runtime==="opencode"))
-        throw new InputError(codeRun?"Assign a supported Codex or OpenCode specialist":"Assign an OpenCode specialist for a text-only hub run");
+      if(assignment?.hub_id!==mission.hub_id||!(codeRun?["codex","opencode"].includes(assignment.runtime):["opencode","openclaw"].includes(assignment.runtime)))
+        throw new InputError(codeRun?"Assign a supported Codex or OpenCode specialist":"Assign an OpenCode or restricted OpenClaw specialist for a text-only hub run");
       const prerequisites=this.db.prepare("SELECT t.status FROM task_dependencies d JOIN mission_tasks t ON t.id=d.prerequisite_id WHERE d.task_id=?").all(taskId);
       if(prerequisites.some(item=>item.status!=="accepted"))throw new InputError("Accept prerequisite tasks before running this task",409);
       if(task.required_handoff_id&&!this.acceptedHandoffs(id).some(item=>item.id===task.required_handoff_id))
@@ -1009,7 +1009,7 @@ export class Store {
     return this.db.prepare("SELECT * FROM messages WHERE id=?").get(id);
   }
   queueCeoReply(messageId,runtime) {
-    if(!["codex","opencode"].includes(runtime))throw new InputError("Select a supported conversation runtime");
+    if(!["codex","opencode","openclaw"].includes(runtime))throw new InputError("Select a supported conversation runtime");
     this.transaction(()=>{
       const message=this.db.prepare("SELECT * FROM messages WHERE id=?").get(messageId);
       if(!message)throw new InputError("CEO message not found",404);

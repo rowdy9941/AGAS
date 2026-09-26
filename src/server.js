@@ -50,7 +50,7 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       if(!path.startsWith("/api/"))return json(res,404,{error:"Not found"});
       if(!safeToken(req.headers.authorization?.replace(/^Bearer /i,""),token))return json(res,401,{error:"Authentication required"});
       const runtimes=async()=>{
-        const checks=await Promise.all([executor.readiness("codex"),executor.readiness("opencode")]);
+        const checks=await Promise.all([executor.readiness("codex"),executor.readiness("opencode"),executor.readiness("openclaw")]);
         return detectRuntimes().map(runtime=>{
           const check=checks.find(item=>item.id===runtime.id);
           return check?{...runtime,ready:check.ready,state:check.ready?"ready":runtime.state,
@@ -146,7 +146,7 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       if(req.method==="POST"&&path==="/api/messages"){
         const input=await body(req);
         if(input.runtime){
-          if(!["codex","opencode"].includes(input.runtime))throw new InputError("Unsupported conversation runtime");
+          if(!["codex","opencode","openclaw"].includes(input.runtime))throw new InputError("Unsupported conversation runtime");
           const ready=await executor.readiness(input.runtime);
           if(!ready.ready)throw new InputError(ready.reason||"Conversation runtime is not ready",409);
         }

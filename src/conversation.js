@@ -50,22 +50,25 @@ export class ConversationManager {
       this.active.child=child;
       child.stderr.on("data",()=>{});
       let bytes=0,pending="",reply="";
+      const consume=line=>{
+        try {
+          const event=JSON.parse(line),item=event.part||event.item;
+          if(event.ok===true&&event.status==="ok"&&!event.deliveryStatus&&typeof event.final==="string")
+            reply=event.final.trim().slice(0,8000);
+          else if((event.type==="text"&&item?.type==="text")||
+            (event.type==="item.completed"&&item?.type==="agent_message"))
+            reply=(reply+"\n"+String(item.text||"")).trim().slice(-8000);
+        } catch {}
+      };
       child.stdout.setEncoding("utf8");
       child.stdout.on("data",chunk=>{
         bytes+=Buffer.byteLength(chunk);
         if(bytes>128*1024){this.executor.terminate(child);return}
         pending+=chunk;
-        const lines=pending.split("\n");pending=lines.pop().slice(-2000);
-        for(const line of lines) {
-          try {
-            const event=JSON.parse(line);
-            const item=event.part||event.item;
-            if((event.type==="text"&&item?.type==="text")||
-              (event.type==="item.completed"&&item?.type==="agent_message"))
-              reply=(reply+"\n"+String(item.text||"")).trim().slice(-8000);
-          } catch {}
-        }
+        const lines=pending.split("\n");pending=lines.pop().slice(-16000);
+        for(const line of lines)consume(line);
       });
+      child.stdout.on("end",()=>{if(pending)consume(pending)});
       const completed=new Promise((resolve,reject)=>{
         child.once("error",reject);
         child.once("close",(code,signal)=>resolve({code,signal}));

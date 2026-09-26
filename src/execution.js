@@ -1,6 +1,8 @@
 import { spawn, execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash } from "node:crypto";
+import { randomUUID } from "node:crypto";
+import { writeFileSync, unlinkSync } from "node:fs";
 import { lstat, mkdir, mkdtemp, readFile, realpath, stat } from "node:fs/promises";
 import { isAbsolute, join, resolve, sep } from "node:path";
 import { detectRuntimes } from "./runtimes.js";
@@ -126,10 +128,58 @@ export class OpenCodeAdapter {
   }
 }
 
+// OpenClaw work is admitted only to a dedicated Gateway agent whose active
+// policy denies every tool. Gateway configuration must have been applied,
+// not merely written to disk, before AGAS can send a scoped prompt.
+export class OpenClawAdapter {
+  constructor({binary=null,environment=process.env}={}) {this.binary=binary;this.environment=environment}
+  executable() {return this.binary||detectRuntimes(this.environment).find(item=>item.id==="openclaw")?.path}
+  async probe() {
+    const binary=this.executable();
+    if(!binary)return {id:"openclaw",ready:false,reason:"OpenClaw CLI is not installed on this host"};
+    try {
+      const env=childEnv(this.environment),options={env,timeout:10000,maxBuffer:512*1024};
+      const version=(await execFile(binary,["--version"],options)).stdout.trim();
+      const help=(await execFile(binary,["agent","--help"],options)).stdout;
+      if(!["--agent","--message-file","--session-key","--json"].every(flag=>help.includes(flag)))
+        throw new Error("OpenClaw agent JSON protocol is unavailable");
+      const status=JSON.parse((await execFile(binary,["gateway","status","--require-rpc","--json"],options)).stdout);
+      if(status.ok!==true)throw new Error("Gateway read probe failed");
+      const snapshot=JSON.parse((await execFile(binary,["gateway","call","config.get","--params","{}","--json"],options)).stdout);
+      const active=snapshot.result||snapshot;
+      const agent=active.config?.agents?.entries?.agas;
+      if(!active.configRevisionHash||active.configRevisionHash!==active.appliedConfigHash||
+        active.config?.gateway?.mode!=="local"||
+        agent?.skipBootstrap!==true||!Array.isArray(agent.skills)||agent.skills.length!==0||
+        !agent.tools?.deny?.includes("*")||
+        agent.sandbox?.mode!=="all"||agent.sandbox?.workspaceAccess!=="none")
+        throw new Error("AGAS agent policy is not active");
+      return {id:"openclaw",ready:true,version,path:binary,capability:"text-only"};
+    } catch {
+      return {id:"openclaw",ready:false,reason:"OpenClaw needs a reachable local Gateway with an applied, tool-denied agas agent profile; see README"};
+    }
+  }
+  launchMessage(workspace,prompt) {
+    const binary=this.executable();
+    if(!binary)throw new InputError("OpenClaw CLI is missing",409);
+    const file=join(workspace,`agas-request-${randomUUID()}.txt`);
+    writeFileSync(file,prompt,{encoding:"utf8",mode:0o600,flag:"wx"});
+    try {
+      const child=spawn(binary,["agent","--agent","agas","--session-key",`agas-${randomUUID()}`,
+        "--message-file",file,"--timeout","120","--json"],{
+        cwd:workspace,env:childEnv(this.environment),stdio:["ignore","pipe","pipe"],shell:false,
+        detached:process.platform!=="win32"
+      });
+      child.once("close",()=>{try{unlinkSync(file)}catch(error){if(error.code!=="ENOENT")console.error("Could not remove OpenClaw request file",error)}});
+      return child;
+    } catch(error){unlinkSync(file);throw error}
+  }
+}
+
 export class ExecutionManager {
   constructor(store,{workspaces="data/workspaces",adapter,adapters}={}) {
     this.store=store;this.root=resolve(workspaces);
-    this.adapters=adapters||(adapter?{codex:adapter}:{codex:new CodexAdapter(),opencode:new OpenCodeAdapter()});
+    this.adapters=adapters||(adapter?{codex:adapter}:{codex:new CodexAdapter(),opencode:new OpenCodeAdapter(),openclaw:new OpenClawAdapter()});
     this.active=null;this.busy=false;this.stopping=false;this.promoting=new Set();
     this.store.recoverRuns();
   }
@@ -238,7 +288,7 @@ export class ExecutionManager {
       if(budget.used>=MAX_LOG_BYTES)return;
       budget.used+=Buffer.byteLength(chunk);
       pending+=chunk;
-      const lines=pending.split("\n");pending=lines.pop().slice(-4000);
+      const lines=pending.split("\n");pending=lines.pop().slice(-20000);
       for(const [index,line] of lines.entries()){
         onLine(line);
         if(index<40)this.logLine(runId,channel,line);
@@ -340,8 +390,10 @@ export class ExecutionManager {
         if(codeRun||outputOverflow)return;
         try {
           const event=JSON.parse(line);
-          if(event.type!=="text"||event.part?.type!=="text"||typeof event.part.text!=="string")return;
-          const next=output+event.part.text;
+          const part=event.type==="text"&&event.part?.type==="text"?event.part.text:
+            event.ok===true&&event.status==="ok"&&!event.deliveryStatus?event.final:null;
+          if(typeof part!=="string")return;
+          const next=output+part;
           if(next.length>12000){outputOverflow=true;this.terminate(child);return}
           output=next;
         } catch {}
