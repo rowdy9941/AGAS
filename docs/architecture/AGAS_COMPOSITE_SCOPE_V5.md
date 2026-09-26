@@ -49,7 +49,7 @@ The selected runtime window is a view, not a permission grant. Third-party crede
 |---|---|---|
 | Foundation | Seven durable hubs, roles, scoped missions and vault | Implemented with automated persistence/scope checks; vault authoring import still absent. |
 | Execution | Two **real** authenticated agent runtimes, cancellation, recovery, receipts | Codex and OpenCode 1.x code paths and process fixture tests, including a second end-to-end worktree/artifact flow; neither live provider is installed or authenticated here. |
-| Teamwork | CEO replies and two-runtime acknowledged handoff, permissions and durable approvals | Manual cross-hub evidence receipt and acknowledgement implemented; automatic two-runtime handoffs, CEO replies and effect approvals pending. |
+| Teamwork | CEO replies and two-runtime acknowledged handoff, permissions and durable approvals | Durable CEO reply route through selected Codex/OpenCode with scope and process fixture checks; live provider replies unverified. Manual cross-hub evidence receipt implemented; automatic two-runtime delivery and effect approvals pending. |
 | Domains | Dev integration/release; Media publish receipt; Finance, Business, Health, Security and Maintenance domain tests | Dev worktree slice and media planning records; full workflows pending. |
 | Experience | Actual browser interaction, agent window capability tests, secure access and three clean OS installs | UI exists; automated browser binary and target OS installs unavailable in this workspace. |
 | Operations | Consistent database/artifact/vault backup, restore drill and release migration | Offline checksummed snapshot and new-directory restore drill implemented; coordinated online snapshot and release migration pending. |

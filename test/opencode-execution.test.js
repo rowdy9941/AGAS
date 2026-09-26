@@ -16,6 +16,11 @@ if(process.argv.includes('--help')) {console.log('--format json');process.exit(0
 if(process.argv.includes('auth')) {console.log('1 credential');process.exit(0)}
 if(process.argv.includes('run')) {
   const policy=JSON.parse(process.env.OPENCODE_PERMISSION);
+  if(policy['*']==='deny'&&policy.edit!=='allow') {
+    if(!process.argv.includes('--pure')||process.env.SECRET_AGAS_TEST_TOKEN||process.env.OPENCODE_AUTO_SHARE!=='false')process.exit(4);
+    console.log(JSON.stringify({type:'text',part:{type:'text',text:'OpenCode fixture CEO reply'}}));
+    process.exit(0);
+  }
   if(!process.argv.includes('--pure')||!process.argv.includes('json')||
     policy['*']!=='deny'||policy.edit!=='allow'||policy.external_directory!=='deny'||
     process.env.SECRET_AGAS_TEST_TOKEN||process.env.OPENCODE_AUTO_SHARE!=='false')
@@ -76,6 +81,15 @@ test("an assigned OpenCode process passes readiness, executes in a Git worktree 
       runId:queued.data.run.id,taskId:task.id,path:"opencode-result.txt",criterionIndex:0,
       title:"Produced file",expectedVersion:detail.mission.version});
     assert.equal(receipt.data.evidence[0].verification,"file-hash-verified");
+    const message=(await request("/api/messages","POST",{hubId:"dev",text:"Summarize the next step",runtime:"opencode"})).data.message;
+    let replied;
+    for(let attempt=0;attempt<120;attempt++) {
+      replied=(await request("/api/overview")).data.messages.find(item=>item.id===message.id);
+      if(["completed","failed"].includes(replied?.status))break;
+      await new Promise(resolve=>setTimeout(resolve,40));
+    }
+    assert.equal(replied.status,"completed");
+    assert.equal(replied.reply,"OpenCode fixture CEO reply");
   } finally {await new Promise(resolve=>server.close(resolve))}
 });
 

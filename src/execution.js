@@ -62,6 +62,15 @@ export class CodexAdapter {
       detached:process.platform!=="win32"
     });
   }
+  launchMessage(workspace,prompt) {
+    const binary=this.executable();
+    if(!binary)throw new InputError("Codex CLI is missing",409);
+    return spawn(binary,["exec","--json","--ephemeral","--sandbox","read-only",
+      "--ask-for-approval","never","--cd",workspace,prompt],{
+      cwd:workspace,env:childEnv(this.environment),stdio:["ignore","pipe","pipe"],shell:false,
+      detached:process.platform!=="win32"
+    });
+  }
 }
 
 export class OpenCodeAdapter {
@@ -95,6 +104,16 @@ export class OpenCodeAdapter {
       OPENCODE_DISABLE_LSP_DOWNLOAD:"true",OPENCODE_DISABLE_DEFAULT_PLUGINS:"true"};
     return spawn(binary,["--pure","run","--format","json",prompt+"\n\nAGAS permits only local file read, edit and search in this worktree. Shell tools and external directories are disabled. State honestly when checks could not be run."],{
       cwd:workspace,env,stdio:["ignore","pipe","pipe"],shell:false,detached:process.platform!=="win32"
+    });
+  }
+  launchMessage(workspace,prompt) {
+    const binary=this.executable();
+    if(!binary)throw new InputError("OpenCode CLI is missing",409);
+    return spawn(binary,["--pure","run","--format","json",prompt],{
+      cwd:workspace,env:{...childEnv(this.environment),OPENCODE_PERMISSION:JSON.stringify({"*":"deny"}),
+        OPENCODE_AUTO_SHARE:"false",OPENCODE_DISABLE_AUTOUPDATE:"true",
+        OPENCODE_DISABLE_DEFAULT_PLUGINS:"true",OPENCODE_DISABLE_LSP_DOWNLOAD:"true"},
+      stdio:["ignore","pipe","pipe"],shell:false,detached:process.platform!=="win32"
     });
   }
 }

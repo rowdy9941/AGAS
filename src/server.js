@@ -6,6 +6,7 @@ import { Store, InputError } from "./store.js";
 import { projectVault } from "./vault.js";
 import { detectRuntimes } from "./runtimes.js";
 import { ExecutionManager, validateRepository } from "./execution.js";
+import { ConversationManager } from "./conversation.js";
 
 const mime={"/":"text/html; charset=utf-8","/app.js":"text/javascript; charset=utf-8",
   "/styles.css":"text/css; charset=utf-8","/assets/agas-logo.jpg":"image/jpeg"};
@@ -33,6 +34,7 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
   workspaces="data/workspaces",adapter,adapters}={}) {
   const store=new Store(resolve(database));
   const executor=new ExecutionManager(store,{workspaces,adapter,adapters});
+  const conversations=new ConversationManager(store,executor);
   const server=createServer(async(req,res)=>{
     res.setHeader("x-content-type-options","nosniff");
     res.setHeader("referrer-policy","no-referrer");
@@ -113,7 +115,25 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       if(req.method==="POST"&&runLimit)return json(res,200,{project:store.setRunLimit(runLimit[1],await body(req))});
       if(req.method==="POST"&&path==="/api/media/accounts")return json(res,201,{account:store.createMediaAccount(await body(req))});
       if(req.method==="POST"&&path==="/api/media/campaigns")return json(res,201,{campaign:store.createMediaCampaign(await body(req))});
-      if(req.method==="POST"&&path==="/api/messages")return json(res,201,{message:store.sendMessage(await body(req))});
+      if(req.method==="POST"&&path==="/api/messages"){
+        const input=await body(req);
+        if(input.runtime){
+          if(!["codex","opencode"].includes(input.runtime))throw new InputError("Unsupported conversation runtime");
+          const ready=await executor.readiness(input.runtime);
+          if(!ready.ready)throw new InputError(ready.reason||"Conversation runtime is not ready",409);
+        }
+        const message=store.sendMessage(input);
+        if(input.runtime){store.queueCeoReply(message.id,input.runtime);conversations.enqueue()}
+        return json(res,201,{message});
+      }
+      const respond=path.match(/^\/api\/messages\/([\da-f-]{36})\/respond$/);
+      if(req.method==="POST"&&respond){
+        const input=await body(req),ready=await executor.readiness(input.runtime);
+        if(!ready.ready)throw new InputError(ready.reason||"Conversation runtime is not ready",409);
+        const reply=store.queueCeoReply(respond[1],input.runtime);
+        conversations.enqueue();
+        return json(res,202,{reply});
+      }
       if(req.method==="POST"&&path==="/api/notes")return json(res,201,{note:store.createNote(await body(req))});
       if(req.method==="POST"&&path==="/api/assignments")return json(res,201,{assignment:store.assignPersona(await body(req))});
       if(req.method==="POST"&&path==="/api/vault/project")return json(res,200,await projectVault(store,vault));
@@ -125,9 +145,9 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       else res.destroy();
     }
   });
-  server.on("listening",()=>executor.resumeQueued());
-  server.on("close",()=>{executor.shutdown();store.close()});
-  return {server,store,executor};
+  server.on("listening",()=>{executor.resumeQueued();conversations.enqueue()});
+  server.on("close",()=>{conversations.shutdown();executor.shutdown();store.close()});
+  return {server,store,executor,conversations};
 }
 
 if(process.argv[1]&&resolve(process.argv[1])===new URL(import.meta.url).pathname){

@@ -102,6 +102,11 @@ export class Store {
         id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), text TEXT NOT NULL,
         author TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS ceo_replies (
+        message_id TEXT PRIMARY KEY REFERENCES messages(id), runtime TEXT NOT NULL,
+        status TEXT NOT NULL, reply TEXT NOT NULL DEFAULT '', error TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL, completed_at TEXT
+      );
       CREATE TABLE IF NOT EXISTS notes (
         id TEXT PRIMARY KEY, title TEXT NOT NULL, content TEXT NOT NULL, scope TEXT NOT NULL,
         owner_id TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
@@ -175,7 +180,7 @@ export class Store {
       missions: all("SELECT * FROM missions ORDER BY created_at DESC").map(m => ({ ...m,criteria:JSON.parse(m.criteria) })),
       runs: all("SELECT * FROM mission_runs ORDER BY created_at DESC LIMIT 80"),
       handoffs: all("SELECT * FROM handoffs ORDER BY created_at DESC LIMIT 80"),
-      messages: all("SELECT * FROM messages ORDER BY created_at DESC LIMIT 60"),
+      messages: all("SELECT m.*,r.runtime,r.reply,r.error,r.completed_at FROM messages m LEFT JOIN ceo_replies r ON r.message_id=m.id ORDER BY m.created_at DESC LIMIT 60"),
       notes: all("SELECT id,title,scope,owner_id,revision,created_at,updated_at FROM notes ORDER BY updated_at DESC LIMIT 100"),
       personas: all("SELECT path,title,description,emoji,division,source_commit,source_sha FROM personas ORDER BY title"),
       assignments: all("SELECT * FROM assignments"),
@@ -665,6 +670,54 @@ export class Store {
       this.event("ceo.inbox",id,hubId,`Direct request to ${hubId} CEO; awaiting a connected runtime`);
     });
     return this.db.prepare("SELECT * FROM messages WHERE id=?").get(id);
+  }
+  queueCeoReply(messageId,runtime) {
+    if(!["codex","opencode"].includes(runtime))throw new InputError("Select a supported conversation runtime");
+    this.transaction(()=>{
+      const message=this.db.prepare("SELECT * FROM messages WHERE id=?").get(messageId);
+      if(!message)throw new InputError("CEO message not found",404);
+      const existing=this.db.prepare("SELECT * FROM ceo_replies WHERE message_id=?").get(messageId);
+      if(existing&&!["failed","interrupted"].includes(existing.status))throw new InputError("This request already has an active or completed reply",409);
+      if(existing)this.db.prepare("UPDATE ceo_replies SET runtime=?,status='queued',reply='',error='',created_at=?,completed_at=NULL WHERE message_id=?")
+        .run(runtime,now(),messageId);
+      else this.db.prepare("INSERT INTO ceo_replies(message_id,runtime,status,created_at) VALUES (?,?,'queued',?)")
+        .run(messageId,runtime,now());
+      this.db.prepare("UPDATE messages SET status='queued' WHERE id=?").run(messageId);
+      this.event("ceo.reply-queued",messageId,message.hub_id,`${message.hub_id} CEO reply queued with ${runtime}`);
+    });
+    return this.db.prepare("SELECT * FROM ceo_replies WHERE message_id=?").get(messageId);
+  }
+  queuedCeoReplies(){return this.db.prepare("SELECT * FROM ceo_replies WHERE status='queued' ORDER BY created_at").all()}
+  claimCeoReply(messageId) {
+    let message,reply;
+    this.transaction(()=>{
+      reply=this.db.prepare("SELECT * FROM ceo_replies WHERE message_id=?").get(messageId);
+      if(reply?.status!=="queued")throw new InputError("CEO reply is not queued",409);
+      message=this.db.prepare("SELECT * FROM messages WHERE id=?").get(messageId);
+      this.db.prepare("UPDATE ceo_replies SET status='running' WHERE message_id=?").run(messageId);
+      this.db.prepare("UPDATE messages SET status='running' WHERE id=?").run(messageId);
+    });
+    return {message,reply,notes:this.notesFor({hubId:message.hub_id,principal:"agent"}),
+      history:this.db.prepare("SELECT m.text,r.reply FROM messages m JOIN ceo_replies r ON r.message_id=m.id WHERE m.hub_id=? AND r.status='completed' AND m.id<>? ORDER BY m.created_at DESC LIMIT 6")
+        .all(message.hub_id,messageId).reverse()};
+  }
+  completeCeoReply(messageId,{status,reply="",error=""}) {
+    if(!["completed","failed","interrupted"].includes(status))throw new InputError("Invalid CEO reply state");
+    this.transaction(()=>{
+      const message=this.db.prepare("SELECT * FROM messages WHERE id=?").get(messageId);
+      const record=this.db.prepare("SELECT * FROM ceo_replies WHERE message_id=?").get(messageId);
+      if(!message||record?.status!=="running")return;
+      this.db.prepare("UPDATE ceo_replies SET status=?,reply=?,error=?,completed_at=? WHERE message_id=?")
+        .run(status,reply.slice(0,8000),error.slice(0,500),now(),messageId);
+      this.db.prepare("UPDATE messages SET status=? WHERE id=?").run(status,messageId);
+      this.event(`ceo.reply-${status}`,messageId,message.hub_id,
+        status==="completed"?`${message.hub_id} CEO replied through ${record.runtime}; executive notified`:
+          `${message.hub_id} CEO ${status}; request remains reviewable`);
+    });
+  }
+  recoverCeoReplies() {
+    for(const item of this.db.prepare("SELECT message_id FROM ceo_replies WHERE status='running'").all())
+      this.completeCeoReply(item.message_id,{status:"interrupted",error:"AGAS restarted during the response; retry after inspecting the request"});
   }
   createNote(input) {
     const title=nonempty(input.title,"title",140),content=nonempty(input.content,"content",30000);
