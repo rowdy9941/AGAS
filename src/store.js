@@ -18,6 +18,9 @@ const nonempty = (value, field, max = 4000) => {
   if (typeof value !== "string" || !value.trim() || value.length > max) throw new InputError(`${field} must be nonempty and at most ${max} characters`);
   return value.trim();
 };
+const MEDIA_STAGES=["research","strategy","creation","editing","media","review"];
+const mediaHash=({stage,title,content,sources,rights_note})=>createHash("sha256")
+  .update(JSON.stringify({stage,title,content,sources:JSON.parse(sources),rightsNote:rights_note})).digest("hex");
 export class InputError extends Error { constructor(message, status = 400) { super(message); this.status = status; } }
 
 export class Store {
@@ -48,6 +51,18 @@ export class Store {
         id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), title TEXT NOT NULL,
         objective TEXT NOT NULL, stage TEXT NOT NULL DEFAULT 'research', status TEXT NOT NULL DEFAULT 'planned',
         created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS media_artifacts (
+        id TEXT PRIMARY KEY, campaign_id TEXT NOT NULL REFERENCES media_campaigns(id),
+        stage TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL, sources TEXT NOT NULL,
+        rights_note TEXT NOT NULL DEFAULT '', sha256 TEXT NOT NULL, status TEXT NOT NULL,
+        review_note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, reviewed_at TEXT
+      );
+      CREATE TABLE IF NOT EXISTS media_publication_packets (
+        id TEXT PRIMARY KEY, campaign_id TEXT NOT NULL REFERENCES media_campaigns(id),
+        account_id TEXT NOT NULL REFERENCES media_accounts(id), content TEXT NOT NULL,
+        sha256 TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'prepared', created_at TEXT NOT NULL,
+        UNIQUE(campaign_id,account_id)
       );
       CREATE TABLE IF NOT EXISTS missions (
         id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), project TEXT NOT NULL DEFAULT '',
@@ -137,6 +152,8 @@ export class Store {
       this.db.exec("ALTER TABLE projects ADD COLUMN monthly_run_limit INTEGER");
     if (!this.db.prepare("PRAGMA table_info(missions)").all().some(column=>column.name==="goal_id"))
       this.db.exec("ALTER TABLE missions ADD COLUMN goal_id TEXT REFERENCES goals(id)");
+    if (!this.db.prepare("PRAGMA table_info(media_campaigns)").all().some(column=>column.name==="version"))
+      this.db.exec("ALTER TABLE media_campaigns ADD COLUMN version INTEGER NOT NULL DEFAULT 1");
     const evidenceColumns=this.db.prepare("PRAGMA table_info(mission_evidence)").all().map(column=>column.name);
     if(!evidenceColumns.includes("run_id"))this.db.exec("ALTER TABLE mission_evidence ADD COLUMN run_id TEXT REFERENCES mission_runs(id)");
     if(!evidenceColumns.includes("artifact_path"))this.db.exec("ALTER TABLE mission_evidence ADD COLUMN artifact_path TEXT");
@@ -181,6 +198,8 @@ export class Store {
       goals: all("SELECT * FROM goals ORDER BY created_at DESC"),
       mediaAccounts: all("SELECT * FROM media_accounts ORDER BY created_at DESC"),
       mediaCampaigns: all("SELECT * FROM media_campaigns ORDER BY created_at DESC"),
+      mediaArtifacts: all("SELECT * FROM media_artifacts ORDER BY created_at DESC LIMIT 120"),
+      mediaPackets: all("SELECT id,campaign_id,account_id,sha256,status,created_at FROM media_publication_packets ORDER BY created_at DESC LIMIT 120"),
       missions: all("SELECT * FROM missions ORDER BY created_at DESC").map(m => ({ ...m,criteria:JSON.parse(m.criteria) })),
       runs: all("SELECT * FROM mission_runs ORDER BY created_at DESC LIMIT 80"),
       reviewBranches: all("SELECT * FROM project_review_branches ORDER BY created_at DESC LIMIT 80"),
@@ -303,6 +322,88 @@ export class Store {
       this.event("media.campaign.created",id,"content",`Campaign brief created: ${title}`);
     });
     return this.db.prepare("SELECT * FROM media_campaigns WHERE id=?").get(id);
+  }
+  mediaCampaignDetail(id) {
+    const campaign=this.db.prepare("SELECT * FROM media_campaigns WHERE id=?").get(id);
+    if(!campaign)throw new InputError("Media campaign not found",404);
+    return {campaign,artifacts:this.db.prepare("SELECT * FROM media_artifacts WHERE campaign_id=? ORDER BY created_at,id").all(id),
+      packets:this.db.prepare("SELECT * FROM media_publication_packets WHERE campaign_id=? ORDER BY created_at,id").all(id)};
+  }
+  submitMediaArtifact(id,input) {
+    const title=nonempty(input.title,"title",140),content=nonempty(input.content,"content",12000);
+    const rights=typeof input.rightsNote==="string"?input.rightsNote.trim():"";
+    if(rights.length>2000)throw new InputError("Rights note is too long");
+    const sources=input.sources;
+    if(!Array.isArray(sources)||sources.length>12||sources.some(source=>{
+      if(typeof source!=="string"||source.length>1000)return true;
+      try {const url=new URL(source);return !["http:","https:"].includes(url.protocol)||Boolean(url.username||url.password)}catch{return true}
+    }))throw new InputError("Provide up to 12 valid HTTP(S) source references");
+    const artifactId=randomUUID(),time=now();
+    this.transaction(()=>{
+      const campaign=this.mediaCampaignDetail(id).campaign;
+      if(campaign.version!==input.expectedVersion||!MEDIA_STAGES.includes(campaign.stage)||
+        ["awaiting-review","ready-for-publishing"].includes(campaign.status))
+        throw new InputError("Campaign changed or this stage is awaiting review",409);
+      if(campaign.stage==="research"&&!sources.length)
+        throw new InputError("Research needs at least one source reference");
+      if(campaign.stage==="review"&&!rights)
+        throw new InputError("Editorial review needs an explicit rights and factuality note");
+      const sourceJSON=JSON.stringify(sources),sha256=mediaHash({stage:campaign.stage,title,content,
+        sources:sourceJSON,rights_note:rights});
+      this.db.prepare("INSERT INTO media_artifacts VALUES (?,?,?,?,?,?,?,?, 'submitted','',?,NULL)")
+        .run(artifactId,id,campaign.stage,title,content,sourceJSON,rights,sha256,time);
+      this.db.prepare("UPDATE media_campaigns SET status='awaiting-review',version=version+1 WHERE id=?").run(id);
+      this.event("media.artifact.submitted",artifactId,"content",`${campaign.stage} artifact submitted for ${campaign.title}`);
+    });
+    return this.mediaCampaignDetail(id);
+  }
+  reviewMediaArtifact(id,artifactId,input) {
+    const decision=input.decision;
+    if(!["accepted","rejected"].includes(decision))throw new InputError("Choose accepted or rejected");
+    const note=nonempty(input.reviewNote,"reviewNote",2000);
+    this.transaction(()=>{
+      const campaign=this.mediaCampaignDetail(id).campaign;
+      const artifact=this.db.prepare("SELECT * FROM media_artifacts WHERE id=? AND campaign_id=?").get(artifactId,id);
+      if(campaign.version!==input.expectedVersion||!artifact||artifact.status!=="submitted"||
+        campaign.stage!==artifact.stage||campaign.status!=="awaiting-review")
+        throw new InputError("Campaign artifact changed; reload before review",409);
+      if(mediaHash(artifact)!==artifact.sha256)
+        throw new InputError("Campaign artifact integrity changed",409);
+      this.db.prepare("UPDATE media_artifacts SET status=?,review_note=?,reviewed_at=? WHERE id=?")
+        .run(decision,note,now(),artifactId);
+      const next=MEDIA_STAGES[MEDIA_STAGES.indexOf(artifact.stage)+1];
+      this.db.prepare("UPDATE media_campaigns SET stage=?,status=?,version=version+1 WHERE id=?")
+        .run(decision==="accepted"?(next||"ready-for-publishing"):campaign.stage,
+          decision==="accepted"&&!next?"ready-for-publishing":"in-progress",id);
+      this.event(`media.artifact.${decision}`,artifactId,"content",`Owner ${decision} ${artifact.stage} for ${campaign.title}`);
+    });
+    return this.mediaCampaignDetail(id);
+  }
+  prepareMediaPacket(id,input) {
+    const accountId=nonempty(input.accountId,"accountId",120);
+    let packetId;
+    this.transaction(()=>{
+      const {campaign,artifacts}=this.mediaCampaignDetail(id);
+      const account=this.db.prepare("SELECT * FROM media_accounts WHERE id=?").get(accountId);
+      if(campaign.version!==input.expectedVersion||campaign.status!=="ready-for-publishing"||
+        !account||account.project_id!==campaign.project_id)
+        throw new InputError("Campaign must pass editorial review and target an account of its own brand",409);
+      if(this.db.prepare("SELECT 1 FROM media_publication_packets WHERE campaign_id=? AND account_id=?").get(id,accountId))
+        throw new InputError("A packet already exists for this campaign and account",409);
+      const approved=artifacts.filter(item=>item.status==="accepted");
+      if(approved.length!==MEDIA_STAGES.length||MEDIA_STAGES.some(stage=>!approved.some(item=>item.stage===stage))||
+        approved.some(item=>mediaHash(item)!==item.sha256))
+        throw new InputError("Every content stage needs an accepted artifact",409);
+      const content=JSON.stringify({campaign:{id,title:campaign.title,objective:campaign.objective},
+        account:{id:account.id,platform:account.platform,handle:account.handle,language:account.language},
+        artifacts:approved.map(item=>({stage:item.stage,title:item.title,content:item.content,
+          sources:JSON.parse(item.sources),rightsNote:item.rights_note,sha256:item.sha256,reviewNote:item.review_note}))});
+      packetId=randomUUID();
+      this.db.prepare("INSERT INTO media_publication_packets(id,campaign_id,account_id,content,sha256,created_at) VALUES (?,?,?,?,?,?)")
+        .run(packetId,id,accountId,content,createHash("sha256").update(content).digest("hex"),now());
+      this.event("media.packet.prepared",packetId,"content",`Local publication packet prepared for ${campaign.title} on ${account.platform}`);
+    });
+    return this.db.prepare("SELECT * FROM media_publication_packets WHERE id=?").get(packetId);
   }
   createMission(input) {
     const hubId=nonempty(input.hubId,"hubId",30); this.requireHub(hubId);

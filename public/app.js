@@ -105,8 +105,8 @@ function mediaPanels() {
     ${brands.length?brands.map(p=>`<div class="row"><span class="avatar-small">◈</span><span class="row-main"><strong>${esc(p.title)}</strong><small>${esc(p.description)} · ${d.mediaAccounts.filter(a=>a.project_id===p.id).length} accounts</small></span></div>`).join(""):`<p class="helper">Create your first media-brand project to organize niches and channel accounts.</p>`}
     ${d.mediaAccounts.map(a=>`<div class="row"><span class="avatar-small">◎</span><span class="row-main"><strong>${esc(a.platform)} · ${esc(a.handle)}</strong><small>${esc(a.niche)} · ${esc(a.language)} · planned</small></span></div>`).join("")}
     <button class="secondary" data-action="new-media-account" ${brands.length?"":"disabled"}>+ Add account</button></section>
-    <section class="panel"><h3>Campaign pipeline</h3><p class="helper">Research → strategy → creation → editing → media → review → publishing → engagement → analytics. These are planning records. No channel has been connected or published to.</p>
-    ${d.mediaCampaigns.map(c=>`<div class="row"><span class="avatar-small">◷</span><span class="row-main"><strong>${esc(c.title)}</strong><small>${esc(d.projects.find(p=>p.id===c.project_id)?.title)} · ${esc(c.stage)} · ${esc(c.status)}</small></span></div>`).join("")}
+    <section class="panel"><h3>Campaign pipeline</h3><p class="helper">Source-backed research → strategy → creation → editing → media → editorial and rights review → local publication packet. Each stage needs owner review. External publishing and analytics need a connected channel adapter.</p>
+    ${d.mediaCampaigns.map(c=>{const pending=d.mediaArtifacts.find(a=>a.campaign_id===c.id&&a.stage===c.stage&&a.status==="submitted"),packets=d.mediaPackets.filter(p=>p.campaign_id===c.id);return `<div class="row"><span class="avatar-small">◷</span><span class="row-main"><strong>${esc(c.title)}</strong><small>${esc(d.projects.find(p=>p.id===c.project_id)?.title)} · ${esc(c.stage)} · ${esc(c.status)} · ${packets.length} prepared packets</small></span><span class="work-actions"><button class="ghost" data-action="inspect-media" data-id="${esc(c.id)}">Inspect</button>${pending?`<button class="secondary" data-action="review-media" data-id="${esc(c.id)}" data-artifact="${esc(pending.id)}">Review ${esc(c.stage)}</button>`:c.status==="ready-for-publishing"?`<button class="secondary" data-action="prepare-media" data-id="${esc(c.id)}">Prepare packet</button>`:`<button class="secondary" data-action="submit-media" data-id="${esc(c.id)}">Submit ${esc(c.stage)}</button>`}</span></div>`}).join("")}
     <button class="secondary" data-action="new-media-campaign" ${brands.length?"":"disabled"}>+ Campaign brief</button></section></div>`;
 }
 function agentsPage() {
@@ -161,6 +161,11 @@ function renderInspector() {
   if(selected?.type==="mission") {
     const m=state.data.missions.find(x=>x.id===selected.id);
     if(m) {$("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">MISSION · ${esc(m.hub_id)}</span><h3 style="margin-top:13px">${esc(m.title)}</h3><p>${esc(m.objective)}</p><div class="kv"><span>State</span><strong>${esc(m.status)}</strong></div><div class="kv"><span>Project</span><strong>${esc(m.project||"None")}</strong></div><div class="kv"><span>Version</span><strong>${m.version}</strong></div></div><div class="inspector-section"><h3>Acceptance criteria</h3>${m.criteria.map(c=>`<p>◯ ${esc(c)}</p>`).join("")}<p>Execution evidence is required before acceptance.</p></div>`;return}
+  }
+  if(selected?.type==="media") {
+    const {campaign,artifacts,packets}=selected.data;
+    $("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">MEDIA · ${esc(campaign.stage)}</span><h3>${esc(campaign.title)}</h3><p>${esc(campaign.objective)}</p><p>${esc(campaign.status)} · revision ${esc(campaign.version)}</p></div><div class="inspector-section"><h3>Stage trail</h3>${artifacts.map(a=>`<p><strong>${esc(a.stage)} · ${esc(a.status)}</strong><br>${esc(a.title)} · SHA-256 ${esc(a.sha256)}<br><span style="white-space:pre-wrap">${esc(a.content)}</span><br>References: ${esc(JSON.parse(a.sources).join(" · ")||"None")}<br>Rights: ${esc(a.rights_note||"Not supplied")}<br>Owner review: ${esc(a.review_note||"Pending")}</p>`).join("")||"<p>Submit a source-backed research brief to begin.</p>"}</div><div class="inspector-section"><h3>Prepared packets</h3>${packets.map(p=>`<p>${esc(p.account_id)} · ${esc(p.status)}<br>SHA-256 ${esc(p.sha256)}<br><span style="white-space:pre-wrap">${esc(p.content)}</span></p>`).join("")||"<p>No packet prepared. Nothing has been published.</p>"}</div>`;
+    return;
   }
   if(selected?.type==="note") {
     $("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">KNOWLEDGE</span><h3 style="margin-top:13px">Loading scoped note…</h3></div>`;
@@ -297,6 +302,32 @@ function newMediaCampaign() {
     `<label class="field">Media brand<select name="projectId">${brands.map(p=>`<option value="${esc(p.id)}">${esc(p.title)}</option>`).join("")}</select></label><label class="field">Title<input name="title" required maxlength="140" placeholder="Campaign name"></label><label class="field">Objective<textarea name="objective" required maxlength="4000" placeholder="Audience, channel, topics, desired outcome and constraints"></textarea></label>`,
     data=>api("/api/media/campaigns",{method:"POST",body:JSON.stringify(Object.fromEntries(data))}));
 }
+function submitMediaArtifact(id) {
+  const campaign=state.data.mediaCampaigns.find(item=>item.id===id);
+  openModal(`Submit ${campaign?.stage||"media"} for review`,"Save a concrete stage result. References are recorded as supplied and are not verified by AGAS. The owner must review it before the campaign advances.",
+    `<label class="field">Title<input name="title" required maxlength="140"></label><label class="field">Stage result<textarea name="content" required maxlength="12000" placeholder="Research brief, strategy, draft, edit notes, media plan, or editorial verdict"></textarea></label><label class="field">Source URLs (one per line)<textarea name="sources" placeholder="https://example.com/source"></textarea></label><label class="field">Rights and factuality review (required in review stage)<textarea name="rightsNote" placeholder="State what was checked and any rights or accuracy limits"></textarea></label>`,
+    data=>api(`/api/media/campaigns/${id}/artifacts`,{method:"POST",body:JSON.stringify({title:data.get("title"),content:data.get("content"),sources:String(data.get("sources")||"").split(/\r?\n/).map(s=>s.trim()).filter(Boolean),rightsNote:data.get("rightsNote"),expectedVersion:campaign.version})}));
+}
+function reviewMediaArtifact(id,artifactId) {
+  const campaign=state.data.mediaCampaigns.find(item=>item.id===id),artifact=state.data.mediaArtifacts.find(item=>item.id===artifactId);
+  if(!campaign||!artifact)return notify("Refresh this campaign before reviewing.",true);
+  openModal(`Review ${artifact.stage} submission`,"Accept to advance this campaign by one stage, or reject with a correction note. References and rights declarations remain visible in the record.",
+    `<p class="helper" style="white-space:pre-wrap">${esc(artifact.title)} · SHA-256 ${esc(artifact.sha256)}<br>${esc(artifact.content)}</p><p class="helper">Sources: ${esc(JSON.parse(artifact.sources).join(" · ")||"None supplied")}</p><p class="helper">Rights and factuality note: ${esc(artifact.rights_note||"None supplied")}</p><label class="field">Decision<select name="decision"><option value="accepted">Accept stage</option><option value="rejected">Reject and revise</option></select></label><label class="field">Review note<textarea name="reviewNote" required maxlength="2000"></textarea></label>`,
+    data=>api(`/api/media/campaigns/${id}/artifacts/${artifactId}/review`,{method:"POST",body:JSON.stringify({decision:data.get("decision"),reviewNote:data.get("reviewNote"),expectedVersion:campaign.version})}));
+}
+function prepareMediaPacket(id) {
+  const campaign=state.data.mediaCampaigns.find(item=>item.id===id);
+  const accounts=state.data.mediaAccounts.filter(item=>item.project_id===campaign?.project_id&&
+    !state.data.mediaPackets.some(packet=>packet.campaign_id===id&&packet.account_id===item.id));
+  if(!accounts.length)return notify("Add an account in this brand, or inspect its existing packet.",true);
+  openModal("Prepare local publication packet","This bundles the approved stages and channel target with a hash. It does not connect to the channel or publish content.",
+    `<label class="field">Account<select name="accountId">${accounts.map(a=>`<option value="${esc(a.id)}">${esc(a.platform)} · ${esc(a.handle)}</option>`).join("")}</select></label>`,
+    data=>api(`/api/media/campaigns/${id}/packets`,{method:"POST",body:JSON.stringify({accountId:data.get("accountId"),expectedVersion:campaign.version})}));
+}
+async function inspectMediaCampaign(id) {
+  try {const detail=await api(`/api/media/campaigns/${id}`);state.inspected={type:"media",data:detail};renderInspector()}
+  catch(error){notify(error.message,true)}
+}
 function assign(path) {
   const p=state.data.personas.find(item=>item.path===path);
   openModal(`Assign ${p?.title||"specialist"}`,"Choose a hub and intended runtime. Assignment does not start a session.",
@@ -335,6 +366,10 @@ document.addEventListener("click",async event=>{
   else if(type==="new-project")newProject();
   else if(type==="new-media-account")newMediaAccount();
   else if(type==="new-media-campaign")newMediaCampaign();
+  else if(type==="submit-media")submitMediaArtifact(id);
+  else if(type==="review-media")reviewMediaArtifact(id,action.dataset.artifact);
+  else if(type==="prepare-media")prepareMediaPacket(id);
+  else if(type==="inspect-media")inspectMediaCampaign(id);
   else if(type==="assign")assign(path);
   else if(type==="select-window"){state.windowId=id;state.windowUrl=null;render()}
   else if(type==="toggle-catalog"){state.onlyImported=!state.onlyImported;render()}

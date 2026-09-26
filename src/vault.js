@@ -97,8 +97,11 @@ export async function projectVault(store, basePath) {
       `# ${account.handle}\n\nNiche: ${account.niche}\nLanguage: ${account.language}\n\nNo publishing connection or credentials are stored in this note.\n`);
   }
   for (const campaign of state.mediaCampaigns) {
+    const detail=store.mediaCampaignDetail(campaign.id);
+    const trail=detail.artifacts.map(item=>`- ${item.stage} · ${item.status} · ${item.title} · SHA-256 ${item.sha256}`).join("\n");
+    const packets=detail.packets.map(item=>`- ${item.account_id} · ${item.status} · SHA-256 ${item.sha256}`).join("\n");
     await managed("03 Missions",`${campaign.id}.md`,header({agas_id:`media-campaign:${campaign.id}`,type:"media-campaign",project_id:campaign.project_id,stage:campaign.stage,status:campaign.status,provenance:"agas:media"})+
-      `# ${campaign.title}\n\n${campaign.objective}\n\nEditorial pipeline: research → strategy → creation → editing → media → review → publishing → engagement → analytics. Current stage: research.\n`);
+      `# ${campaign.title}\n\n${campaign.objective}\n\nEditorial pipeline: research → strategy → creation → editing → media → review → local publication packet. Current stage: ${campaign.stage}.\n\n## Reviewed work\n${trail||"No submissions yet."}\n\n## Local publication packets\n${packets||"No packets yet; no external publication is claimed."}\n`);
   }
   for (const mission of state.missions) {
     const criteria=mission.criteria.map(c=>`- [ ] ${c}`).join("\n");

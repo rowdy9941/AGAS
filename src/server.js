@@ -121,6 +121,18 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       if(req.method==="POST"&&runLimit)return json(res,200,{project:store.setRunLimit(runLimit[1],await body(req))});
       if(req.method==="POST"&&path==="/api/media/accounts")return json(res,201,{account:store.createMediaAccount(await body(req))});
       if(req.method==="POST"&&path==="/api/media/campaigns")return json(res,201,{campaign:store.createMediaCampaign(await body(req))});
+      const campaignRoute=path.match(/^\/api\/media\/campaigns\/([\da-f-]{36})(?:\/(.*))?$/);
+      if(campaignRoute){
+        const [,id,action]=campaignRoute;
+        if(req.method==="GET"&&!action)return json(res,200,store.mediaCampaignDetail(id));
+        if(req.method==="POST"){
+          const input=await body(req);
+          if(action==="artifacts")return json(res,201,store.submitMediaArtifact(id,input));
+          const review=action?.match(/^artifacts\/([\da-f-]{36})\/review$/);
+          if(review)return json(res,200,store.reviewMediaArtifact(id,review[1],input));
+          if(action==="packets")return json(res,201,{packet:store.prepareMediaPacket(id,input)});
+        }
+      }
       if(req.method==="POST"&&path==="/api/messages"){
         const input=await body(req);
         if(input.runtime){
