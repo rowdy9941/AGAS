@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
-import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { mkdirSync, readFileSync, lstatSync, realpathSync } from "node:fs";
+import { dirname, resolve, sep } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { agencyIndex, loadBundledAgency } from "./agency.js";
 
@@ -33,6 +33,12 @@ export class Store {
         id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), title TEXT NOT NULL, kind TEXT NOT NULL,
         description TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS goals (
+        id TEXT PRIMARY KEY, parent_id TEXT REFERENCES goals(id), hub_id TEXT REFERENCES hubs(id),
+        project_id TEXT REFERENCES projects(id), title TEXT NOT NULL, objective TEXT NOT NULL,
+        measure TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', version INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS media_accounts (
         id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), platform TEXT NOT NULL,
         handle TEXT NOT NULL, niche TEXT NOT NULL, language TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'planned',
@@ -53,11 +59,34 @@ export class Store {
         title TEXT NOT NULL, objective TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'queued',
         created_at TEXT NOT NULL, updated_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS task_dependencies (
+        task_id TEXT NOT NULL REFERENCES mission_tasks(id), prerequisite_id TEXT NOT NULL REFERENCES mission_tasks(id),
+        PRIMARY KEY(task_id,prerequisite_id), CHECK(task_id<>prerequisite_id)
+      );
       CREATE TABLE IF NOT EXISTS mission_evidence (
         id TEXT PRIMARY KEY, mission_id TEXT NOT NULL REFERENCES missions(id), task_id TEXT NOT NULL REFERENCES mission_tasks(id),
         criterion_index INTEGER NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL,
         sha256 TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'submitted', review_note TEXT NOT NULL DEFAULT '',
         created_at TEXT NOT NULL, reviewed_at TEXT
+      );
+      CREATE TABLE IF NOT EXISTS mission_runs (
+        id TEXT PRIMARY KEY, mission_id TEXT NOT NULL REFERENCES missions(id), task_id TEXT NOT NULL REFERENCES mission_tasks(id),
+        assignment_id TEXT NOT NULL REFERENCES assignments(id), runtime TEXT NOT NULL, status TEXT NOT NULL,
+        workspace TEXT, base_commit TEXT, timeout_seconds INTEGER NOT NULL, pid INTEGER,
+        exit_code INTEGER, result TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL,
+        started_at TEXT, ended_at TEXT
+      );
+      CREATE INDEX IF NOT EXISTS mission_runs_by_task ON mission_runs(task_id,created_at);
+      CREATE UNIQUE INDEX IF NOT EXISTS one_active_run_per_task ON mission_runs(task_id)
+        WHERE status IN ('queued','starting','running');
+      CREATE TABLE IF NOT EXISTS run_logs (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT NOT NULL REFERENCES mission_runs(id),
+        channel TEXT NOT NULL, message TEXT NOT NULL, occurred_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS run_logs_by_run ON run_logs(run_id,seq);
+      CREATE TABLE IF NOT EXISTS run_artifacts (
+        run_id TEXT NOT NULL REFERENCES mission_runs(id), path TEXT NOT NULL,
+        sha256 TEXT, bytes INTEGER, status TEXT NOT NULL, PRIMARY KEY(run_id,path)
       );
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), text TEXT NOT NULL,
@@ -83,6 +112,17 @@ export class Store {
         path TEXT PRIMARY KEY, sha256 TEXT NOT NULL, projected_at TEXT NOT NULL
       );
     `);
+    if (!this.db.prepare("PRAGMA table_info(projects)").all().some(column=>column.name==="repository_path"))
+      this.db.exec("ALTER TABLE projects ADD COLUMN repository_path TEXT");
+    if (!this.db.prepare("PRAGMA table_info(projects)").all().some(column=>column.name==="monthly_run_limit"))
+      this.db.exec("ALTER TABLE projects ADD COLUMN monthly_run_limit INTEGER");
+    if (!this.db.prepare("PRAGMA table_info(missions)").all().some(column=>column.name==="goal_id"))
+      this.db.exec("ALTER TABLE missions ADD COLUMN goal_id TEXT REFERENCES goals(id)");
+    const evidenceColumns=this.db.prepare("PRAGMA table_info(mission_evidence)").all().map(column=>column.name);
+    if(!evidenceColumns.includes("run_id"))this.db.exec("ALTER TABLE mission_evidence ADD COLUMN run_id TEXT REFERENCES mission_runs(id)");
+    if(!evidenceColumns.includes("artifact_path"))this.db.exec("ALTER TABLE mission_evidence ADD COLUMN artifact_path TEXT");
+    if(!evidenceColumns.includes("verified_sha256"))this.db.exec("ALTER TABLE mission_evidence ADD COLUMN verified_sha256 TEXT");
+    if(!evidenceColumns.includes("verification"))this.db.exec("ALTER TABLE mission_evidence ADD COLUMN verification TEXT NOT NULL DEFAULT 'unverified'");
     this.seed();
   }
   seed() {
@@ -119,9 +159,11 @@ export class Store {
       hubs: all("SELECT * FROM hubs"),
       leaders: all("SELECT * FROM leaders"),
       projects: all("SELECT * FROM projects ORDER BY created_at DESC"),
+      goals: all("SELECT * FROM goals ORDER BY created_at DESC"),
       mediaAccounts: all("SELECT * FROM media_accounts ORDER BY created_at DESC"),
       mediaCampaigns: all("SELECT * FROM media_campaigns ORDER BY created_at DESC"),
       missions: all("SELECT * FROM missions ORDER BY created_at DESC").map(m => ({ ...m,criteria:JSON.parse(m.criteria) })),
+      runs: all("SELECT * FROM mission_runs ORDER BY created_at DESC LIMIT 80"),
       messages: all("SELECT * FROM messages ORDER BY created_at DESC LIMIT 60"),
       notes: all("SELECT id,title,scope,owner_id,revision,created_at,updated_at FROM notes ORDER BY updated_at DESC LIMIT 100"),
       personas: all("SELECT path,title,description,emoji,division,source_commit,source_sha FROM personas ORDER BY title"),
@@ -145,6 +187,68 @@ export class Store {
       this.event("project.created",id,hubId,`New project: ${title}`);
     });
     return this.db.prepare("SELECT * FROM projects WHERE id=?").get(id);
+  }
+  linkProjectRepository(id,repositoryPath) {
+    const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(id);
+    if(!project)throw new InputError("Project not found",404);
+    if(project.hub_id!=="dev"||project.kind!=="software")throw new InputError("Only Dev software projects can link a Git repository");
+    const path=nonempty(repositoryPath,"repositoryPath",4000);
+    this.transaction(()=>{
+      this.db.prepare("UPDATE projects SET repository_path=? WHERE id=?").run(path,id);
+      this.event("project.repository-linked",id,"dev",`Repository linked to ${project.title}`);
+    });
+    return this.db.prepare("SELECT * FROM projects WHERE id=?").get(id);
+  }
+  setRunLimit(id,input) {
+    const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(id);
+    if(!project)throw new InputError("Project not found",404);
+    if(project.hub_id!=="dev"||project.kind!=="software")throw new InputError("Run quotas apply to Dev software projects");
+    const limit=input.monthlyRunLimit;
+    if(limit!==null&&(!Number.isInteger(limit)||limit<1||limit>10000))
+      throw new InputError("Monthly run limit must be 1–10000 or null");
+    this.transaction(()=>{
+      this.db.prepare("UPDATE projects SET monthly_run_limit=? WHERE id=?").run(limit,id);
+      this.event("project.run-limit",id,"dev",limit===null?"Dev run quota removed":`Dev run quota set to ${limit} per month`);
+    });
+    return this.db.prepare("SELECT * FROM projects WHERE id=?").get(id);
+  }
+  createGoal(input) {
+    const hubId=input.hubId?nonempty(input.hubId,"hubId",30):null;
+    if(hubId)this.requireHub(hubId);
+    const projectId=input.projectId?nonempty(input.projectId,"projectId",120):null;
+    if(projectId){
+      const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(projectId);
+      if(!project||project.hub_id!==hubId)throw new InputError("Goal project must belong to the selected hub");
+    }
+    const parentId=input.parentId?nonempty(input.parentId,"parentId",120):null;
+    if(parentId){
+      const parent=this.db.prepare("SELECT * FROM goals WHERE id=?").get(parentId);
+      if(!parent)throw new InputError("Parent goal not found");
+      if(parent.hub_id&&parent.hub_id!==hubId)throw new InputError("Parent goal belongs to another hub");
+      if(parent.project_id&&parent.project_id!==projectId)throw new InputError("Parent goal belongs to another project");
+    }
+    const title=nonempty(input.title,"title",140),objective=nonempty(input.objective,"objective",4000);
+    const measure=nonempty(input.measure,"measure",500),id=randomUUID(),time=now();
+    this.transaction(()=>{
+      this.db.prepare("INSERT INTO goals(id,parent_id,hub_id,project_id,title,objective,measure,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)")
+        .run(id,parentId,hubId,projectId,title,objective,measure,time,time);
+      this.event("goal.created",id,hubId,`Goal created: ${title}`);
+    });
+    return this.db.prepare("SELECT * FROM goals WHERE id=?").get(id);
+  }
+  completeGoal(id,input) {
+    this.transaction(()=>{
+      const goal=this.db.prepare("SELECT * FROM goals WHERE id=?").get(id);
+      if(!goal)throw new InputError("Goal not found",404);
+      if(goal.status!=="active"||goal.version!==input.expectedVersion)throw new InputError("Goal changed or closed; reload",409);
+      const missions=this.db.prepare("SELECT status FROM missions WHERE goal_id=?").all(id);
+      const children=this.db.prepare("SELECT status FROM goals WHERE parent_id=?").all(id);
+      if((!missions.length&&!children.length)||missions.some(m=>m.status!=="accepted")||children.some(g=>g.status!=="achieved"))
+        throw new InputError("Accept linked missions and complete child goals before marking this goal achieved",409);
+      this.db.prepare("UPDATE goals SET status='achieved',version=version+1,updated_at=? WHERE id=?").run(now(),id);
+      this.event("goal.achieved",id,goal.hub_id,`Goal achieved with linked accepted work: ${goal.title}`);
+    });
+    return this.db.prepare("SELECT * FROM goals WHERE id=?").get(id);
   }
   requireMediaBrand(id) {
     const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(id);
@@ -189,9 +293,15 @@ export class Store {
       const record=this.db.prepare("SELECT * FROM projects WHERE id=?").get(project);
       if(!record||record.hub_id!==hubId)throw new InputError("Choose a project in the selected hub");
     }
+    const goalId=input.goalId?nonempty(input.goalId,"goalId",120):null;
+    if(goalId){
+      const goal=this.db.prepare("SELECT * FROM goals WHERE id=? AND status='active'").get(goalId);
+      if(!goal||goal.hub_id&&goal.hub_id!==hubId||goal.project_id&&goal.project_id!==project)
+        throw new InputError("Choose an active goal in this hub and project");
+    }
     this.transaction(() => {
-      this.db.prepare("INSERT INTO missions(id,hub_id,project,title,objective,criteria,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)")
-        .run(id,hubId,project,title,objective,JSON.stringify(criteria.map(c=>c.trim())),time,time);
+      this.db.prepare("INSERT INTO missions(id,hub_id,project,title,objective,criteria,created_at,updated_at,goal_id) VALUES (?,?,?,?,?,?,?,?,?)")
+        .run(id,hubId,project,title,objective,JSON.stringify(criteria.map(c=>c.trim())),time,time,goalId);
       this.event("mission.created",id,hubId,`New mission: ${title}`);
     });
     return this.db.prepare("SELECT * FROM missions WHERE id=?").get(id);
@@ -202,7 +312,10 @@ export class Store {
     return {
       mission:{...mission,criteria:JSON.parse(mission.criteria)},
       tasks:this.db.prepare("SELECT * FROM mission_tasks WHERE mission_id=? ORDER BY created_at,id").all(id),
-      evidence:this.db.prepare("SELECT * FROM mission_evidence WHERE mission_id=? ORDER BY created_at,id").all(id)
+      evidence:this.db.prepare("SELECT * FROM mission_evidence WHERE mission_id=? ORDER BY created_at,id").all(id),
+      dependencies:this.db.prepare("SELECT d.* FROM task_dependencies d JOIN mission_tasks t ON t.id=d.task_id WHERE t.mission_id=?").all(id),
+      runs:this.db.prepare("SELECT * FROM mission_runs WHERE mission_id=? ORDER BY created_at,id").all(id),
+      artifacts:this.db.prepare("SELECT a.* FROM run_artifacts a JOIN mission_runs r ON r.id=a.run_id WHERE r.mission_id=? ORDER BY a.run_id,a.path").all(id)
     };
   }
   checkedMission(id,version) {
@@ -219,6 +332,9 @@ export class Store {
     const title=nonempty(input.title,"title",140),objective=nonempty(input.objective,"objective",4000);
     const assignmentId=input.assignmentId?nonempty(input.assignmentId,"assignmentId",120):null;
     const taskId=randomUUID(),time=now();
+    const dependsOn=input.dependsOn??[];
+    if(!Array.isArray(dependsOn)||dependsOn.length>8||new Set(dependsOn).size!==dependsOn.length)
+      throw new InputError("Choose up to eight distinct task prerequisites");
     this.transaction(()=>{
       const mission=this.checkedMission(id,input.expectedVersion);
       if(assignmentId){
@@ -227,10 +343,123 @@ export class Store {
       }
       this.db.prepare("INSERT INTO mission_tasks(id,mission_id,assignment_id,title,objective,created_at,updated_at) VALUES (?,?,?,?,?,?,?)")
         .run(taskId,id,assignmentId,title,objective,time,time);
+      for(const predecessor of dependsOn){
+        if(typeof predecessor!=="string"||!this.db.prepare("SELECT 1 FROM mission_tasks WHERE id=? AND mission_id=?").get(predecessor,id))
+          throw new InputError("Task prerequisite must belong to this mission");
+        this.db.prepare("INSERT INTO task_dependencies VALUES (?,?)").run(taskId,predecessor);
+      }
       this.advanceMission(id,mission.status==="intake"?"planned":mission.status);
       this.event("task.queued",taskId,mission.hub_id,`Task queued for mission ${mission.title}: ${title}`);
     });
     return this.missionDetail(id);
+  }
+  queueRun(id,taskId,input) {
+    const timeout= input.timeoutSeconds??600;
+    if(!Number.isInteger(timeout)||timeout<30||timeout>3600)throw new InputError("Run timeout must be 30–3600 seconds");
+    const runId=randomUUID();
+    this.transaction(()=>{
+      const mission=this.checkedMission(id,input.expectedVersion);
+      if(mission.hub_id!=="dev"||!mission.project)throw new InputError("A Dev mission with a linked software project is required");
+      const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(mission.project);
+      if(project?.hub_id!=="dev"||project.kind!=="software"||!project.repository_path)
+        throw new InputError("Link a Git repository to the Dev software project first");
+      const task=this.db.prepare("SELECT * FROM mission_tasks WHERE id=? AND mission_id=?").get(taskId,id);
+      if(!task||!["queued","blocked"].includes(task.status)||!task.assignment_id)
+        throw new InputError("Choose a queued or blocked task with an assigned specialist",409);
+      if(this.db.prepare("SELECT 1 FROM mission_runs WHERE task_id=? AND status IN ('queued','starting','running')").get(taskId))
+        throw new InputError("This task already has an active run",409);
+      const assignment=this.db.prepare("SELECT * FROM assignments WHERE id=?").get(task.assignment_id);
+      if(assignment?.hub_id!=="dev"||assignment.runtime!=="codex")throw new InputError("The assigned Codex runtime is required for this adapter");
+      const prerequisites=this.db.prepare("SELECT t.status FROM task_dependencies d JOIN mission_tasks t ON t.id=d.prerequisite_id WHERE d.task_id=?").all(taskId);
+      if(prerequisites.some(item=>item.status!=="accepted"))throw new InputError("Accept prerequisite tasks before running this task",409);
+      if(project.monthly_run_limit!==null){
+        const count=this.db.prepare(`SELECT count(*) AS total FROM mission_runs r JOIN missions m ON m.id=r.mission_id
+          WHERE m.project=? AND r.created_at>=?`).get(project.id,now().slice(0,7)+"-01T00:00:00.000Z").total;
+        if(count>=project.monthly_run_limit)throw new InputError("Project monthly run quota reached",409);
+      }
+      this.db.prepare("INSERT INTO mission_runs(id,mission_id,task_id,assignment_id,runtime,status,timeout_seconds,created_at) VALUES (?,?,?,?,?,'queued',?,?)")
+        .run(runId,id,taskId,assignment.id,"codex",timeout,now());
+      this.db.prepare("UPDATE mission_tasks SET status='queued',updated_at=? WHERE id=?").run(now(),taskId);
+      this.advanceMission(id,"planned");
+      this.event("run.queued",runId,"dev",`Codex run queued for task ${task.title}`);
+    });
+    return this.db.prepare("SELECT * FROM mission_runs WHERE id=?").get(runId);
+  }
+  queuedRuns(){return this.db.prepare("SELECT * FROM mission_runs WHERE status='queued' ORDER BY created_at,id").all()}
+  runContext(id) {
+    const run=this.db.prepare("SELECT * FROM mission_runs WHERE id=?").get(id);
+    if(!run)throw new InputError("Run not found",404);
+    const detail=this.missionDetail(run.mission_id);
+    const task=detail.tasks.find(item=>item.id===run.task_id);
+    const assignment=this.db.prepare("SELECT * FROM assignments WHERE id=?").get(run.assignment_id);
+    const persona=this.db.prepare("SELECT * FROM personas WHERE path=?").get(assignment.persona_path);
+    const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(detail.mission.project);
+    const notes=this.notesFor({hubId:detail.mission.hub_id,project:detail.mission.project,principal:"worker"});
+    return {run,mission:detail.mission,task,assignment,persona,project,notes};
+  }
+  claimRun(id) {
+    this.transaction(()=>{
+      const context=this.runContext(id);
+      if(context.run.status!=="queued")throw new InputError("Run is no longer queued",409);
+      if(["cancelled","accepted"].includes(context.mission.status))throw new InputError("Mission is closed",409);
+      this.db.prepare("UPDATE mission_runs SET status='starting',started_at=? WHERE id=?").run(now(),id);
+      this.db.prepare("UPDATE mission_tasks SET status='running',updated_at=? WHERE id=?").run(now(),context.task.id);
+      this.advanceMission(context.mission.id,"running");
+      this.event("run.starting",id,"dev",`Preparing isolated workspace for ${context.task.title}`);
+    });
+    return this.runContext(id);
+  }
+  preparedRun(id,workspace,baseCommit) {
+    this.db.prepare("UPDATE mission_runs SET workspace=?,base_commit=? WHERE id=? AND status='starting'").run(workspace,baseCommit,id);
+  }
+  runningRun(id,pid) {
+    this.db.prepare("UPDATE mission_runs SET status='running',pid=? WHERE id=? AND status='starting'").run(pid,id);
+  }
+  appendRunLog(id,channel,message) {
+    if(!["agent","progress","system"].includes(channel))throw new InputError("Invalid log channel");
+    if(!this.db.prepare("SELECT 1 FROM mission_runs WHERE id=?").get(id))return;
+    this.db.prepare("INSERT INTO run_logs(run_id,channel,message,occurred_at) VALUES (?,?,?,?)")
+      .run(id,channel,String(message).slice(0,2000),now());
+  }
+  runLogs(missionId,runId) {
+    const run=this.db.prepare("SELECT * FROM mission_runs WHERE id=? AND mission_id=?").get(runId,missionId);
+    if(!run)throw new InputError("Run not found in mission",404);
+    return {run,logs:this.db.prepare("SELECT * FROM run_logs WHERE run_id=? ORDER BY seq DESC LIMIT 200").all(runId).reverse(),
+      artifacts:this.db.prepare("SELECT * FROM run_artifacts WHERE run_id=? ORDER BY path").all(runId)};
+  }
+  completeRun(id,{status,exitCode=null,result="",artifacts=[]}) {
+    if(!["succeeded","failed","interrupted"].includes(status))throw new InputError("Invalid run result");
+    this.transaction(()=>{
+      const {run,task,mission}=this.runContext(id);
+      if(!["starting","running"].includes(run.status))return;
+      for(const artifact of artifacts)
+        this.db.prepare("INSERT INTO run_artifacts(run_id,path,sha256,bytes,status) VALUES (?,?,?,?,?)")
+          .run(id,artifact.path,artifact.sha256,artifact.bytes,artifact.status);
+      this.db.prepare("UPDATE mission_runs SET status=?,exit_code=?,result=?,ended_at=? WHERE id=?")
+        .run(status,exitCode,String(result).slice(0,2000),now(),id);
+      this.db.prepare("UPDATE mission_tasks SET status=?,updated_at=? WHERE id=?")
+        .run(status==="succeeded"?"awaiting-review":"blocked",now(),task.id);
+      this.advanceMission(mission.id,status==="succeeded"?"in-review":"blocked");
+      this.event(`run.${status}`,id,"dev",`Codex run ${status} for task ${task.title}; outcome needs review`);
+    });
+  }
+  stopRun(missionId,runId,input) {
+    this.transaction(()=>{
+      const mission=this.checkedMission(missionId,input.expectedVersion);
+      const run=this.db.prepare("SELECT * FROM mission_runs WHERE id=? AND mission_id=?").get(runId,missionId);
+      if(!run||!["queued","starting","running"].includes(run.status))throw new InputError("Run is not active",409);
+      this.db.prepare("UPDATE mission_runs SET status='cancelled',result='Stopped by owner; inspect workspace for partial changes',ended_at=? WHERE id=?")
+        .run(now(),runId);
+      this.db.prepare("UPDATE mission_tasks SET status='blocked',updated_at=? WHERE id=?").run(now(),run.task_id);
+      this.advanceMission(missionId,"blocked");
+      this.event("run.cancelled",runId,mission.hub_id,"Owner stopped run; partial effects remain to be inspected");
+    });
+    return this.missionDetail(missionId);
+  }
+  recoverRuns() {
+    const active=this.db.prepare("SELECT * FROM mission_runs WHERE status IN ('starting','running')").all();
+    for(const run of active)this.completeRun(run.id,{status:"interrupted",result:"AGAS restarted during this run; inspect workspace and reconcile any partial work"});
+    return active.length;
   }
   submitEvidence(id,input) {
     const taskId=nonempty(input.taskId,"taskId",120),title=nonempty(input.title,"title",140);
@@ -252,6 +481,46 @@ export class Store {
     });
     return this.missionDetail(id);
   }
+  verifyRecordedFile(runId,path,expectedSha) {
+    const run=this.db.prepare("SELECT workspace FROM mission_runs WHERE id=?").get(runId);
+    if(!run?.workspace||typeof path!=="string"||!path||!expectedSha)return false;
+    const full=resolve(run.workspace,path);
+    if(!full.startsWith(run.workspace+sep))return false;
+    try {
+      const info=lstatSync(full);
+      if(!info.isFile()||info.size>10*1024*1024)return false;
+      const actual=realpathSync(full);
+      if(actual!==full&&!actual.startsWith(run.workspace+sep))return false;
+      return createHash("sha256").update(readFileSync(full)).digest("hex")===expectedSha;
+    } catch {return false}
+  }
+  submitRunArtifact(id,input) {
+    const taskId=nonempty(input.taskId,"taskId",120),runId=nonempty(input.runId,"runId",120);
+    const path=nonempty(input.path,"path",1000),title=nonempty(input.title,"title",140);
+    const criterionIndex=input.criterionIndex,evidenceId=randomUUID(),time=now();
+    this.transaction(()=>{
+      const mission=this.checkedMission(id,input.expectedVersion);
+      if(!Number.isInteger(criterionIndex)||criterionIndex<0||criterionIndex>=mission.criteria.length)
+        throw new InputError("Choose a mission acceptance criterion");
+      const run=this.db.prepare("SELECT * FROM mission_runs WHERE id=? AND mission_id=? AND task_id=? AND status='succeeded'")
+        .get(runId,id,taskId);
+      const artifact=this.db.prepare("SELECT * FROM run_artifacts WHERE run_id=? AND path=? AND status='recorded'").get(runId,path);
+      if(!run||!artifact||!this.verifyRecordedFile(runId,path,artifact.sha256))
+        throw new InputError("Run artifact is missing or changed; inspect the workspace",409);
+      const task=this.db.prepare("SELECT * FROM mission_tasks WHERE id=? AND mission_id=? AND status='awaiting-review'").get(taskId,id);
+      if(!task)throw new InputError("Task is not awaiting review",409);
+      const content=`Recorded file: ${path}\nRun: ${runId}\nSHA-256: ${artifact.sha256}`;
+      this.db.prepare(`INSERT INTO mission_evidence(
+        id,mission_id,task_id,criterion_index,kind,title,content,sha256,created_at,
+        run_id,artifact_path,verified_sha256,verification
+      ) VALUES (?,?,?,?,'artifact',?,?,?,?,?,?,?,'file-hash-verified')`)
+        .run(evidenceId,id,taskId,criterionIndex,title,content,createHash("sha256").update(content).digest("hex"),time,
+          runId,path,artifact.sha256);
+      this.advanceMission(id,"in-review");
+      this.event("artifact.verified",evidenceId,mission.hub_id,`File bytes verified for ${path}; owner must assess criterion ${criterionIndex+1}`);
+    });
+    return this.missionDetail(id);
+  }
   reviewEvidence(id,evidenceId,input) {
     const note=nonempty(input.reviewNote,"reviewNote",2000),decision=nonempty(input.decision,"decision",20);
     if(!["reviewed","rejected"].includes(decision))throw new InputError("Invalid review decision");
@@ -262,6 +531,8 @@ export class Store {
       if(evidence.status!=="submitted")throw new InputError("Evidence has already been reviewed",409);
       if(createHash("sha256").update(evidence.content).digest("hex")!==evidence.sha256)
         throw new InputError("Evidence integrity check failed",409);
+      if(evidence.verification==="file-hash-verified"&&!this.verifyRecordedFile(evidence.run_id,evidence.artifact_path,evidence.verified_sha256))
+        throw new InputError("Recorded artifact has changed; it cannot be reviewed",409);
       this.db.prepare("UPDATE mission_evidence SET status=?,review_note=?,reviewed_at=? WHERE id=?")
         .run(decision,note,now(),evidenceId);
       this.advanceMission(id,mission.status);
@@ -278,6 +549,9 @@ export class Store {
       const evidence=this.db.prepare("SELECT status FROM mission_evidence WHERE task_id=?").all(taskId);
       if(evidence.some(item=>item.status==="submitted")||!evidence.some(item=>item.status==="reviewed"))
         throw new InputError("Task requires reviewed evidence with no pending submissions",409);
+      for(const item of this.db.prepare("SELECT * FROM mission_evidence WHERE task_id=? AND status='reviewed' AND verification='file-hash-verified'").all(taskId))
+        if(!this.verifyRecordedFile(item.run_id,item.artifact_path,item.verified_sha256))
+          throw new InputError("Reviewed artifact changed; submit fresh evidence",409);
       this.db.prepare("UPDATE mission_tasks SET status='accepted',updated_at=? WHERE id=?").run(now(),taskId);
       this.advanceMission(id,mission.status);
       this.event("task.accepted",taskId,mission.hub_id,`Owner accepted task: ${task.title}`);
@@ -294,6 +568,9 @@ export class Store {
           detail.tasks.some(task=>task.id===e.task_id&&task.status==="accepted")))
           throw new InputError(`Criterion ${index+1} needs reviewed evidence from an accepted task`,409);
       }
+      for(const item of detail.evidence.filter(e=>e.status==="reviewed"&&e.verification==="file-hash-verified"))
+        if(!this.verifyRecordedFile(item.run_id,item.artifact_path,item.verified_sha256))
+          throw new InputError("Accepted artifact changed; submit fresh evidence",409);
       this.advanceMission(id,"accepted");
       this.event("mission.owner-accepted",id,mission.hub_id,`Owner accepted mission ${mission.title}; evidence was reviewed by owner, not independently verified`);
     });
@@ -302,7 +579,8 @@ export class Store {
   cancelMission(id,input) {
     this.transaction(()=>{
       const mission=this.checkedMission(id,input.expectedVersion);
-      this.db.prepare("UPDATE mission_tasks SET status='cancelled',updated_at=? WHERE mission_id=? AND status IN ('queued','awaiting-review')").run(now(),id);
+      this.db.prepare("UPDATE mission_runs SET status='cancelled',result='Mission cancelled; inspect partial work',ended_at=? WHERE mission_id=? AND status IN ('queued','starting','running')").run(now(),id);
+      this.db.prepare("UPDATE mission_tasks SET status='cancelled',updated_at=? WHERE mission_id=? AND status IN ('queued','running','blocked','awaiting-review')").run(now(),id);
       this.advanceMission(id,"cancelled");
       this.event("mission.cancelled",id,mission.hub_id,`Owner cancelled mission: ${mission.title}`);
     });

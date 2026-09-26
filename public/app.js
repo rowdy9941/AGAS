@@ -1,7 +1,7 @@
 const $=selector=>document.querySelector(selector);
 const esc=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
-const state={data:null,view:"overview",hub:null,missionId:null,detail:null,inspected:null,search:"",onlyImported:true,token:sessionStorage.getItem("agas-token")||""};
-const titles={overview:"Mission control",organization:"Organization",projects:"Projects",missions:"Missions",mission:"Mission",hubs:"Hubs",agents:"Agents",knowledge:"Knowledge & vault",activity:"Activity"};
+const state={data:null,view:"overview",hub:null,missionId:null,detail:null,inspected:null,search:"",onlyImported:true,windowId:"hermes",windowUrl:null,token:sessionStorage.getItem("agas-token")||""};
+const titles={overview:"Mission control",organization:"Organization",goals:"Goals",projects:"Projects",missions:"Missions",mission:"Mission",hubs:"Hubs",agents:"Agents",windows:"Agent windows",knowledge:"Knowledge & vault",activity:"Activity"};
 let noticeTimer;
 function notify(message,error=false){const node=$("#notice");node.textContent=message;node.style.background=error?"#542d32":"";clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>node.textContent="",5000)}
 async function api(path,options={}) {
@@ -39,16 +39,19 @@ function missionsPage(){
 }
 function missionPage(){
   const d=state.detail;if(!d)return `<div class="empty">Loading mission…</div>`;
-  const {mission:m,tasks,evidence}=d,open=!(["accepted","cancelled"].includes(m.status));
+  const {mission:m,tasks,evidence,runs,artifacts}=d,open=!(["accepted","cancelled"].includes(m.status));
+  const linkedProject=state.data.projects.find(p=>p.id===m.project);
   const criterionRows=m.criteria.map((criterion,index)=>{
     const items=evidence.filter(e=>e.criterion_index===index),reviewed=items.filter(e=>e.status==="reviewed"&&tasks.some(t=>t.id===e.task_id&&t.status==="accepted"));
     return `<article class="criterion"><span class="badge ${reviewed.length?"":"warn"}">${reviewed.length?"Owner reviewed":"Evidence required"}</span><strong>${index+1}. ${esc(criterion)}</strong><small>${items.length} submission${items.length===1?"":"s"}</small></article>`;
   }).join("");
   return heading(`MISSION · ${hub(m.hub_id)?.name||m.hub_id}`,m.title,m.objective,`<span class="head-count">${esc(m.status)} · revision ${m.version}</span>`)+
-    `<div class="mission-actions"><button class="secondary" data-action="view" data-id="missions">← All missions</button>${open?`<button class="primary" data-action="new-task">+ Add task</button><button class="secondary" data-action="cancel-mission">Cancel mission</button>`:""}</div>`+
-    `<div class="split"><section class="panel"><h3>Acceptance criteria</h3><p class="helper">Submitted text and its SHA-256 hash show what the owner reviewed; they do not independently prove external results.</p><div class="criteria-list">${criterionRows}</div></section><section class="panel"><h3>Decision</h3><p class="helper">AGAS requires an accepted task and owner-reviewed evidence for every criterion. A separate independent runtime verifier has not been connected.</p>${open?`<button class="primary" data-action="accept-mission">Record owner acceptance</button>`:`<span class="badge">${esc(m.status)}</span>`}</section></div>`+
-    `<div class="section-head"><h2>Task queue</h2><span>${tasks.length} tasks</span></div><div class="mission-table">${tasks.length?tasks.map(t=>`<article class="card work-card"><div><strong>${esc(t.title)}</strong><p>${esc(t.objective)}</p><small>${t.assignment_id?`Configured specialist ${esc(t.assignment_id)} · execution pending`:"No runtime assigned · manual planning"}</small></div><div class="work-actions"><span class="badge ${t.status==="accepted"?"":"warn"}">${esc(t.status)}</span>${open&&t.status!=="accepted"?`<button class="secondary" data-action="add-evidence" data-id="${esc(t.id)}">Submit evidence</button>${t.status==="awaiting-review"?`<button class="secondary" data-action="accept-task" data-id="${esc(t.id)}">Accept task</button>`:""}`:""}</div></article>`).join(""):`<div class="panel empty">Add a bounded task to make the mission actionable. Agent execution is not connected yet.</div>`}</div>`+
-    `<div class="section-head"><h2>Evidence ledger</h2><span>${evidence.length} entries</span></div><div class="mission-table">${evidence.length?evidence.map(e=>`<article class="card evidence-card"><div><strong>${esc(e.title)}</strong><small>Criterion ${e.criterion_index+1} · ${esc(e.kind)} · SHA-256 ${esc(e.sha256)}</small><p>${esc(e.content)}</p>${e.review_note?`<p>Owner review: ${esc(e.review_note)}</p>`:""}</div><div class="work-actions"><span class="badge ${e.status==="reviewed"?"":"warn"}">${esc(e.status)}</span>${open&&e.status==="submitted"?`<button class="secondary" data-action="review-evidence" data-id="${esc(e.id)}">Review</button>`:""}</div></article>`).join(""):`<div class="panel empty">No evidence submitted. Completing a task requires real output and owner review.</div>`}</div>`;
+    `<div class="mission-actions"><button class="secondary" data-action="view" data-id="missions">← All missions</button><button class="secondary" data-action="refresh-mission">Refresh</button>${open?`<button class="primary" data-action="new-task">+ Add task</button><button class="secondary" data-action="cancel-mission">Cancel mission</button>`:""}</div>`+
+    `<div class="split"><section class="panel"><h3>Acceptance criteria</h3><p class="helper">AGAS checks file bytes against a recorded run. The owner still judges whether a file proves a criterion.</p><p class="helper">Goal: ${esc(state.data.goals.find(g=>g.id===m.goal_id)?.title||"Not linked")}</p><div class="criteria-list">${criterionRows}</div></section><section class="panel"><h3>Decision</h3><p class="helper">Owner acceptance requires reviewed evidence for every criterion. File integrity is verified when linked to a completed run; semantic and external claims still require independent checks.</p>${open?`<button class="primary" data-action="accept-mission">Record owner acceptance</button>`:`<span class="badge">${esc(m.status)}</span>`}</section></div>`+
+    `<div class="section-head"><h2>Task queue</h2><span>${tasks.length} tasks</span></div><div class="mission-table">${tasks.length?tasks.map(t=>{const a=state.data.assignments.find(item=>item.id===t.assignment_id),ready=state.data.runtimes.find(item=>item.id===a?.runtime)?.ready;return `<article class="card work-card"><div><strong>${esc(t.title)}</strong><p>${esc(t.objective)}</p><small>${a?`${esc(a.runtime)} specialist · ${ready?"runtime ready":"runtime not ready"}`:"No runtime assigned · manual planning"}${d.dependencies.filter(dep=>dep.task_id===t.id).map(dep=>` · after ${esc(tasks.find(item=>item.id===dep.prerequisite_id)?.title||dep.prerequisite_id)}`).join("")}</small></div><div class="work-actions"><span class="badge ${t.status==="accepted"?"":"warn"}">${esc(t.status)}</span>${open&&["queued","blocked"].includes(t.status)&&a?.runtime==="codex"&&linkedProject?.repository_path&&ready?`<button class="primary" data-action="launch-run" data-id="${esc(t.id)}">Run Codex</button>`:""}${open&&t.status!=="accepted"&&t.status!=="running"?`<button class="secondary" data-action="add-evidence" data-id="${esc(t.id)}">Submit evidence</button>${t.status==="awaiting-review"?`<button class="secondary" data-action="accept-task" data-id="${esc(t.id)}">Accept task</button>`:""}`:""}</div></article>`}).join(""):`<div class="panel empty">Add a bounded task and assign a specialist. Codex runs require a linked Dev repository and a ready CLI.</div>`}</div>`+
+    `<div class="section-head"><h2>Agent runs</h2><span>${runs.length} attempts</span></div><div class="mission-table">${runs.length?runs.map(r=>`<article class="card work-card"><div><strong>Codex · ${esc(r.status)}</strong><p>${esc(r.result||"Preparing or executing in an isolated worktree.")}</p><small>Run ${esc(r.id)} · ${esc(r.base_commit||"base pending")} · ${esc(r.workspace||"workspace pending")}</small></div><div class="work-actions"><span class="badge ${r.status==="succeeded"?"":"warn"}">${esc(r.status)}</span><button class="secondary" data-action="inspect-run" data-id="${esc(r.id)}">Logs & files</button>${open&&["queued","starting","running"].includes(r.status)?`<button class="secondary" data-action="stop-run" data-id="${esc(r.id)}">Stop</button>`:""}</div></article>`).join(""):`<div class="panel empty">No agent run has been launched for this mission.</div>`}</div>`+
+    `<div class="section-head"><h2>Recorded files</h2><span>${artifacts.filter(a=>a.status==="recorded").length} hashed</span></div><div class="mission-table">${artifacts.length?artifacts.map(a=>`<article class="card work-card"><div><strong>${esc(a.path)}</strong><small>${esc(a.status)} · ${esc(a.sha256||"no hash")} · ${esc(a.bytes??"?")} bytes</small></div><div class="work-actions">${open&&a.status==="recorded"&&runs.find(r=>r.id===a.run_id)?.status==="succeeded"?`<button class="secondary" data-action="prove-artifact" data-id="${esc(a.run_id)}" data-path="${esc(a.path)}">Use as evidence</button>`:""}</div></article>`).join(""):`<div class="panel empty">Completed runs will list changed files and their hashes here.</div>`}</div>`+
+    `<div class="section-head"><h2>Evidence ledger</h2><span>${evidence.length} entries</span></div><div class="mission-table">${evidence.length?evidence.map(e=>`<article class="card evidence-card"><div><strong>${esc(e.title)}</strong><small>Criterion ${e.criterion_index+1} · ${esc(e.kind)} · SHA-256 ${esc(e.sha256)}${e.verification==="file-hash-verified"?" · recorded file hash verified":" · unverified submission"}</small><p>${esc(e.content)}</p>${e.review_note?`<p>Owner review: ${esc(e.review_note)}</p>`:""}</div><div class="work-actions"><span class="badge ${e.status==="reviewed"?"":"warn"}">${esc(e.status)}</span>${open&&e.status==="submitted"?`<button class="secondary" data-action="review-evidence" data-id="${esc(e.id)}">Review</button>`:""}</div></article>`).join(""):`<div class="panel empty">No evidence submitted. Completing a task requires real output and owner review.</div>`}</div>`;
 }
 function dashboard() {
   const d=state.data;
@@ -66,11 +69,16 @@ function organization() {
     `<div class="panel organization-map"><div class="executive">✦ AGAS Executive<small>Identity persistent · runtime unbound</small></div><div class="org-stem"></div><div class="chief-grid">${hubs().map(h=>`<button class="card chief-card" data-action="hub" data-id="${esc(h.id)}"><strong>${esc(h.icon)} &nbsp; ${esc(h.name)} CEO</strong><small>${esc(h.mandate)} · unbound</small></button>`).join("")}</div></div>`+
     `<div class="split"><div class="panel"><h3>Executive feed</h3><div class="list">${eventRows(d.events.filter(e=>e.type==="ceo.inbox").slice(0,5))}</div></div><div class="panel"><h3>How a team works</h3><p class="helper">Ask a CEO directly → register a scoped request → assign a connected assistant → produce an artifact and evidence → accept the outcome → summarize it to the executive. Messages currently wait for a real runtime.</p><button class="secondary" data-action="view" data-id="agents">Browse specialists →</button></div></div>`;
 }
+function goalsPage() {
+  const d=state.data;
+  return heading("PURPOSE & ACCOUNTABILITY","Goals","Organization and hub goals link projects, missions and accepted outcomes.",`<button class="primary" data-action="new-goal">+ New goal</button>`)+
+    `<div class="mission-table">${d.goals.length?d.goals.map(g=>`<article class="card work-card"><div><strong>${esc(g.title)}</strong><p>${esc(g.objective)}</p><small>${g.parent_id?`Child of ${esc(d.goals.find(item=>item.id===g.parent_id)?.title||g.parent_id)} · `:""}${esc(g.hub_id?hub(g.hub_id)?.name:"Organization")} · ${esc(g.project_id?d.projects.find(item=>item.id===g.project_id)?.title:"All projects")} · Measure: ${esc(g.measure)}</small><small>${d.missions.filter(m=>m.goal_id===g.id).length} linked missions</small></div><div class="work-actions"><span class="badge ${g.status==="achieved"?"":"warn"}">${esc(g.status)}</span>${g.status==="active"?`<button class="secondary" data-action="achieve-goal" data-id="${esc(g.id)}">Mark achieved</button>`:""}</div></article>`).join(""):`<div class="panel empty">Create an organization or hub goal, then link a mission to it.</div>`}</div>`;
+}
 function projectsPage() {
   const projects=state.data.projects;
   return heading("ONE ORGANIZATION","Projects","Organize each software product, media brand, research program or ongoing venture under a responsible hub.",
     `<button class="primary" data-action="new-project">+ New project</button>`)+
-    `<div class="hub-grid">${projects.length?projects.map(p=>`<article class="card hub-card" data-accent="${esc(hub(p.hub_id)?.accent)}"><span class="avatar">${esc(hub(p.hub_id)?.icon)}</span><strong>${esc(p.title)}</strong><small>${esc(p.description)}</small><div class="count">${esc(hub(p.hub_id)?.name)} · ${esc(p.kind)} · ${state.data.missions.filter(m=>m.project===p.id).length} missions</div></article>`).join(""):`<div class="panel empty">No projects yet. Add your first media brand or software product to give missions and knowledge a permanent home.</div>`}</div>`;
+    `<div class="hub-grid">${projects.length?projects.map(p=>`<article class="card hub-card" data-accent="${esc(hub(p.hub_id)?.accent)}"><span class="avatar">${esc(hub(p.hub_id)?.icon)}</span><strong>${esc(p.title)}</strong><small>${esc(p.description)}</small><div class="count">${esc(hub(p.hub_id)?.name)} · ${esc(p.kind)} · ${state.data.missions.filter(m=>m.project===p.id).length} missions</div>${p.hub_id==="dev"&&p.kind==="software"?`<div class="count">${p.repository_path?`Git root: ${esc(p.repository_path)}`:"Git repository not linked"} · Monthly run quota: ${esc(p.monthly_run_limit??"unset")}</div><button class="secondary" data-action="link-repo" data-id="${esc(p.id)}">${p.repository_path?"Change":"Link"} Git repository</button><button class="secondary" data-action="run-limit" data-id="${esc(p.id)}">Set run quota</button>`:""}</article>`).join(""):`<div class="panel empty">No projects yet. Add your first media brand or software product to give missions and knowledge a permanent home.</div>`}</div>`;
 }
 function hubsPage() {
   if(!state.hub)return heading("YOUR DEPARTMENTS","Seven hubs","Each permanent hub has its own CEO inbox, missions and specialist team.")+
@@ -97,8 +105,34 @@ function agentsPage() {
   const candidates=(state.onlyImported?d.personas:d.agency.index).filter(p=>(p.title||p.name||"").toLowerCase().includes(terms)||p.path.toLowerCase().includes(terms)).slice(0,48);
   return heading("SPECIALISTS & RUNTIMES","Agents",`${d.personas.length} sourced role files installed. The full catalog contains ${d.agency.count} references; each role needs an eligible connected runtime.`,`<span class="head-count">${d.personas.length} imported / ${d.agency.count} indexed</span>`)+
     `<div class="toolbar"><input id="agent-search" type="search" placeholder="Search role, team or skill..." value="${esc(state.search)}" aria-label="Search agents"><button class="secondary" data-action="toggle-catalog">${state.onlyImported?"Browse complete index":"Show imported roles"}</button></div><div class="agent-grid">${candidates.map(item=>{const p=imported.get(item.path),title=p?.title||item.name;return `<article class="card agent-card"><span class="emoji">${esc(p?.emoji||sourceIcon(item.division))}</span><h3>${esc(title)}</h3><p>${esc(p?.description||"Source reference only. Import from the pinned Agency checkout to use this role.")}</p><footer><span>${esc(item.division)} · ${p?"Imported":"Source only"}</span>${p?`<button class="ghost" data-action="assign" data-path="${esc(item.path)}">Assign →</button>`:""}</footer></article>`}).join("")}</div>`+
-    `<div class="section-head"><h2>Execution runtimes</h2><span>Discovery is read-only</span></div><div class="agent-grid">${d.runtimes.map(r=>`<div class="card agent-card"><span class="emoji">${esc(r.icon)}</span><h3>${esc(r.name)}</h3><p>${r.state==="detected"?`Executable found at ${esc(r.path)}. Authentication and task execution have not been checked.`:"Not detected on this host."}</p><footer><span>${esc(r.state)}</span><span class="badge warn">Not ready</span></footer></div>`).join("")}</div>`+
+    `<div class="section-head"><h2>Execution runtimes</h2><span>Codex readiness is probed; others are discovery only</span></div><div class="agent-grid">${d.runtimes.map(r=>`<div class="card agent-card"><span class="emoji">${esc(r.icon)}</span><h3>${esc(r.name)}</h3><p>${r.ready?`CLI authentication checked at ${esc(r.path)}. Dev tasks can run in a linked Git worktree.`:r.state==="detected"?`Executable found at ${esc(r.path)}. ${esc(r.reason||"Authentication and task execution have not been checked.")}`:"Not detected on this host."}</p><footer><span>${esc(r.state)}</span><span class="badge ${r.ready?"":"warn"}">${r.ready?"Ready for Dev":"Not ready"}</span></footer></div>`).join("")}</div>`+
     `<div class="panel" style="margin-top:18px"><h3>Source provenance</h3><p class="helper">Agency Agents · pinned commit <code>${esc(d.agency.commit)}</code> · MIT license. The included 12 files are exact upstream prompts with verified blob hashes. Import all ${d.agency.count} with <code>npm run import:agency -- /path/to/agency-agents</code> after checking out the pinned revision.</p></div>`;
+}
+const nativeWindows={hermes:{name:"Hermes dashboard",defaultUrl:"http://127.0.0.1:9119/",instruction:"Start Hermes locally with hermes dashboard --no-open. Use its own sign-in where required."},openclaw:{name:"OpenClaw Control UI",defaultUrl:"http://127.0.0.1:18789/",instruction:"Start your local OpenClaw Gateway; pair and authenticate through OpenClaw itself."},opencode:{name:"OpenCode web",defaultUrl:"",instruction:"Start the OpenCode web UI and paste its local URL. The port varies by version and configuration."}};
+function localWindowUrl(value) {
+  try {
+    const url=new URL(value);
+    if(!["http:","https:"].includes(url.protocol)||!["localhost","127.0.0.1","[::1]"].includes(url.hostname)||url.username||url.password||url.search||url.hash)
+      throw new Error();
+    return url.href;
+  } catch {throw new Error("Enter a local HTTP(S) agent URL without credentials, query parameters or a fragment.")}
+}
+function savedWindowUrl(id) {
+  const saved=sessionStorage.getItem(`agas-window-${id}`);
+  if(!saved)return "";
+  try {return localWindowUrl(saved)}catch {sessionStorage.removeItem(`agas-window-${id}`);return ""}
+}
+function windowsPage() {
+  const local=["localhost","127.0.0.1","[::1]"].includes(location.hostname);
+  const choice=nativeWindows[state.windowId];
+  const current=state.windowUrl||savedWindowUrl(state.windowId)||choice?.defaultUrl||"";
+  const selected=state.data.runtimes.find(r=>r.id===state.windowId);
+  return heading("RUNTIME WORKSPACES","Agent windows","Open an agent's actual local web UI alongside AGAS missions. The provider controls its own authentication and may block framing.")+
+    `<div class="window-tabs">${Object.entries(nativeWindows).map(([id,window])=>`<button class="secondary ${state.windowId===id?"selected":""}" data-action="select-window" data-id="${id}">${esc(window.name)}</button>`).join("")}</div>`+
+    `<div class="panel window-header"><div><h3>${esc(choice.name)}</h3><p class="helper">${esc(choice.instruction)}<br>CLI on this AGAS host: ${esc(selected?.state||"unknown")}. Web UI availability is independent of CLI discovery.</p></div><form id="window-form" class="window-form"><label class="field">Local web address<input name="url" type="url" value="${esc(current)}" placeholder="http://127.0.0.1:PORT/" required></label><button class="primary" type="submit">Open in panel</button>${current?`<a class="secondary" href="${esc(current)}" target="_blank" rel="noopener noreferrer">Open native tab ↗</a>`:""}</form></div>`+
+    (!local?`<div class="panel empty">Open AGAS on the same machine as this browser to use loopback agent windows. A hosted AGAS needs an authenticated remote-window integration.</div>`:
+      state.windowUrl?`<div class="window-frame"><iframe src="${esc(state.windowUrl)}" title="${esc(choice.name)} native web interface" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" referrerpolicy="no-referrer"></iframe></div><p class="helper">If the agent denies framing or its login cannot complete here, use “Open native tab”. AGAS never bypasses the agent's frame or login policy.</p>`:
+      `<div class="panel empty">Select a local agent address to show its real interface here. Codex runs and logs are available inside Dev missions; Codex and Claude desktop or CLI interfaces require a separate native integration.</div>`);
 }
 function knowledgePage() {
   const notes=state.data.notes;
@@ -109,6 +143,11 @@ function knowledgePage() {
 function activityPage(){return heading("AUDIT & PROGRESS","Activity","The executive sees mission, CEO and knowledge events as they happen.")+`<div class="panel list">${eventRows(state.data.events)}</div>`}
 function renderInspector() {
   const selected=state.inspected;
+  if(selected?.type==="run") {
+    const {run,logs,artifacts}=selected.data;
+    $("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">RUN · ${esc(run.runtime)}</span><h3>${esc(run.status)}</h3><p>${esc(run.result||"The run is still active.")}</p><div class="kv"><span>Base commit</span><strong>${esc(run.base_commit||"pending")}</strong></div><div class="kv"><span>Exit</span><strong>${esc(run.exit_code??"pending")}</strong></div></div><div class="inspector-section"><h3>Recorded files</h3>${artifacts.map(a=>`<p>${esc(a.path)} · ${esc(a.status)} · ${esc(a.sha256||"no hash")}</p>`).join("")||"<p>No changed files recorded yet.</p>"}</div><div class="inspector-section"><h3>Process events</h3><div class="run-log" aria-label="Agent run events">${logs.map(row=>`<p><small>${esc(row.channel)} · ${esc(new Date(row.occurred_at).toLocaleTimeString())}</small><br>${esc(row.message)}</p>`).join("")||"<p>No events yet.</p>"}</div></div>`;
+    return;
+  }
   if(selected?.type==="mission") {
     const m=state.data.missions.find(x=>x.id===selected.id);
     if(m) {$("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">MISSION · ${esc(m.hub_id)}</span><h3 style="margin-top:13px">${esc(m.title)}</h3><p>${esc(m.objective)}</p><div class="kv"><span>State</span><strong>${esc(m.status)}</strong></div><div class="kv"><span>Project</span><strong>${esc(m.project||"None")}</strong></div><div class="kv"><span>Version</span><strong>${m.version}</strong></div></div><div class="inspector-section"><h3>Acceptance criteria</h3>${m.criteria.map(c=>`<p>◯ ${esc(c)}</p>`).join("")}<p>Execution evidence is required before acceptance.</p></div>`;return}
@@ -117,14 +156,14 @@ function renderInspector() {
     $("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">KNOWLEDGE</span><h3 style="margin-top:13px">Loading scoped note…</h3></div>`;
     api("/api/notes/"+encodeURIComponent(selected.id)).then(result=>{const n=result.note;if(n&&state.inspected?.id===selected.id)$("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">${esc(n.scope)} · ${esc(n.owner_id)}</span><h3 style="margin-top:14px">${esc(n.title)}</h3><p style="white-space:pre-wrap">${esc(n.content)}</p><div class="kv"><span>Revision</span><strong>${n.revision}</strong></div></div>`}).catch(error=>notify(error.message,true));return;
   }
-  $("#inspector-content").innerHTML=`<div class="inspector-section"><img class="logo-large" src="/assets/agas-logo.jpg" alt=""><h3>Your command center</h3><p>One organization, seven hub chiefs, one shared context with clear boundaries. AGAS reports actual state, so a configured role does not appear as a working agent.</p></div><div class="inspector-section"><h3>Workspace state</h3><div class="kv"><span>Organization</span><strong>AGAS</strong></div><div class="kv"><span>Hubs</span><strong>${hubs().length}</strong></div><div class="kv"><span>Runtime ready</span><strong>0 verified</strong></div><div class="kv"><span>Pending CEO requests</span><strong>${state.data.messages.length}</strong></div></div><div class="inspector-section"><h3>On this machine</h3><div class="stack">${state.data.runtimes.map(r=>`<div class="runtime-chip"><strong>${esc(r.icon)} ${esc(r.name)}</strong><span class="${r.state==="detected"?"":"off"}">${esc(r.state)}</span></div>`).join("")}</div></div><div class="inspector-section"><h3>Current milestone</h3><p>Native organization, scoped mission intake, Agency personas and Obsidian projection. Runtime execution comes after adapter and recovery tests.</p></div>`;
+  $("#inspector-content").innerHTML=`<div class="inspector-section"><img class="logo-large" src="/assets/agas-logo.jpg" alt=""><h3>Your command center</h3><p>One organization, seven hub chiefs, one shared context with clear boundaries. AGAS reports actual state, so a configured role does not appear as a working agent.</p></div><div class="inspector-section"><h3>Workspace state</h3><div class="kv"><span>Organization</span><strong>AGAS</strong></div><div class="kv"><span>Hubs</span><strong>${hubs().length}</strong></div><div class="kv"><span>Runtime ready</span><strong>${state.data.runtimes.filter(r=>r.ready).length} on this host</strong></div><div class="kv"><span>Pending CEO requests</span><strong>${state.data.messages.length}</strong></div></div><div class="inspector-section"><h3>On this machine</h3><div class="stack">${state.data.runtimes.map(r=>`<div class="runtime-chip"><strong>${esc(r.icon)} ${esc(r.name)}</strong><span class="${r.ready||r.state==="detected"?"":"off"}">${esc(r.state)}</span></div>`).join("")}</div></div><div class="inspector-section"><h3>Current milestone</h3><p>Dev tasks can launch in isolated Git worktrees when a local Codex CLI confirms authentication. Other runtimes and cross-agent handoffs are still pending.</p></div>`;
 }
 function render() {
   if(!state.data)return;
   $("#crumb").textContent=state.view==="hubs"&&state.hub?hub(state.hub)?.name:titles[state.view];
   document.querySelectorAll(".nav").forEach(button=>button.classList.toggle("active",button.dataset.view===state.view));
   $("#hub-nav").innerHTML=hubs().map(h=>`<button class="hub-link ${state.view==="hubs"&&state.hub===h.id?"active":""}" data-action="hub" data-id="${esc(h.id)}"><span>${esc(h.icon)}</span>${esc(h.name)}</button>`).join("");
-  $("#content").innerHTML=({overview:dashboard,organization,projects:projectsPage,missions:missionsPage,mission:missionPage,hubs:hubsPage,agents:agentsPage,knowledge:knowledgePage,activity:activityPage}[state.view]||dashboard)();
+  $("#content").innerHTML=({overview:dashboard,organization,goals:goalsPage,projects:projectsPage,missions:missionsPage,mission:missionPage,hubs:hubsPage,agents:agentsPage,windows:windowsPage,knowledge:knowledgePage,activity:activityPage}[state.view]||dashboard)();
   if(state.view==="hubs"&&state.hub==="content")$("#content").insertAdjacentHTML("beforeend",mediaPanels());
   renderInspector();
 }
@@ -138,14 +177,14 @@ function openModal(title,description,fields,submit) {
 function newMission() {
   const selected=state.view==="hubs"&&state.hub?state.hub:"dev";
   openModal("Create a mission","Define the work and what would count as a real result.",
-    `<label class="field">Hub<select name="hubId">${hubs().map(h=>`<option value="${esc(h.id)}" ${h.id===selected?"selected":""}>${esc(h.name)}</option>`).join("")}</select></label><label class="field">Project (optional)<select name="project"><option value="">No project</option>${state.data.projects.map(p=>`<option value="${esc(p.id)}">${esc(p.title)} · ${esc(hub(p.hub_id)?.name)}</option>`).join("")}</select></label><label class="field">Mission title<input name="title" required maxlength="140" placeholder="What should your team deliver?"></label><label class="field">Objective<textarea name="objective" required maxlength="4000" placeholder="Describe the actual objective and constraints"></textarea></label><label class="field">Acceptance criteria · one per line<textarea name="criteria" required placeholder="What evidence would prove this is complete?"></textarea></label>`,
-    data=>api("/api/missions",{method:"POST",body:JSON.stringify({hubId:data.get("hubId"),project:data.get("project"),title:data.get("title"),objective:data.get("objective"),criteria:String(data.get("criteria")).split("\n").map(c=>c.trim()).filter(Boolean)})}));
+    `<label class="field">Hub<select name="hubId">${hubs().map(h=>`<option value="${esc(h.id)}" ${h.id===selected?"selected":""}>${esc(h.name)}</option>`).join("")}</select></label><label class="field">Project (optional)<select name="project"><option value="">No project</option>${state.data.projects.map(p=>`<option value="${esc(p.id)}">${esc(p.title)} · ${esc(hub(p.hub_id)?.name)}</option>`).join("")}</select></label><label class="field">Goal (optional)<select name="goalId"><option value="">No goal</option>${state.data.goals.filter(g=>g.status==="active").map(g=>`<option value="${esc(g.id)}">${esc(g.title)} · ${esc(g.hub_id||"organization")}</option>`).join("")}</select></label><label class="field">Mission title<input name="title" required maxlength="140" placeholder="What should your team deliver?"></label><label class="field">Objective<textarea name="objective" required maxlength="4000" placeholder="Describe the actual objective and constraints"></textarea></label><label class="field">Acceptance criteria · one per line<textarea name="criteria" required placeholder="What evidence would prove this is complete?"></textarea></label>`,
+    data=>api("/api/missions",{method:"POST",body:JSON.stringify({hubId:data.get("hubId"),project:data.get("project"),goalId:data.get("goalId"),title:data.get("title"),objective:data.get("objective"),criteria:String(data.get("criteria")).split("\n").map(c=>c.trim()).filter(Boolean)})}));
 }
 function newTask(){
   const {mission:m}=state.detail,assignments=state.data.assignments.filter(a=>a.hub_id===m.hub_id);
   openModal("Add a mission task","Define one bounded delivery. Assigning a configured specialist does not run it.",
-    `<label class="field">Title<input name="title" required maxlength="140" placeholder="Produce the required artifact"></label><label class="field">Objective<textarea name="objective" required maxlength="4000" placeholder="Describe the result, constraints and expected output"></textarea></label><label class="field">Specialist (optional)<select name="assignmentId"><option value="">Unassigned</option>${assignments.map(a=>`<option value="${esc(a.id)}">${esc(state.data.personas.find(p=>p.path===a.persona_path)?.title||a.persona_path)} · ${esc(a.runtime)} (unverified)</option>`).join("")}</select></label>`,
-    data=>api(`/api/missions/${m.id}/tasks`,{method:"POST",body:JSON.stringify({title:data.get("title"),objective:data.get("objective"),assignmentId:data.get("assignmentId"),expectedVersion:state.detail.mission.version})}));
+    `<label class="field">Title<input name="title" required maxlength="140" placeholder="Produce the required artifact"></label><label class="field">Objective<textarea name="objective" required maxlength="4000" placeholder="Describe the result, constraints and expected output"></textarea></label><label class="field">Specialist (optional)<select name="assignmentId"><option value="">Unassigned</option>${assignments.map(a=>`<option value="${esc(a.id)}">${esc(state.data.personas.find(p=>p.path===a.persona_path)?.title||a.persona_path)} · ${esc(a.runtime)} (unverified)</option>`).join("")}</select></label>${state.detail.tasks.length?`<label class="field">Run after task (optional)<select name="dependsOn"><option value="">No prerequisite</option>${state.detail.tasks.map(t=>`<option value="${esc(t.id)}">${esc(t.title)} · ${esc(t.status)}</option>`).join("")}</select></label>`:""}`,
+    data=>api(`/api/missions/${m.id}/tasks`,{method:"POST",body:JSON.stringify({title:data.get("title"),objective:data.get("objective"),assignmentId:data.get("assignmentId"),dependsOn:data.get("dependsOn")?[data.get("dependsOn")]:[],expectedVersion:state.detail.mission.version})}));
 }
 function addEvidence(taskId){
   const {mission:m}=state.detail;
@@ -168,6 +207,46 @@ function newProject() {
   openModal("Create a project","Give a media brand, software product or other initiative a permanent home.",
     `<label class="field">Hub<select name="hubId">${hubs().map(h=>`<option value="${esc(h.id)}" ${h.id===selected?"selected":""}>${esc(h.name)}</option>`).join("")}</select></label><label class="field">Type<select name="kind"><option value="media-brand">Media brand</option><option value="software">Software product</option><option value="research">Research</option><option value="business">Business</option><option value="health">Health</option><option value="security">Security</option><option value="operations">Operations</option><option value="general">General</option></select></label><label class="field">Name<input name="title" required maxlength="140" placeholder="Project name"></label><label class="field">Mandate<textarea name="description" required maxlength="4000" placeholder="Who it serves and what the team will produce"></textarea></label>`,
     data=>api("/api/projects",{method:"POST",body:JSON.stringify(Object.fromEntries(data))}));
+}
+function newGoal() {
+  openModal("Create a goal","Link strategic intent to accepted mission work. A goal can be organization-wide, scoped to a hub, or scoped to one project.",
+    `<label class="field">Parent goal (optional)<select name="parentId"><option value="">Top-level goal</option>${state.data.goals.filter(g=>g.status==="active").map(g=>`<option value="${esc(g.id)}">${esc(g.title)}</option>`).join("")}</select></label><label class="field">Hub (optional)<select name="hubId"><option value="">Entire organization</option>${hubs().map(h=>`<option value="${esc(h.id)}">${esc(h.name)}</option>`).join("")}</select></label><label class="field">Project (optional)<select name="projectId"><option value="">No project</option>${state.data.projects.map(p=>`<option value="${esc(p.id)}">${esc(p.title)} · ${esc(p.hub_id)}</option>`).join("")}</select></label><label class="field">Goal title<input name="title" required maxlength="140" placeholder="What should this team achieve?"></label><label class="field">Objective<textarea name="objective" required maxlength="4000" placeholder="Desired outcome and boundaries"></textarea></label><label class="field">Success measure<input name="measure" required maxlength="500" placeholder="Observable measure of success"></label>`,
+    data=>api("/api/goals",{method:"POST",body:JSON.stringify(Object.fromEntries(data))}));
+}
+async function achieveGoal(id) {
+  const goal=state.data.goals.find(item=>item.id===id);
+  if(!goal||!window.confirm("Mark this goal achieved after checking its accepted missions and child goals?"))return;
+  try {await api(`/api/goals/${id}/achieve`,{method:"POST",body:JSON.stringify({expectedVersion:goal.version})});await refresh();notify("Goal achievement recorded.")}
+  catch(error){notify(error.message,true)}
+}
+function setRunLimit(id) {
+  const project=state.data.projects.find(p=>p.id===id);
+  openModal(`Set ${project?.title||"project"} run quota`,"This limits the number of new Codex attempts each UTC month. It does not estimate or cap provider charges.",
+    `<label class="field">Monthly run attempts (leave empty for no quota)<input name="monthlyRunLimit" type="number" min="1" max="10000" value="${esc(project?.monthly_run_limit??"")}"></label>`,
+    data=>api(`/api/projects/${id}/run-limit`,{method:"POST",body:JSON.stringify({monthlyRunLimit:data.get("monthlyRunLimit")?Number(data.get("monthlyRunLimit")):null})}));
+}
+function linkRepository(id) {
+  const project=state.data.projects.find(p=>p.id===id);
+  openModal(`Link ${project?.title||"project"} to Git`,"Select an existing local Git repository root. Agents work in detached copies; the source checkout is not edited by AGAS.",
+    `<label class="field">Absolute repository path<input name="repositoryPath" required maxlength="4000" value="${esc(project?.repository_path||"")}" placeholder="/home/you/projects/my-app"></label>`,
+    data=>api(`/api/projects/${id}/repository`,{method:"POST",body:JSON.stringify({repositoryPath:data.get("repositoryPath")})}));
+}
+function launchRun(taskId) {
+  const {mission:m}=state.detail;
+  openModal("Run the assigned Codex specialist","AGAS will prepare an isolated Git worktree, send approved hub/project notes, and record CLI events and changed files. This may consume Codex usage. Inspect output before accepting it.",
+    `<label class="field">Maximum duration (seconds)<input name="timeoutSeconds" type="number" required min="30" max="3600" value="600"></label>`,
+    data=>api(`/api/missions/${m.id}/tasks/${taskId}/run`,{method:"POST",body:JSON.stringify({expectedVersion:state.detail.mission.version,timeoutSeconds:Number(data.get("timeoutSeconds"))})}));
+}
+function proveArtifact(runId,path) {
+  const {mission:m}=state.detail;
+  const run=state.detail.runs.find(item=>item.id===runId);
+  openModal("Use recorded file as evidence","AGAS compares current file bytes to its run receipt. You still decide whether the file meets the criterion.",
+    `<label class="field">Recorded file<input value="${esc(path)}" disabled></label><label class="field">Acceptance criterion<select name="criterionIndex">${m.criteria.map((c,i)=>`<option value="${i}">${i+1}. ${esc(c)}</option>`).join("")}</select></label><label class="field">Evidence title<input name="title" required maxlength="140" value="${esc(path)}"></label>`,
+    data=>api(`/api/missions/${m.id}/artifact-evidence`,{method:"POST",body:JSON.stringify({runId,taskId:run.task_id,path,criterionIndex:Number(data.get("criterionIndex")),title:data.get("title"),expectedVersion:state.detail.mission.version})}));
+}
+async function inspectRun(id) {
+  try {const data=await api(`/api/missions/${state.missionId}/runs/${id}/logs`);state.inspected={type:"run",data};renderInspector()}
+  catch(error){notify(error.message,true)}
 }
 function newMediaAccount() {
   const brands=state.data.projects.filter(p=>p.hub_id==="content"&&p.kind==="media-brand");
@@ -195,8 +274,17 @@ document.addEventListener("click",async event=>{
   if(type==="view")setView(id);
   else if(type==="hub")setView("hubs",id);
   else if(type==="new-mission")newMission();
+  else if(type==="new-goal")newGoal();
+  else if(type==="achieve-goal")achieveGoal(id);
   else if(type==="open-mission")openMission(id);
+  else if(type==="refresh-mission")refresh().catch(error=>notify(error.message,true));
   else if(type==="new-task")newTask();
+  else if(type==="link-repo")linkRepository(id);
+  else if(type==="run-limit")setRunLimit(id);
+  else if(type==="launch-run")launchRun(id);
+  else if(type==="inspect-run")inspectRun(id);
+  else if(type==="prove-artifact")proveArtifact(id,path);
+  else if(type==="stop-run"&&window.confirm("Stop this run? Its partial worktree will be kept for inspection."))missionAction(`runs/${id}/stop`);
   else if(type==="add-evidence")addEvidence(id);
   else if(type==="review-evidence")reviewEvidence(id);
   else if(type==="accept-task")missionAction(`tasks/${id}/accept`);
@@ -206,6 +294,7 @@ document.addEventListener("click",async event=>{
   else if(type==="new-media-account")newMediaAccount();
   else if(type==="new-media-campaign")newMediaCampaign();
   else if(type==="assign")assign(path);
+  else if(type==="select-window"){state.windowId=id;state.windowUrl=null;render()}
   else if(type==="toggle-catalog"){state.onlyImported=!state.onlyImported;render()}
   else if(type==="inspect-note"){state.inspected={type:"note",id};renderInspector()}
   else if(type==="project-vault"){try{const result=await api("/api/vault/project",{method:"POST",body:"{}"});notify(`Vault projected: ${result.written.length} files written, ${result.conflicts.length} edit conflicts.`)}catch(error){notify(error.message,true)}}
@@ -215,8 +304,28 @@ $("#new-mission").onclick=()=>newMission();
 $("#close-inspector").onclick=()=>{state.inspected=null;renderInspector()};
 $("#content").addEventListener("input",event=>{if(event.target.id==="agent-search"){const pos=event.target.selectionStart;state.search=event.target.value;render();const input=$("#agent-search");input.focus();input.setSelectionRange(pos,pos)}});
 $("#content").addEventListener("submit",async event=>{
+  if(event.target.id==="window-form"){
+    event.preventDefault();
+    try {
+      if(!["localhost","127.0.0.1","[::1]"].includes(location.hostname))throw new Error("Agent windows require a browser on the AGAS host.");
+      const url=localWindowUrl(new FormData(event.target).get("url"));
+      state.windowUrl=url;sessionStorage.setItem(`agas-window-${state.windowId}`,url);render();
+    } catch(error){notify(error.message,true)}
+  }
   if(event.target.id==="message-form"){event.preventDefault();try{await api("/api/messages",{method:"POST",body:JSON.stringify({hubId:state.hub,text:new FormData(event.target).get("text")})});await refresh();notify("Saved in the CEO inbox and executive feed; awaiting a connected runtime.")}catch(error){notify(error.message,true)}}
   if(event.target.id==="note-form"){event.preventDefault();try{await api("/api/notes",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(event.target)))});await refresh();notify("Scoped note saved. Project the vault to create its Markdown file.")}catch(error){notify(error.message,true)}}
 });
 $("#login-form").onsubmit=async event=>{event.preventDefault();state.token=$("#token").value;try{await refresh();sessionStorage.setItem("agas-token",state.token)}catch(error){$("#login-error").textContent=error.message;state.token=""}};
 if(state.token)refresh().catch(()=>{sessionStorage.removeItem("agas-token");state.token="";$("#login-overlay").classList.remove("hidden")});
+setInterval(async()=>{
+  if(state.view!=="mission"||!state.missionId||!state.detail?.runs.some(r=>["queued","starting","running"].includes(r.status))||document.hidden)return;
+  const id=state.missionId;
+  try {
+    const detail=await api(`/api/missions/${id}`);
+    if(state.view!=="mission"||state.missionId!==id)return;
+    state.detail=detail;
+    state.data.missions=state.data.missions.map(m=>m.id===id?detail.mission:m);
+    if(state.inspected?.type==="run")state.inspected.data=await api(`/api/missions/${id}/runs/${state.inspected.data.run.id}/logs`);
+    render();
+  } catch(error){notify(error.message,true)}
+},2500);

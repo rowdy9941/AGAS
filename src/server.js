@@ -5,6 +5,7 @@ import { timingSafeEqual } from "node:crypto";
 import { Store, InputError } from "./store.js";
 import { projectVault } from "./vault.js";
 import { detectRuntimes } from "./runtimes.js";
+import { ExecutionManager, validateRepository } from "./execution.js";
 
 const mime={"/":"text/html; charset=utf-8","/app.js":"text/javascript; charset=utf-8",
   "/styles.css":"text/css; charset=utf-8","/assets/agas-logo.jpg":"image/jpeg"};
@@ -28,15 +29,17 @@ async function body(req) {
   return parsed;
 }
 
-export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault",token="agas-dev-token"}={}) {
+export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault",token="agas-dev-token",
+  workspaces="data/workspaces",adapter}={}) {
   const store=new Store(resolve(database));
+  const executor=new ExecutionManager(store,{workspaces,adapter});
   const server=createServer(async(req,res)=>{
     res.setHeader("x-content-type-options","nosniff");
     res.setHeader("referrer-policy","no-referrer");
-    res.setHeader("content-security-policy","default-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+    res.setHeader("content-security-policy","default-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; frame-src http://127.0.0.1:* http://localhost:* https://127.0.0.1:* https://localhost:*; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
     try {
       const url=new URL(req.url,"http://localhost"),path=url.pathname;
-      if(req.method==="GET"&&path==="/healthz")return json(res,200,{status:"ok",product:"AGAS native",phase:"foundation"});
+      if(req.method==="GET"&&path==="/healthz")return json(res,200,{status:"ok",product:"AGAS native",phase:"execution-foundation"});
       if(req.method==="GET"&&asset[path]) {
         const bytes=await readFile(new URL(asset[path],publicRoot));
         res.writeHead(200,{"content-type":mime[path],"cache-control":path==="/assets/agas-logo.jpg"?"public, max-age=3600":"no-store"});
@@ -44,8 +47,15 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       }
       if(!path.startsWith("/api/"))return json(res,404,{error:"Not found"});
       if(!safeToken(req.headers.authorization?.replace(/^Bearer /i,""),token))return json(res,401,{error:"Authentication required"});
-      if(req.method==="GET"&&path==="/api/overview")return json(res,200,{...store.overview(),runtimes:detectRuntimes()});
-      if(req.method==="GET"&&path==="/api/runtimes")return json(res,200,{runtimes:detectRuntimes()});
+      const runtimes=async()=>{
+        const codex=await executor.readiness();
+        return detectRuntimes().map(runtime=>runtime.id==="codex"?{
+          ...runtime,ready:codex.ready,state:codex.ready?"ready":runtime.state,
+          reason:codex.reason||"",version:codex.version||""
+        }:runtime);
+      };
+      if(req.method==="GET"&&path==="/api/overview")return json(res,200,{...store.overview(),runtimes:await runtimes()});
+      if(req.method==="GET"&&path==="/api/runtimes")return json(res,200,{runtimes:await runtimes()});
       if(req.method==="GET"&&path==="/api/notes")return json(res,200,{notes:store.notesFor({hubId:url.searchParams.get("hubId"),project:url.searchParams.get("project"),principal:"owner"})});
       if(req.method==="GET"&&path.startsWith("/api/notes/"))return json(res,200,{note:store.noteForOwner(path.slice("/api/notes/".length))});
       if(req.method==="POST"&&path==="/api/missions")return json(res,201,{mission:store.createMission(await body(req))});
@@ -53,12 +63,29 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       if(missionRoute){
         const [,id,action]=missionRoute;
         if(req.method==="GET"&&!action)return json(res,200,store.missionDetail(id));
+        const logs=action?.match(/^runs\/([\da-f-]{36})\/logs$/);
+        if(req.method==="GET"&&logs)return json(res,200,store.runLogs(id,logs[1]));
         if(req.method==="POST"){
           const input=await body(req);
           if(action==="tasks")return json(res,201,store.createTask(id,input));
           if(action==="evidence")return json(res,201,store.submitEvidence(id,input));
+          if(action==="artifact-evidence")return json(res,201,store.submitRunArtifact(id,input));
           if(action==="accept")return json(res,200,store.acceptMission(id,input));
-          if(action==="cancel")return json(res,200,store.cancelMission(id,input));
+          if(action==="cancel"){
+            const detail=store.cancelMission(id,input);
+            for(const run of detail.runs.filter(item=>item.status==="cancelled"))executor.stop(run.id);
+            return json(res,200,detail);
+          }
+          const launch=action?.match(/^tasks\/([\da-f-]{36})\/run$/);
+          if(launch){
+            const ready=await executor.readiness();
+            if(!ready.ready)throw new InputError(ready.reason||"Codex runtime is not ready",409);
+            const run=store.queueRun(id,launch[1],input);
+            executor.enqueue();
+            return json(res,202,{run,mission:store.missionDetail(id)});
+          }
+          const stop=action?.match(/^runs\/([\da-f-]{36})\/stop$/);
+          if(stop){const detail=store.stopRun(id,stop[1],input);executor.stop(stop[1]);return json(res,200,detail)}
           const review=action?.match(/^evidence\/([\da-f-]{36})\/review$/);
           if(review)return json(res,200,store.reviewEvidence(id,review[1],input));
           const acceptTask=action?.match(/^tasks\/([\da-f-]{36})\/accept$/);
@@ -66,6 +93,17 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
         }
       }
       if(req.method==="POST"&&path==="/api/projects")return json(res,201,{project:store.createProject(await body(req))});
+      if(req.method==="POST"&&path==="/api/goals")return json(res,201,{goal:store.createGoal(await body(req))});
+      const achieve=path.match(/^\/api\/goals\/([\da-f-]{36})\/achieve$/);
+      if(req.method==="POST"&&achieve)return json(res,200,{goal:store.completeGoal(achieve[1],await body(req))});
+      const repository=path.match(/^\/api\/projects\/([\da-f-]{36})\/repository$/);
+      if(req.method==="POST"&&repository){
+        const input=await body(req);
+        const root=await validateRepository(input.repositoryPath);
+        return json(res,200,{project:store.linkProjectRepository(repository[1],root)});
+      }
+      const runLimit=path.match(/^\/api\/projects\/([\da-f-]{36})\/run-limit$/);
+      if(req.method==="POST"&&runLimit)return json(res,200,{project:store.setRunLimit(runLimit[1],await body(req))});
       if(req.method==="POST"&&path==="/api/media/accounts")return json(res,201,{account:store.createMediaAccount(await body(req))});
       if(req.method==="POST"&&path==="/api/media/campaigns")return json(res,201,{campaign:store.createMediaCampaign(await body(req))});
       if(req.method==="POST"&&path==="/api/messages")return json(res,201,{message:store.sendMessage(await body(req))});
@@ -80,8 +118,9 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       else res.destroy();
     }
   });
-  server.on("close",()=>store.close());
-  return {server,store};
+  server.on("listening",()=>executor.resumeQueued());
+  server.on("close",()=>{executor.shutdown();store.close()});
+  return {server,store,executor};
 }
 
 if(process.argv[1]&&resolve(process.argv[1])===new URL(import.meta.url).pathname){
@@ -91,5 +130,5 @@ if(process.argv[1]&&resolve(process.argv[1])===new URL(import.meta.url).pathname
     throw new Error("Set AGAS_BOOTSTRAP_TOKEN before binding to a network interface");
   const {server}=createAgasServer({database:process.env.AGAS_DB_PATH||"data/agas.db",
     vault:process.env.AGAS_VAULT_PATH||"data/AGAS Vault",token:process.env.AGAS_BOOTSTRAP_TOKEN||"agas-dev-token"});
-  server.listen(port,host,()=>console.log(`AGAS native foundation at http://${host}:${port}`));
+  server.listen(port,host,()=>console.log(`AGAS native workspace at http://${host}:${port}`));
 }

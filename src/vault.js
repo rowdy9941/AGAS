@@ -45,7 +45,12 @@ export async function projectVault(store, basePath) {
   }
   for (const project of state.projects) {
     await managed("02 Projects",`${project.id}.md`,header({agas_id:`project:${project.id}`,type:"project",hub_id:project.hub_id,kind:project.kind,status:project.status,provenance:"agas:project"})+
-      `# ${project.title}\n\n${project.description}\n`);
+      `# ${project.title}\n\n${project.description}\n\nDev run quota per month: ${project.monthly_run_limit??"not set"}.\n`);
+  }
+  for (const goal of state.goals) {
+    await managed("01 People and Organizations",`${goal.id}.md`,header({agas_id:`goal:${goal.id}`,type:"goal",parent_id:goal.parent_id,
+      hub_id:goal.hub_id,project_id:goal.project_id,status:goal.status,revision:goal.version,provenance:"agas:goal"})+
+      `# ${goal.title}\n\n${goal.objective}\n\nMeasure: ${goal.measure}\n\nLinked missions: ${state.missions.filter(m=>m.goal_id===goal.id).map(m=>m.title).join(", ")||"None yet"}.\n`);
   }
   for (const account of state.mediaAccounts) {
     await managed("02 Projects",`${account.id}.md`,header({agas_id:`media-account:${account.id}`,type:"media-account",project_id:account.project_id,platform:account.platform,status:account.status,provenance:"agas:media"})+
@@ -58,10 +63,12 @@ export async function projectVault(store, basePath) {
   for (const mission of state.missions) {
     const criteria=mission.criteria.map(c=>`- [ ] ${c}`).join("\n");
     const detail=store.missionDetail(mission.id);
-    const tasks=detail.tasks.map(t=>`- ${t.title} · ${t.status}${t.assignment_id?` · configured specialist ${t.assignment_id}`:""}`).join("\n");
+    const tasks=detail.tasks.map(t=>`- ${t.title} · ${t.status}${t.assignment_id?` · configured specialist ${t.assignment_id}`:""}${detail.dependencies.filter(d=>d.task_id===t.id).map(d=>` · depends on ${d.prerequisite_id}`).join("")}`).join("\n");
     const evidence=detail.evidence.map(e=>`- Criterion ${e.criterion_index+1}: ${e.title} · ${e.status} · SHA-256 ${e.sha256}`).join("\n");
-    await managed("03 Missions",`${mission.id}.md`,header({agas_id:`mission:${mission.id}`,type:"mission",hub_id:mission.hub_id,project:mission.project,revision:mission.version,status:mission.status,provenance:"agas:mission"})+
-      `# ${mission.title}\n\n${mission.objective}\n\n## Acceptance criteria\n${criteria}\n\n## Tasks\n${tasks||"No tasks yet."}\n\n## Evidence ledger\n${evidence||"No evidence yet."}\n\nOwner review is separate from independent verification. Full evidence stays in AGAS.\n`);
+    const runs=detail.runs.map(r=>`- ${r.runtime} run ${r.id} · ${r.status} · base ${r.base_commit||"pending"}${r.result?` · ${r.result}`:""}`).join("\n");
+    const artifacts=detail.artifacts.map(a=>`- ${a.path} · ${a.status} · SHA-256 ${a.sha256||"not recorded"}`).join("\n");
+    await managed("03 Missions",`${mission.id}.md`,header({agas_id:`mission:${mission.id}`,type:"mission",hub_id:mission.hub_id,project:mission.project,goal_id:mission.goal_id,revision:mission.version,status:mission.status,provenance:"agas:mission"})+
+      `# ${mission.title}\n\n${mission.objective}\n\nLinked goal: ${state.goals.find(g=>g.id===mission.goal_id)?.title||"None"}.\n\n## Acceptance criteria\n${criteria}\n\n## Tasks\n${tasks||"No tasks yet."}\n\n## Runs\n${runs||"No agent runs yet."}\n\n## Recorded files\n${artifacts||"No files yet."}\n\n## Evidence ledger\n${evidence||"No evidence yet."}\n\nFile integrity is checked for linked artifacts. Owner review remains separate from semantic or external verification. Full evidence stays in AGAS.\n`);
   }
   for (const note of store.allNotesForVault()) {
     const folder=note.scope==="private"?"01 People and Organizations":
