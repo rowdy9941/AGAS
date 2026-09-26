@@ -188,6 +188,11 @@ export class Store {
     if(!evidenceColumns.includes("artifact_path"))this.db.exec("ALTER TABLE mission_evidence ADD COLUMN artifact_path TEXT");
     if(!evidenceColumns.includes("verified_sha256"))this.db.exec("ALTER TABLE mission_evidence ADD COLUMN verified_sha256 TEXT");
     if(!evidenceColumns.includes("verification"))this.db.exec("ALTER TABLE mission_evidence ADD COLUMN verification TEXT NOT NULL DEFAULT 'unverified'");
+    if(!this.db.prepare("PRAGMA table_info(mission_tasks)").all().some(column=>column.name==="required_handoff_id"))
+      this.db.exec("ALTER TABLE mission_tasks ADD COLUMN required_handoff_id TEXT REFERENCES handoffs(id)");
+    const runColumns=this.db.prepare("PRAGMA table_info(mission_runs)").all().map(column=>column.name);
+    if(!runColumns.includes("output_text"))this.db.exec("ALTER TABLE mission_runs ADD COLUMN output_text TEXT");
+    if(!runColumns.includes("output_sha256"))this.db.exec("ALTER TABLE mission_runs ADD COLUMN output_sha256 TEXT");
     this.seed();
   }
   seed() {
@@ -605,6 +610,7 @@ export class Store {
   createTask(id,input) {
     const title=nonempty(input.title,"title",140),objective=nonempty(input.objective,"objective",4000);
     const assignmentId=input.assignmentId?nonempty(input.assignmentId,"assignmentId",120):null;
+    const requiredHandoffId=input.requiredHandoffId?nonempty(input.requiredHandoffId,"requiredHandoffId",120):null;
     const taskId=randomUUID(),time=now();
     const dependsOn=input.dependsOn??[];
     if(!Array.isArray(dependsOn)||dependsOn.length>8||new Set(dependsOn).size!==dependsOn.length)
@@ -615,8 +621,13 @@ export class Store {
         const assignment=this.db.prepare("SELECT hub_id FROM assignments WHERE id=?").get(assignmentId);
         if(!assignment||assignment.hub_id!==mission.hub_id)throw new InputError("Assignment must belong to the mission hub");
       }
-      this.db.prepare("INSERT INTO mission_tasks(id,mission_id,assignment_id,title,objective,created_at,updated_at) VALUES (?,?,?,?,?,?,?)")
-        .run(taskId,id,assignmentId,title,objective,time,time);
+      if(requiredHandoffId){
+        const handoff=this.db.prepare("SELECT * FROM handoffs WHERE id=? AND target_mission_id=?").get(requiredHandoffId,id);
+        if(!handoff||!["offered","accepted"].includes(handoff.status))
+          throw new InputError("Choose an offered handoff for this receiving mission",409);
+      }
+      this.db.prepare("INSERT INTO mission_tasks(id,mission_id,assignment_id,title,objective,created_at,updated_at,required_handoff_id) VALUES (?,?,?,?,?,?,?,?)")
+        .run(taskId,id,assignmentId,title,objective,time,time,requiredHandoffId);
       for(const predecessor of dependsOn){
         if(typeof predecessor!=="string"||!this.db.prepare("SELECT 1 FROM mission_tasks WHERE id=? AND mission_id=?").get(predecessor,id))
           throw new InputError("Task prerequisite must belong to this mission");
@@ -633,9 +644,9 @@ export class Store {
     const runId=randomUUID();
     this.transaction(()=>{
       const mission=this.checkedMission(id,input.expectedVersion);
-      if(mission.hub_id!=="dev"||!mission.project)throw new InputError("A Dev mission with a linked software project is required");
-      const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(mission.project);
-      if(project?.hub_id!=="dev"||project.kind!=="software"||!project.repository_path)
+      const codeRun=mission.hub_id==="dev";
+      const project=mission.project?this.db.prepare("SELECT * FROM projects WHERE id=?").get(mission.project):null;
+      if(codeRun&&(!project||project.kind!=="software"||!project.repository_path))
         throw new InputError("Link a Git repository to the Dev software project first");
       const task=this.db.prepare("SELECT * FROM mission_tasks WHERE id=? AND mission_id=?").get(taskId,id);
       if(!task||!["queued","blocked"].includes(task.status)||!task.assignment_id)
@@ -643,11 +654,13 @@ export class Store {
       if(this.db.prepare("SELECT 1 FROM mission_runs WHERE task_id=? AND status IN ('queued','starting','running')").get(taskId))
         throw new InputError("This task already has an active run",409);
       const assignment=this.db.prepare("SELECT * FROM assignments WHERE id=?").get(task.assignment_id);
-      if(assignment?.hub_id!=="dev"||!["codex","opencode"].includes(assignment.runtime))
-        throw new InputError("Assign a supported Codex or OpenCode specialist");
+      if(assignment?.hub_id!==mission.hub_id||!(codeRun?["codex","opencode"].includes(assignment.runtime):assignment.runtime==="opencode"))
+        throw new InputError(codeRun?"Assign a supported Codex or OpenCode specialist":"Assign an OpenCode specialist for a text-only hub run");
       const prerequisites=this.db.prepare("SELECT t.status FROM task_dependencies d JOIN mission_tasks t ON t.id=d.prerequisite_id WHERE d.task_id=?").all(taskId);
       if(prerequisites.some(item=>item.status!=="accepted"))throw new InputError("Accept prerequisite tasks before running this task",409);
-      if(project.monthly_run_limit!==null){
+      if(task.required_handoff_id&&!this.acceptedHandoffs(id).some(item=>item.id===task.required_handoff_id))
+        throw new InputError("Required cross-hub handoff is not accepted or its evidence changed",409);
+      if(project?.monthly_run_limit!==null&&project?.monthly_run_limit!==undefined){
         const count=this.db.prepare(`SELECT count(*) AS total FROM mission_runs r JOIN missions m ON m.id=r.mission_id
           WHERE m.project=? AND r.created_at>=?`).get(project.id,now().slice(0,7)+"-01T00:00:00.000Z").total;
         if(count>=project.monthly_run_limit)throw new InputError("Project monthly run quota reached",409);
@@ -656,7 +669,7 @@ export class Store {
         .run(runId,id,taskId,assignment.id,assignment.runtime,timeout,now());
       this.db.prepare("UPDATE mission_tasks SET status='queued',updated_at=? WHERE id=?").run(now(),taskId);
       this.advanceMission(id,"planned");
-      this.event("run.queued",runId,"dev",`${assignment.runtime} run queued for task ${task.title}`);
+      this.event("run.queued",runId,mission.hub_id,`${assignment.runtime} ${codeRun?"worktree":"text-only"} run queued for task ${task.title}`);
     });
     return this.db.prepare("SELECT * FROM mission_runs WHERE id=?").get(runId);
   }
@@ -680,7 +693,21 @@ export class Store {
       WHERE h.target_mission_id=? AND h.status='accepted' ORDER BY h.created_at,h.id LIMIT 10`).all(missionId)
       .filter(h=>createHash("sha256").update(h.evidence_content).digest("hex")===h.evidence_sha256&&
         h.receipt_sha256===h.evidence_sha256&&
-        (h.verification!=="file-hash-verified"||this.verifyRecordedFile(h.run_id,h.artifact_path,h.verified_sha256)));
+        this.verifyEvidenceReceipt(h));
+  }
+  verifyRecordedOutput(runId,expectedSha) {
+    if(!runId||!expectedSha)return false;
+    const run=this.db.prepare("SELECT status,output_text,output_sha256 FROM mission_runs WHERE id=?").get(runId);
+    return run?.status==="succeeded"&&typeof run.output_text==="string"&&run.output_sha256===expectedSha&&
+      createHash("sha256").update(run.output_text).digest("hex")===expectedSha;
+  }
+  verifyEvidenceReceipt(evidence) {
+    if(evidence.verification==="file-hash-verified")
+      return this.verifyRecordedFile(evidence.run_id,evidence.artifact_path,evidence.verified_sha256);
+    if(evidence.verification==="runtime-output-hash-verified")
+      return evidence.verified_sha256===(evidence.sha256||evidence.evidence_sha256)&&
+        this.verifyRecordedOutput(evidence.run_id,evidence.verified_sha256);
+    return true;
   }
   offerHandoff(input) {
     const source=nonempty(input.sourceMissionId,"sourceMissionId",120);
@@ -696,8 +723,7 @@ export class Store {
         throw new InputError("Only reviewed evidence from an accepted mission and task can be handed off",409);
       if(from.mission.hub_id===to.mission.hub_id||["accepted","cancelled"].includes(to.mission.status))
         throw new InputError("Choose an open mission in a different receiving hub",409);
-      if(createHash("sha256").update(evidence.content).digest("hex")!==evidence.sha256||
-        evidence.verification==="file-hash-verified"&&!this.verifyRecordedFile(evidence.run_id,evidence.artifact_path,evidence.verified_sha256))
+      if(createHash("sha256").update(evidence.content).digest("hex")!==evidence.sha256||!this.verifyEvidenceReceipt(evidence))
         throw new InputError("Source evidence integrity check failed",409);
       this.db.prepare(`INSERT INTO handoffs(id,source_mission_id,source_evidence_id,target_mission_id,
         from_hub_id,to_hub_id,title,purpose,evidence_sha256,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`)
@@ -719,7 +745,7 @@ export class Store {
       const evidence=this.db.prepare("SELECT * FROM mission_evidence WHERE id=?").get(handoff.source_evidence_id);
       if(decision==="accepted"&&(!evidence||evidence.status!=="reviewed"||evidence.sha256!==handoff.evidence_sha256||
         createHash("sha256").update(evidence.content).digest("hex")!==handoff.evidence_sha256||
-        evidence.verification==="file-hash-verified"&&!this.verifyRecordedFile(evidence.run_id,evidence.artifact_path,evidence.verified_sha256)))
+        !this.verifyEvidenceReceipt(evidence)))
         throw new InputError("Source evidence changed; this handoff cannot be accepted",409);
       this.db.prepare("UPDATE handoffs SET status=?,version=version+1,response_note=?,responded_at=? WHERE id=?")
         .run(decision,note,now(),id);
@@ -736,7 +762,7 @@ export class Store {
       this.db.prepare("UPDATE mission_runs SET status='starting',started_at=? WHERE id=?").run(now(),id);
       this.db.prepare("UPDATE mission_tasks SET status='running',updated_at=? WHERE id=?").run(now(),context.task.id);
       this.advanceMission(context.mission.id,"running");
-      this.event("run.starting",id,"dev",`Preparing isolated workspace for ${context.task.title}`);
+      this.event("run.starting",id,context.mission.hub_id,`Preparing isolated workspace for ${context.task.title}`);
     });
     return this.runContext(id);
   }
@@ -758,7 +784,7 @@ export class Store {
     return {run,logs:this.db.prepare("SELECT * FROM run_logs WHERE run_id=? ORDER BY seq DESC LIMIT 200").all(runId).reverse(),
       artifacts:this.db.prepare("SELECT * FROM run_artifacts WHERE run_id=? ORDER BY path").all(runId)};
   }
-  completeRun(id,{status,exitCode=null,result="",artifacts=[]}) {
+  completeRun(id,{status,exitCode=null,result="",artifacts=[],outputText=null}) {
     if(!["succeeded","failed","interrupted"].includes(status))throw new InputError("Invalid run result");
     this.transaction(()=>{
       const {run,task,mission}=this.runContext(id);
@@ -766,12 +792,14 @@ export class Store {
       for(const artifact of artifacts)
         this.db.prepare("INSERT INTO run_artifacts(run_id,path,sha256,bytes,status) VALUES (?,?,?,?,?)")
           .run(id,artifact.path,artifact.sha256,artifact.bytes,artifact.status);
-      this.db.prepare("UPDATE mission_runs SET status=?,exit_code=?,result=?,ended_at=? WHERE id=?")
-        .run(status,exitCode,String(result).slice(0,2000),now(),id);
+      const output=typeof outputText==="string"&&outputText.trim()&&outputText.length<=12000?outputText.trim():null;
+      this.db.prepare("UPDATE mission_runs SET status=?,exit_code=?,result=?,ended_at=?,output_text=?,output_sha256=? WHERE id=?")
+        .run(status,exitCode,String(result).slice(0,2000),now(),output,
+          output?createHash("sha256").update(output).digest("hex"):null,id);
       this.db.prepare("UPDATE mission_tasks SET status=?,updated_at=? WHERE id=?")
         .run(status==="succeeded"?"awaiting-review":"blocked",now(),task.id);
       this.advanceMission(mission.id,status==="succeeded"?"in-review":"blocked");
-      this.event(`run.${status}`,id,"dev",`${run.runtime} run ${status} for task ${task.title}; outcome needs review`);
+      this.event(`run.${status}`,id,mission.hub_id,`${run.runtime} run ${status} for task ${task.title}; outcome needs review`);
     });
   }
   stopRun(missionId,runId,input) {
@@ -881,6 +909,31 @@ export class Store {
     });
     return this.missionDetail(id);
   }
+  submitRunOutput(id,input) {
+    const runId=nonempty(input.runId,"runId",120),title=nonempty(input.title,"title",140);
+    const criterionIndex=input.criterionIndex,evidenceId=randomUUID(),time=now();
+    this.transaction(()=>{
+      const mission=this.checkedMission(id,input.expectedVersion);
+      if(mission.hub_id==="dev")throw new InputError("Dev work needs a recorded file receipt",409);
+      if(!Number.isInteger(criterionIndex)||criterionIndex<0||criterionIndex>=mission.criteria.length)
+        throw new InputError("Choose a mission acceptance criterion");
+      const run=this.db.prepare("SELECT * FROM mission_runs WHERE id=? AND mission_id=? AND status='succeeded'").get(runId,id);
+      if(!run||!this.verifyRecordedOutput(runId,run.output_sha256))
+        throw new InputError("Run output is missing or changed; inspect the run",409);
+      const task=this.db.prepare("SELECT * FROM mission_tasks WHERE id=? AND mission_id=? AND status='awaiting-review'")
+        .get(run.task_id,id);
+      if(!task)throw new InputError("Task is not awaiting review",409);
+      this.db.prepare(`INSERT INTO mission_evidence(
+        id,mission_id,task_id,criterion_index,kind,title,content,sha256,created_at,
+        run_id,verified_sha256,verification
+      ) VALUES (?,?,?,?,'artifact',?,?,?,?,?,?,'runtime-output-hash-verified')`)
+        .run(evidenceId,id,task.id,criterionIndex,title,run.output_text,run.output_sha256,time,
+          runId,run.output_sha256);
+      this.advanceMission(id,"in-review");
+      this.event("output.verified",evidenceId,mission.hub_id,`Run output hash verified; owner must assess criterion ${criterionIndex+1}`);
+    });
+    return this.missionDetail(id);
+  }
   reviewEvidence(id,evidenceId,input) {
     const note=nonempty(input.reviewNote,"reviewNote",2000),decision=nonempty(input.decision,"decision",20);
     if(!["reviewed","rejected"].includes(decision))throw new InputError("Invalid review decision");
@@ -891,8 +944,8 @@ export class Store {
       if(evidence.status!=="submitted")throw new InputError("Evidence has already been reviewed",409);
       if(createHash("sha256").update(evidence.content).digest("hex")!==evidence.sha256)
         throw new InputError("Evidence integrity check failed",409);
-      if(evidence.verification==="file-hash-verified"&&!this.verifyRecordedFile(evidence.run_id,evidence.artifact_path,evidence.verified_sha256))
-        throw new InputError("Recorded artifact has changed; it cannot be reviewed",409);
+      if(!this.verifyEvidenceReceipt(evidence))
+        throw new InputError("Recorded run output has changed; it cannot be reviewed",409);
       this.db.prepare("UPDATE mission_evidence SET status=?,review_note=?,reviewed_at=? WHERE id=?")
         .run(decision,note,now(),evidenceId);
       this.advanceMission(id,mission.status);
@@ -909,8 +962,8 @@ export class Store {
       const evidence=this.db.prepare("SELECT status FROM mission_evidence WHERE task_id=?").all(taskId);
       if(evidence.some(item=>item.status==="submitted")||!evidence.some(item=>item.status==="reviewed"))
         throw new InputError("Task requires reviewed evidence with no pending submissions",409);
-      for(const item of this.db.prepare("SELECT * FROM mission_evidence WHERE task_id=? AND status='reviewed' AND verification='file-hash-verified'").all(taskId))
-        if(!this.verifyRecordedFile(item.run_id,item.artifact_path,item.verified_sha256))
+      for(const item of this.db.prepare("SELECT * FROM mission_evidence WHERE task_id=? AND status='reviewed'").all(taskId))
+        if(!this.verifyEvidenceReceipt(item))
           throw new InputError("Reviewed artifact changed; submit fresh evidence",409);
       this.db.prepare("UPDATE mission_tasks SET status='accepted',updated_at=? WHERE id=?").run(now(),taskId);
       this.advanceMission(id,mission.status);
@@ -928,8 +981,8 @@ export class Store {
           detail.tasks.some(task=>task.id===e.task_id&&task.status==="accepted")))
           throw new InputError(`Criterion ${index+1} needs reviewed evidence from an accepted task`,409);
       }
-      for(const item of detail.evidence.filter(e=>e.status==="reviewed"&&e.verification==="file-hash-verified"))
-        if(!this.verifyRecordedFile(item.run_id,item.artifact_path,item.verified_sha256))
+      for(const item of detail.evidence.filter(e=>e.status==="reviewed"))
+        if(!this.verifyEvidenceReceipt(item))
           throw new InputError("Accepted artifact changed; submit fresh evidence",409);
       this.advanceMission(id,"accepted");
       this.event("mission.owner-accepted",id,mission.hub_id,`Owner accepted mission ${mission.title}; evidence was reviewed by owner, not independently verified`);

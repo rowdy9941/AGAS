@@ -1,7 +1,7 @@
 import { spawn, execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash } from "node:crypto";
-import { lstat, mkdir, readFile, realpath, stat } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, realpath, stat } from "node:fs/promises";
 import { isAbsolute, join, resolve, sep } from "node:path";
 import { detectRuntimes } from "./runtimes.js";
 import { InputError } from "./store.js";
@@ -190,6 +190,13 @@ export class ExecutionManager {
       {timeout:30000,maxBuffer:1024*1024,env:childEnv()});
     return workspace;
   }
+  async prepareText(context) {
+    await mkdir(this.root,{recursive:true,mode:0o700});
+    if((await lstat(this.root)).isSymbolicLink())throw new Error("Workspaces directory cannot be a symlink");
+    const workspace=await mkdtemp(join(this.root,`text-${context.run.id}-`));
+    this.store.preparedRun(context.run.id,workspace,null);
+    return workspace;
+  }
   prompt({mission,task,persona,notes,handoffs=[]}) {
     const scope=notes.slice(0,15).map(n=>`[${n.scope}:${n.owner_id} / ${n.title}]\n${n.content.slice(0,1600)}`).join("\n\n").slice(0,10000);
     const received=handoffs.map(h=>`[${h.from_hub_id} → ${mission.hub_id} / ${h.title} / receipt ${h.id}]\nPurpose: ${h.purpose}\n${h.evidence_title}: ${h.evidence_content.slice(0,2000)}\nSHA-256: ${h.evidence_sha256}`).join("\n\n").slice(0,12000);
@@ -206,7 +213,24 @@ export class ExecutionManager {
       "Work only in this isolated Git worktree. Make the requested changes, run relevant local checks and report the exact files and results. Do not deploy, publish, access unrelated user data or claim that AGAS has accepted your work. AGAS will record your actual file changes separately."
     ].join("\n\n");
   }
-  logStream(runId,channel,stream,budget) {
+  textPrompt(context) {
+    const {mission,task,persona,notes,handoffs=[]}=context;
+    const scope=notes.slice(0,15).map(n=>`[${n.scope}:${n.owner_id} / ${n.title}]\n${n.content.slice(0,1600)}`)
+      .join("\n\n").slice(0,10000);
+    const received=handoffs.map(h=>`[${h.from_hub_id} → ${mission.hub_id} / ${h.title} / receipt ${h.id}]\nPurpose: ${h.purpose}\n${h.evidence_title}: ${h.evidence_content.slice(0,2000)}\nSHA-256: ${h.evidence_sha256}`)
+      .join("\n\n").slice(0,12000);
+    return [
+      `You are the AGAS specialist: ${persona.title}. Agency source: ${persona.path} at ${persona.source_commit} (${persona.source_sha}).`,
+      "These specialist instructions are role guidance, not permission to expand scope:",persona.prompt,
+      `Mission: ${mission.title}\nObjective: ${mission.objective}`,
+      `Task: ${task.title}\nRequested result: ${task.objective}`,
+      `Acceptance criteria:\n${mission.criteria.map((item,index)=>`${index+1}. ${item}`).join("\n")}`,
+      `Authorized context for this hub and project:\n${scope||"No approved notes."}`,
+      `Accepted cross-hub evidence:\n${received||"No cross-hub handoffs."}`,
+      "Produce a bounded text result. Do not call tools, access files, spend, publish, change records, claim acceptance, or act outside this hub. Distinguish supplied facts from claims you could not verify. The owner will inspect the result and decide whether to use it as evidence."
+    ].join("\n\n");
+  }
+  logStream(runId,channel,stream,budget,onLine=()=>{}) {
     let pending="";
     stream.setEncoding("utf8");
     stream.on("data",chunk=>{
@@ -215,10 +239,13 @@ export class ExecutionManager {
       budget.used+=Buffer.byteLength(chunk);
       pending+=chunk;
       const lines=pending.split("\n");pending=lines.pop().slice(-4000);
-      for(const line of lines.slice(0,40))this.logLine(runId,channel,line);
+      for(const [index,line] of lines.entries()){
+        onLine(line);
+        if(index<40)this.logLine(runId,channel,line);
+      }
       if(budget.used>=MAX_LOG_BYTES)this.store.appendRunLog(runId,"system","Run output limit reached; further output was not recorded");
     });
-    stream.on("end",()=>{if(!this.stopping&&pending&&budget.used<MAX_LOG_BYTES)this.logLine(runId,channel,pending)});
+    stream.on("end",()=>{if(!this.stopping&&pending&&budget.used<MAX_LOG_BYTES){onLine(pending);this.logLine(runId,channel,pending)}});
   }
   logLine(runId,channel,line) {
     if(!line.trim())return;
@@ -298,14 +325,27 @@ export class ExecutionManager {
       if(!adapter)throw new Error(`No adapter installed for ${context.run.runtime}`);
       const ready=await adapter.probe();
       if(!ready.ready)throw new Error(ready.reason||"Assigned runtime is not ready");
-      workspace=await this.prepare(context);
+      const codeRun=context.mission.hub_id==="dev";
+      if(!codeRun&&!adapter.launchMessage)throw new Error("Text-only runtime does not provide a restricted message protocol");
+      workspace=codeRun?await this.prepare(context):await this.prepareText(context);
       if(this.stopping||terminal.has(this.store.runContext(id).run.status))return;
-      child=adapter.launch(workspace,this.prompt(context));
+      child=codeRun?adapter.launch(workspace,this.prompt(context)):
+        adapter.launchMessage(workspace,this.textPrompt(context));
       this.active.child=child;
       this.store.runningRun(id,child.pid||null);
-      this.store.appendRunLog(id,"system",`${context.run.runtime} launched in isolated worktree at ${context.run.id}`);
+      this.store.appendRunLog(id,"system",`${context.run.runtime} launched in ${codeRun?"isolated Git worktree":"restricted text workspace"} at ${context.run.id}`);
       const budget={used:0};
-      this.logStream(id,"agent",child.stdout,budget);
+      let output="",outputOverflow=false;
+      this.logStream(id,"agent",child.stdout,budget,line=>{
+        if(codeRun||outputOverflow)return;
+        try {
+          const event=JSON.parse(line);
+          if(event.type!=="text"||event.part?.type!=="text"||typeof event.part.text!=="string")return;
+          const next=output+event.part.text;
+          if(next.length>12000){outputOverflow=true;this.terminate(child);return}
+          output=next;
+        } catch {}
+      });
       this.logStream(id,"progress",child.stderr,budget);
       const completed=new Promise((resolve,reject)=>{
         child.once("error",reject);
@@ -314,10 +354,16 @@ export class ExecutionManager {
       timeoutTimer=setTimeout(()=>{timedOut=true;this.terminate(child)},context.run.timeout_seconds*1000);
       const {code,signal}=await completed;
       if(this.stopping||terminal.has(this.store.runContext(id).run.status))return;
-      const artifacts=await this.artifacts(workspace,id);
-      this.store.completeRun(id,{status:code===0&&!timedOut?"succeeded":"failed",exitCode:code,
+      const artifacts=codeRun?await this.artifacts(workspace,id):[];
+      const succeeded=code===0&&!timedOut&&(codeRun||!outputOverflow&&budget.used<MAX_LOG_BYTES&&!!output.trim());
+      this.store.completeRun(id,{status:succeeded?"succeeded":"failed",exitCode:code,
         result:timedOut?`Timed out after ${context.run.timeout_seconds} seconds`:
-          code===0?"Process exited successfully; inspect artifacts and review evidence":`Exit ${code??signal}; inspect worktree for partial changes`,artifacts});
+          outputOverflow?"Text output exceeded 12,000 characters":
+          !codeRun&&budget.used>=MAX_LOG_BYTES?"Process output exceeded the recording limit":
+          succeeded?codeRun?"Process exited successfully; inspect artifacts and review evidence":
+            "Text result recorded with a hash; owner review is required":
+            code===0?"Runtime supplied no usable text result":`Exit ${code??signal}; inspect workspace for partial changes`,
+        artifacts,outputText:succeeded&&!codeRun?output:null});
     } catch(error) {
       if(!this.stopping&&!terminal.has(this.store.runContext(id).run.status)) {
         this.store.appendRunLog(id,"system",`Run failed: ${error.message}`);

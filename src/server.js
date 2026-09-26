@@ -79,6 +79,7 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
           if(action==="tasks")return json(res,201,store.createTask(id,input));
           if(action==="evidence")return json(res,201,store.submitEvidence(id,input));
           if(action==="artifact-evidence")return json(res,201,store.submitRunArtifact(id,input));
+          if(action==="output-evidence")return json(res,201,store.submitRunOutput(id,input));
           if(action==="accept")return json(res,200,store.acceptMission(id,input));
           if(action==="cancel"){
             const detail=store.cancelMission(id,input);
