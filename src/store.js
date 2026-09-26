@@ -232,9 +232,12 @@ export class Store {
     if (!this.db.prepare("SELECT 1 FROM personas WHERE path=?").get(path)) throw new InputError("Import Agency persona first");
     const runtime=nonempty(input.runtime,"runtime",40);
     if (!["hermes","openclaw","codex","claude","opencode"].includes(runtime)) throw new InputError("Unsupported runtime");
-    const id=randomUUID();
+    const existing=this.db.prepare("SELECT * FROM assignments WHERE hub_id=? AND persona_path=?").get(hub,path);
+    if(existing?.runtime===runtime)return existing;
+    const id=existing?.id||randomUUID();
     this.transaction(() => {
-      this.db.prepare("INSERT INTO assignments VALUES (?,?,?,?,'configured')").run(id,hub,path,runtime);
+      if(existing)this.db.prepare("UPDATE assignments SET runtime=?,status='configured' WHERE id=?").run(runtime,id);
+      else this.db.prepare("INSERT INTO assignments VALUES (?,?,?,?,'configured')").run(id,hub,path,runtime);
       this.event("agent.configured",id,hub,`Configured ${path.split("/").pop()} for ${hub}; readiness pending`);
     });
     return this.db.prepare("SELECT * FROM assignments WHERE id=?").get(id);

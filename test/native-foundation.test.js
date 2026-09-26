@@ -55,6 +55,17 @@ test("Agency bundled prompts have the pinned source hashes",()=>{
     assert.equal(loadBundledAgency(path).sourceSha,agencyIndex.agents.find(item=>item.path===path).sha);
 });
 
+test("agent assignments bind sourced personas without claiming runtime readiness",()=>{
+  const store=new Store(),path="engineering/engineering-frontend-developer.md";
+  const initial=store.assignPersona({hubId:"dev",path,runtime:"codex"});
+  assert.equal(initial.status,"configured");
+  const changed=store.assignPersona({hubId:"dev",path,runtime:"opencode"});
+  assert.equal(changed.id,initial.id);
+  assert.equal(changed.runtime,"opencode");
+  assert.equal(store.overview().assignments.length,1);
+  store.close();
+});
+
 test("media brands own account and campaign configs without publishing or credentials",()=>{
   const store=new Store();
   const brand=store.createProject({hubId:"content",title:"AGAS Media",description:"Document product learning",kind:"media-brand"});
