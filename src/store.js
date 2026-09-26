@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { agencyIndex, loadBundledAgency } from "./agency.js";
 
 const now = () => new Date().toISOString();
@@ -48,6 +48,17 @@ export class Store {
         title TEXT NOT NULL, objective TEXT NOT NULL, criteria TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'intake', version INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS mission_tasks (
+        id TEXT PRIMARY KEY, mission_id TEXT NOT NULL REFERENCES missions(id), assignment_id TEXT REFERENCES assignments(id),
+        title TEXT NOT NULL, objective TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'queued',
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS mission_evidence (
+        id TEXT PRIMARY KEY, mission_id TEXT NOT NULL REFERENCES missions(id), task_id TEXT NOT NULL REFERENCES mission_tasks(id),
+        criterion_index INTEGER NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL,
+        sha256 TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'submitted', review_note TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL, reviewed_at TEXT
+      );
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), text TEXT NOT NULL,
         author TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL
@@ -67,6 +78,9 @@ export class Store {
       CREATE TABLE IF NOT EXISTS events (
         seq INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, subject TEXT NOT NULL, hub_id TEXT,
         description TEXT NOT NULL, occurred_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS vault_projection (
+        path TEXT PRIMARY KEY, sha256 TEXT NOT NULL, projected_at TEXT NOT NULL
       );
     `);
     this.seed();
@@ -182,6 +196,118 @@ export class Store {
     });
     return this.db.prepare("SELECT * FROM missions WHERE id=?").get(id);
   }
+  missionDetail(id) {
+    const mission=this.db.prepare("SELECT * FROM missions WHERE id=?").get(id);
+    if(!mission)throw new InputError("Mission not found",404);
+    return {
+      mission:{...mission,criteria:JSON.parse(mission.criteria)},
+      tasks:this.db.prepare("SELECT * FROM mission_tasks WHERE mission_id=? ORDER BY created_at,id").all(id),
+      evidence:this.db.prepare("SELECT * FROM mission_evidence WHERE mission_id=? ORDER BY created_at,id").all(id)
+    };
+  }
+  checkedMission(id,version) {
+    const mission=this.missionDetail(id).mission;
+    if(!Number.isInteger(version)||version<1)throw new InputError("Expected mission version is required");
+    if(mission.version!==version)throw new InputError("Mission changed; reload before editing",409);
+    if(["accepted","cancelled"].includes(mission.status))throw new InputError("This mission is closed",409);
+    return mission;
+  }
+  advanceMission(id,status) {
+    this.db.prepare("UPDATE missions SET status=?,version=version+1,updated_at=? WHERE id=?").run(status,now(),id);
+  }
+  createTask(id,input) {
+    const title=nonempty(input.title,"title",140),objective=nonempty(input.objective,"objective",4000);
+    const assignmentId=input.assignmentId?nonempty(input.assignmentId,"assignmentId",120):null;
+    const taskId=randomUUID(),time=now();
+    this.transaction(()=>{
+      const mission=this.checkedMission(id,input.expectedVersion);
+      if(assignmentId){
+        const assignment=this.db.prepare("SELECT hub_id FROM assignments WHERE id=?").get(assignmentId);
+        if(!assignment||assignment.hub_id!==mission.hub_id)throw new InputError("Assignment must belong to the mission hub");
+      }
+      this.db.prepare("INSERT INTO mission_tasks(id,mission_id,assignment_id,title,objective,created_at,updated_at) VALUES (?,?,?,?,?,?,?)")
+        .run(taskId,id,assignmentId,title,objective,time,time);
+      this.advanceMission(id,mission.status==="intake"?"planned":mission.status);
+      this.event("task.queued",taskId,mission.hub_id,`Task queued for mission ${mission.title}: ${title}`);
+    });
+    return this.missionDetail(id);
+  }
+  submitEvidence(id,input) {
+    const taskId=nonempty(input.taskId,"taskId",120),title=nonempty(input.title,"title",140);
+    const content=nonempty(input.content,"content",12000),kind=nonempty(input.kind,"kind",30);
+    if(!["artifact","test-log","observation"].includes(kind))throw new InputError("Unknown evidence kind");
+    const criterionIndex=input.criterionIndex;
+    const evidenceId=randomUUID(),time=now(),sha256=createHash("sha256").update(content).digest("hex");
+    this.transaction(()=>{
+      const mission=this.checkedMission(id,input.expectedVersion);
+      if(!Number.isInteger(criterionIndex)||criterionIndex<0||criterionIndex>=mission.criteria.length)
+        throw new InputError("Choose a mission acceptance criterion");
+      const task=this.db.prepare("SELECT * FROM mission_tasks WHERE id=? AND mission_id=?").get(taskId,id);
+      if(!task||!["queued","awaiting-review"].includes(task.status))throw new InputError("Choose an open mission task");
+      this.db.prepare("INSERT INTO mission_evidence(id,mission_id,task_id,criterion_index,kind,title,content,sha256,created_at) VALUES (?,?,?,?,?,?,?,?,?)")
+        .run(evidenceId,id,taskId,criterionIndex,kind,title,content,sha256,time);
+      this.db.prepare("UPDATE mission_tasks SET status='awaiting-review',updated_at=? WHERE id=?").run(time,taskId);
+      this.advanceMission(id,"in-review");
+      this.event("evidence.submitted",evidenceId,mission.hub_id,`Evidence submitted for criterion ${criterionIndex+1}; owner review required`);
+    });
+    return this.missionDetail(id);
+  }
+  reviewEvidence(id,evidenceId,input) {
+    const note=nonempty(input.reviewNote,"reviewNote",2000),decision=nonempty(input.decision,"decision",20);
+    if(!["reviewed","rejected"].includes(decision))throw new InputError("Invalid review decision");
+    this.transaction(()=>{
+      const mission=this.checkedMission(id,input.expectedVersion);
+      const evidence=this.db.prepare("SELECT * FROM mission_evidence WHERE id=? AND mission_id=?").get(evidenceId,id);
+      if(!evidence)throw new InputError("Evidence not found",404);
+      if(evidence.status!=="submitted")throw new InputError("Evidence has already been reviewed",409);
+      if(createHash("sha256").update(evidence.content).digest("hex")!==evidence.sha256)
+        throw new InputError("Evidence integrity check failed",409);
+      this.db.prepare("UPDATE mission_evidence SET status=?,review_note=?,reviewed_at=? WHERE id=?")
+        .run(decision,note,now(),evidenceId);
+      this.advanceMission(id,mission.status);
+      this.event(`evidence.${decision}`,evidenceId,mission.hub_id,`Owner ${decision} evidence: ${evidence.title}`);
+    });
+    return this.missionDetail(id);
+  }
+  acceptTask(id,taskId,input) {
+    this.transaction(()=>{
+      const mission=this.checkedMission(id,input.expectedVersion);
+      const task=this.db.prepare("SELECT * FROM mission_tasks WHERE id=? AND mission_id=?").get(taskId,id);
+      if(!task)throw new InputError("Task not found",404);
+      if(task.status!=="awaiting-review")throw new InputError("Task needs submitted evidence",409);
+      const evidence=this.db.prepare("SELECT status FROM mission_evidence WHERE task_id=?").all(taskId);
+      if(evidence.some(item=>item.status==="submitted")||!evidence.some(item=>item.status==="reviewed"))
+        throw new InputError("Task requires reviewed evidence with no pending submissions",409);
+      this.db.prepare("UPDATE mission_tasks SET status='accepted',updated_at=? WHERE id=?").run(now(),taskId);
+      this.advanceMission(id,mission.status);
+      this.event("task.accepted",taskId,mission.hub_id,`Owner accepted task: ${task.title}`);
+    });
+    return this.missionDetail(id);
+  }
+  acceptMission(id,input) {
+    this.transaction(()=>{
+      const mission=this.checkedMission(id,input.expectedVersion),detail=this.missionDetail(id);
+      if(!detail.tasks.length||detail.tasks.some(task=>task.status!=="accepted"))
+        throw new InputError("All mission tasks need owner acceptance",409);
+      for(let index=0;index<mission.criteria.length;index++){
+        if(!detail.evidence.some(e=>e.criterion_index===index&&e.status==="reviewed"&&
+          detail.tasks.some(task=>task.id===e.task_id&&task.status==="accepted")))
+          throw new InputError(`Criterion ${index+1} needs reviewed evidence from an accepted task`,409);
+      }
+      this.advanceMission(id,"accepted");
+      this.event("mission.owner-accepted",id,mission.hub_id,`Owner accepted mission ${mission.title}; evidence was reviewed by owner, not independently verified`);
+    });
+    return this.missionDetail(id);
+  }
+  cancelMission(id,input) {
+    this.transaction(()=>{
+      const mission=this.checkedMission(id,input.expectedVersion);
+      this.db.prepare("UPDATE mission_tasks SET status='cancelled',updated_at=? WHERE mission_id=? AND status IN ('queued','awaiting-review')").run(now(),id);
+      this.advanceMission(id,"cancelled");
+      this.event("mission.cancelled",id,mission.hub_id,`Owner cancelled mission: ${mission.title}`);
+    });
+    return this.missionDetail(id);
+  }
   sendMessage(input) {
     const hubId=nonempty(input.hubId,"hubId",30);this.requireHub(hubId);
     const body=nonempty(input.text,"message",4000),id=randomUUID(),time=now();
@@ -218,6 +344,13 @@ export class Store {
     const note=this.db.prepare("SELECT * FROM notes WHERE id=?").get(id);
     if(!note)throw new InputError("Note not found",404);
     return note;
+  }
+  projectionHash(path) {
+    return this.db.prepare("SELECT sha256 FROM vault_projection WHERE path=?").get(path)?.sha256||null;
+  }
+  recordProjection(path,sha256) {
+    this.db.prepare("INSERT INTO vault_projection(path,sha256,projected_at) VALUES (?,?,?) ON CONFLICT(path) DO UPDATE SET sha256=excluded.sha256,projected_at=excluded.projected_at")
+      .run(path,sha256,now());
   }
   importPersona(record) {
     const source=agencyIndex.agents.find(item=>item.path===record.path);

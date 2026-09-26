@@ -17,10 +17,10 @@ Open `http://127.0.0.1:4310`. For a private local development session, enter `ag
 ## What works now
 
 - Original responsive AGAS workspace and the supplied dragon-eye logo; seven hubs, executive and permanent CEO identities persist in SQLite. Projects organize software products and Media Empire brands; content accounts, niches and campaign briefs are durable planning records.
-- Mission intake with explicit acceptance criteria and an event feed; no fake execution or accepted outcomes.
+- Mission intake, a durable task board, evidence submissions, owner review, cancellation and a versioned event feed. A mission can record **owner acceptance** only after every task and criterion has reviewed evidence. This is a human decision; no independent runtime verification is connected yet.
 - Direct CEO requests save to a durable inbox and surface in the executive feed, labelled `awaiting-runtime` until an adapter exists.
 - Twelve exact Agency prompt bodies, with verified upstream Git blob hashes and MIT license; the pinned index contains 295 source references at commit `053ddbbf392a1688fc7043d81529f47ef2cf86c8`. Role assignment is configuration, not activation. CLI presence detection is read-only, never marked authenticated/ready.
-- Scoped knowledge records and a one-vault Obsidian Markdown projection. Existing modified projected files are reported as conflicts and are never silently overwritten.
+- Scoped knowledge records and a one-vault Obsidian Markdown projection. AGAS updates files it previously generated when their bytes are untouched, including mission tasks and evidence summaries. User edits in Obsidian remain untouched and are reported as conflicts; there is no vault import yet.
 
 To import the complete pinned Agency source, check out [msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents) at the exact commit above and run:
 
@@ -32,6 +32,6 @@ The importer verifies the revision and each Git blob against `catalog/agency-ind
 
 ## What is still to build
 
-Runtime authentication and actual agent adapters; durable execution, handoffs, approvals, evidence-backed completion and multi-node scheduling; domain workflows and real data for each hub; version-checked Obsidian authoring/import and full backup/restore; desktop installers, voice and spatial UI. Do not interpret the present CEO inbox or persona cards as live agents. See [the complete product contract](docs/architecture/AGAS_MASTER_REQUIREMENTS_V4.md) for the plan and release gates.
+Runtime authentication and actual agent adapters; runtime execution, independent verification, typed handoffs, effect approvals and multi-node scheduling; domain workflows and real data for each hub; version-checked Obsidian authoring/import and full backup/restore; desktop installers, voice and spatial UI. Do not interpret the present CEO inbox or persona cards as live agents. Task submissions are stored records; they do not trigger an agent. See [the complete product contract](docs/architecture/AGAS_MASTER_REQUIREMENTS_V4.md) for the plan and release gates.
 
 The old AionUI/Paperclip trial is preserved in another branch. Its prior simulator and the earlier AGAS prototype remain in Git history, outside this native application's boot path.

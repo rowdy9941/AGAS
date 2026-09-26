@@ -1,7 +1,7 @@
 const $=selector=>document.querySelector(selector);
 const esc=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
-const state={data:null,view:"overview",hub:null,inspected:null,search:"",onlyImported:true,token:sessionStorage.getItem("agas-token")||""};
-const titles={overview:"Mission control",organization:"Organization",projects:"Projects",hubs:"Hubs",agents:"Agents",knowledge:"Knowledge & vault",activity:"Activity"};
+const state={data:null,view:"overview",hub:null,missionId:null,detail:null,inspected:null,search:"",onlyImported:true,token:sessionStorage.getItem("agas-token")||""};
+const titles={overview:"Mission control",organization:"Organization",projects:"Projects",missions:"Missions",mission:"Mission",hubs:"Hubs",agents:"Agents",knowledge:"Knowledge & vault",activity:"Activity"};
 let noticeTimer;
 function notify(message,error=false){const node=$("#notice");node.textContent=message;node.style.background=error?"#542d32":"";clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>node.textContent="",5000)}
 async function api(path,options={}) {
@@ -10,15 +10,19 @@ async function api(path,options={}) {
   if(!result.ok)throw new Error(payload.error||`Request failed (${result.status})`);
   return payload;
 }
-async function refresh(){state.data=await api("/api/overview");$("#login-overlay").classList.add("hidden");render()}
+async function refresh(){state.data=await api("/api/overview");if(state.view==="mission"&&state.missionId)state.detail=await api(`/api/missions/${state.missionId}`);$("#login-overlay").classList.add("hidden");render()}
 const hubs=()=>state.data?.hubs||[];
 const hub=id=>hubs().find(item=>item.id===id);
 const missions=id=>state.data.missions.filter(item=>!id||item.hub_id===id);
 const sourceIcon=division=>({engineering:"⌘",marketing:"◈",finance:"◉",healthcare:"✳",security:"⬡",testing:"✓",design:"✦",specialized:"◇",research:"◎"}[division]||"✦");
 function setView(view,hubId=null) {
-  state.view=view;state.hub=hubId;state.inspected=null;
+  state.view=view;state.hub=hubId;state.missionId=null;state.detail=null;state.inspected=null;
   render();$("#main").focus({preventScroll:true});
   if(window.innerWidth<800)window.scrollTo({top:0,behavior:"smooth"});
+}
+async function openMission(id){
+  try {const detail=await api(`/api/missions/${encodeURIComponent(id)}`);state.view="mission";state.missionId=id;state.detail=detail;state.inspected=null;render();$("#main").focus({preventScroll:true})}
+  catch(error){notify(error.message,true)}
 }
 function heading(label,title,description,extra="") {
   return `<div class="page-head"><div><span class="eyebrow">${esc(label)}</span><h1>${esc(title)}</h1><p>${esc(description)}</p></div>${extra}</div>`;
@@ -27,7 +31,24 @@ function eventRows(events) {
   return events.length?events.map(item=>`<div class="row"><div class="avatar-small">◷</div><div class="row-main"><strong>${esc(item.description)}</strong><small>${esc(item.type)} · ${esc(new Date(item.occurred_at).toLocaleString())}</small></div></div>`).join(""):`<div class="empty">Activity will appear when you create a mission, message, or note.</div>`;
 }
 function missionRows(list) {
-  return list.length?list.map(item=>`<button class="card mission-card" data-action="inspect-mission" data-id="${esc(item.id)}"><span class="avatar-small">${esc(hub(item.hub_id)?.icon)}</span><span class="row-main"><strong>${esc(item.title)}</strong><small>${esc(hub(item.hub_id)?.name)} · ${esc(item.criteria.length)} criteria · ${esc(item.project||"No project")}</small></span><span class="badge warn">${esc(item.status)}</span></button>`).join(""):`<div class="empty">No missions yet. Create one with clear acceptance criteria to start tracking work.</div>`;
+  return list.length?list.map(item=>`<button class="card mission-card" data-action="open-mission" data-id="${esc(item.id)}"><span class="avatar-small">${esc(hub(item.hub_id)?.icon)}</span><span class="row-main"><strong>${esc(item.title)}</strong><small>${esc(hub(item.hub_id)?.name)} · ${esc(item.criteria.length)} criteria · ${esc(item.project||"No project")}</small></span><span class="badge ${item.status==="accepted"?"":"warn"}">${esc(item.status)}</span></button>`).join(""):`<div class="empty">No missions yet. Create one with clear acceptance criteria to start tracking work.</div>`;
+}
+function missionsPage(){
+  return heading("DURABLE WORK","Missions","Plan tasks, collect actual artifacts and review evidence. Owner acceptance is recorded separately from independent verification.",`<button class="primary" data-action="new-mission">+ New mission</button>`)+
+    `<div class="mission-table">${missionRows(state.data.missions)}</div>`;
+}
+function missionPage(){
+  const d=state.detail;if(!d)return `<div class="empty">Loading mission…</div>`;
+  const {mission:m,tasks,evidence}=d,open=!(["accepted","cancelled"].includes(m.status));
+  const criterionRows=m.criteria.map((criterion,index)=>{
+    const items=evidence.filter(e=>e.criterion_index===index),reviewed=items.filter(e=>e.status==="reviewed"&&tasks.some(t=>t.id===e.task_id&&t.status==="accepted"));
+    return `<article class="criterion"><span class="badge ${reviewed.length?"":"warn"}">${reviewed.length?"Owner reviewed":"Evidence required"}</span><strong>${index+1}. ${esc(criterion)}</strong><small>${items.length} submission${items.length===1?"":"s"}</small></article>`;
+  }).join("");
+  return heading(`MISSION · ${hub(m.hub_id)?.name||m.hub_id}`,m.title,m.objective,`<span class="head-count">${esc(m.status)} · revision ${m.version}</span>`)+
+    `<div class="mission-actions"><button class="secondary" data-action="view" data-id="missions">← All missions</button>${open?`<button class="primary" data-action="new-task">+ Add task</button><button class="secondary" data-action="cancel-mission">Cancel mission</button>`:""}</div>`+
+    `<div class="split"><section class="panel"><h3>Acceptance criteria</h3><p class="helper">Submitted text and its SHA-256 hash show what the owner reviewed; they do not independently prove external results.</p><div class="criteria-list">${criterionRows}</div></section><section class="panel"><h3>Decision</h3><p class="helper">AGAS requires an accepted task and owner-reviewed evidence for every criterion. A separate independent runtime verifier has not been connected.</p>${open?`<button class="primary" data-action="accept-mission">Record owner acceptance</button>`:`<span class="badge">${esc(m.status)}</span>`}</section></div>`+
+    `<div class="section-head"><h2>Task queue</h2><span>${tasks.length} tasks</span></div><div class="mission-table">${tasks.length?tasks.map(t=>`<article class="card work-card"><div><strong>${esc(t.title)}</strong><p>${esc(t.objective)}</p><small>${t.assignment_id?`Configured specialist ${esc(t.assignment_id)} · execution pending`:"No runtime assigned · manual planning"}</small></div><div class="work-actions"><span class="badge ${t.status==="accepted"?"":"warn"}">${esc(t.status)}</span>${open&&t.status!=="accepted"?`<button class="secondary" data-action="add-evidence" data-id="${esc(t.id)}">Submit evidence</button>${t.status==="awaiting-review"?`<button class="secondary" data-action="accept-task" data-id="${esc(t.id)}">Accept task</button>`:""}`:""}</div></article>`).join(""):`<div class="panel empty">Add a bounded task to make the mission actionable. Agent execution is not connected yet.</div>`}</div>`+
+    `<div class="section-head"><h2>Evidence ledger</h2><span>${evidence.length} entries</span></div><div class="mission-table">${evidence.length?evidence.map(e=>`<article class="card evidence-card"><div><strong>${esc(e.title)}</strong><small>Criterion ${e.criterion_index+1} · ${esc(e.kind)} · SHA-256 ${esc(e.sha256)}</small><p>${esc(e.content)}</p>${e.review_note?`<p>Owner review: ${esc(e.review_note)}</p>`:""}</div><div class="work-actions"><span class="badge ${e.status==="reviewed"?"":"warn"}">${esc(e.status)}</span>${open&&e.status==="submitted"?`<button class="secondary" data-action="review-evidence" data-id="${esc(e.id)}">Review</button>`:""}</div></article>`).join(""):`<div class="panel empty">No evidence submitted. Completing a task requires real output and owner review.</div>`}</div>`;
 }
 function dashboard() {
   const d=state.data;
@@ -103,7 +124,7 @@ function render() {
   $("#crumb").textContent=state.view==="hubs"&&state.hub?hub(state.hub)?.name:titles[state.view];
   document.querySelectorAll(".nav").forEach(button=>button.classList.toggle("active",button.dataset.view===state.view));
   $("#hub-nav").innerHTML=hubs().map(h=>`<button class="hub-link ${state.view==="hubs"&&state.hub===h.id?"active":""}" data-action="hub" data-id="${esc(h.id)}"><span>${esc(h.icon)}</span>${esc(h.name)}</button>`).join("");
-  $("#content").innerHTML=({overview:dashboard,organization,projects:projectsPage,hubs:hubsPage,agents:agentsPage,knowledge:knowledgePage,activity:activityPage}[state.view]||dashboard)();
+  $("#content").innerHTML=({overview:dashboard,organization,projects:projectsPage,missions:missionsPage,mission:missionPage,hubs:hubsPage,agents:agentsPage,knowledge:knowledgePage,activity:activityPage}[state.view]||dashboard)();
   if(state.view==="hubs"&&state.hub==="content")$("#content").insertAdjacentHTML("beforeend",mediaPanels());
   renderInspector();
 }
@@ -119,6 +140,28 @@ function newMission() {
   openModal("Create a mission","Define the work and what would count as a real result.",
     `<label class="field">Hub<select name="hubId">${hubs().map(h=>`<option value="${esc(h.id)}" ${h.id===selected?"selected":""}>${esc(h.name)}</option>`).join("")}</select></label><label class="field">Project (optional)<select name="project"><option value="">No project</option>${state.data.projects.map(p=>`<option value="${esc(p.id)}">${esc(p.title)} · ${esc(hub(p.hub_id)?.name)}</option>`).join("")}</select></label><label class="field">Mission title<input name="title" required maxlength="140" placeholder="What should your team deliver?"></label><label class="field">Objective<textarea name="objective" required maxlength="4000" placeholder="Describe the actual objective and constraints"></textarea></label><label class="field">Acceptance criteria · one per line<textarea name="criteria" required placeholder="What evidence would prove this is complete?"></textarea></label>`,
     data=>api("/api/missions",{method:"POST",body:JSON.stringify({hubId:data.get("hubId"),project:data.get("project"),title:data.get("title"),objective:data.get("objective"),criteria:String(data.get("criteria")).split("\n").map(c=>c.trim()).filter(Boolean)})}));
+}
+function newTask(){
+  const {mission:m}=state.detail,assignments=state.data.assignments.filter(a=>a.hub_id===m.hub_id);
+  openModal("Add a mission task","Define one bounded delivery. Assigning a configured specialist does not run it.",
+    `<label class="field">Title<input name="title" required maxlength="140" placeholder="Produce the required artifact"></label><label class="field">Objective<textarea name="objective" required maxlength="4000" placeholder="Describe the result, constraints and expected output"></textarea></label><label class="field">Specialist (optional)<select name="assignmentId"><option value="">Unassigned</option>${assignments.map(a=>`<option value="${esc(a.id)}">${esc(state.data.personas.find(p=>p.path===a.persona_path)?.title||a.persona_path)} · ${esc(a.runtime)} (unverified)</option>`).join("")}</select></label>`,
+    data=>api(`/api/missions/${m.id}/tasks`,{method:"POST",body:JSON.stringify({title:data.get("title"),objective:data.get("objective"),assignmentId:data.get("assignmentId"),expectedVersion:state.detail.mission.version})}));
+}
+function addEvidence(taskId){
+  const {mission:m}=state.detail;
+  openModal("Submit task evidence","Record the actual output. A hash protects these bytes; owner review decides whether they support a criterion.",
+    `<label class="field">Acceptance criterion<select name="criterionIndex">${m.criteria.map((c,i)=>`<option value="${i}">${i+1}. ${esc(c)}</option>`).join("")}</select></label><label class="field">Evidence type<select name="kind"><option value="artifact">Artifact description</option><option value="test-log">Test output</option><option value="observation">Observation</option></select></label><label class="field">Title<input name="title" required maxlength="140" placeholder="What was produced?"></label><label class="field">Content<textarea name="content" required maxlength="12000" placeholder="Paste the output or a precise reference and provenance"></textarea></label>`,
+    data=>api(`/api/missions/${m.id}/evidence`,{method:"POST",body:JSON.stringify({taskId,criterionIndex:Number(data.get("criterionIndex")),kind:data.get("kind"),title:data.get("title"),content:data.get("content"),expectedVersion:state.detail.mission.version})}));
+}
+function reviewEvidence(evidenceId){
+  const {mission:m}=state.detail;
+  openModal("Review evidence","This records an owner decision. AGAS has not independently verified external claims.",
+    `<label class="field">Decision<select name="decision"><option value="reviewed">Supports the criterion</option><option value="rejected">Reject and request a better result</option></select></label><label class="field">Reason<textarea name="reviewNote" required maxlength="2000" placeholder="What did you inspect and why? Did the actual result meet the criterion?"></textarea></label>`,
+    data=>api(`/api/missions/${m.id}/evidence/${evidenceId}/review`,{method:"POST",body:JSON.stringify({decision:data.get("decision"),reviewNote:data.get("reviewNote"),expectedVersion:state.detail.mission.version})}));
+}
+async function missionAction(action){
+  try {await api(`/api/missions/${state.missionId}/${action}`,{method:"POST",body:JSON.stringify({expectedVersion:state.detail.mission.version})});await refresh();notify("Mission record updated.")}
+  catch(error){notify(error.message,true);if(error.message.includes("reload"))await refresh()}
 }
 function newProject() {
   const selected=state.view==="hubs"&&state.hub?state.hub:"content";
@@ -152,12 +195,19 @@ document.addEventListener("click",async event=>{
   if(type==="view")setView(id);
   else if(type==="hub")setView("hubs",id);
   else if(type==="new-mission")newMission();
+  else if(type==="open-mission")openMission(id);
+  else if(type==="new-task")newTask();
+  else if(type==="add-evidence")addEvidence(id);
+  else if(type==="review-evidence")reviewEvidence(id);
+  else if(type==="accept-task")missionAction(`tasks/${id}/accept`);
+  else if(type==="accept-mission")missionAction("accept");
+  else if(type==="cancel-mission"&&window.confirm("Cancel this mission and all its open tasks?"))missionAction("cancel");
   else if(type==="new-project")newProject();
   else if(type==="new-media-account")newMediaAccount();
   else if(type==="new-media-campaign")newMediaCampaign();
   else if(type==="assign")assign(path);
   else if(type==="toggle-catalog"){state.onlyImported=!state.onlyImported;render()}
-  else if(type==="inspect-mission"||type==="inspect-note"){state.inspected={type:type==="inspect-mission"?"mission":"note",id};renderInspector()}
+  else if(type==="inspect-note"){state.inspected={type:"note",id};renderInspector()}
   else if(type==="project-vault"){try{const result=await api("/api/vault/project",{method:"POST",body:"{}"});notify(`Vault projected: ${result.written.length} files written, ${result.conflicts.length} edit conflicts.`)}catch(error){notify(error.message,true)}}
 });
 $("#nav").addEventListener("click",event=>{const target=event.target.closest("[data-view]");if(target)setView(target.dataset.view)});

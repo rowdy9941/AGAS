@@ -22,7 +22,10 @@ async function body(req) {
     data+=chunk;
     if(data.length>65536)throw new InputError("Request body exceeds 64 KiB",413);
   }
-  try {return JSON.parse(data)}catch{throw new InputError("Invalid JSON")}
+  let parsed;
+  try {parsed=JSON.parse(data)}catch{throw new InputError("Invalid JSON")}
+  if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))throw new InputError("Expected a JSON object");
+  return parsed;
 }
 
 export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault",token="agas-dev-token"}={}) {
@@ -46,6 +49,22 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       if(req.method==="GET"&&path==="/api/notes")return json(res,200,{notes:store.notesFor({hubId:url.searchParams.get("hubId"),project:url.searchParams.get("project"),principal:"owner"})});
       if(req.method==="GET"&&path.startsWith("/api/notes/"))return json(res,200,{note:store.noteForOwner(path.slice("/api/notes/".length))});
       if(req.method==="POST"&&path==="/api/missions")return json(res,201,{mission:store.createMission(await body(req))});
+      const missionRoute=path.match(/^\/api\/missions\/([\da-f-]{36})(?:\/(.*))?$/);
+      if(missionRoute){
+        const [,id,action]=missionRoute;
+        if(req.method==="GET"&&!action)return json(res,200,store.missionDetail(id));
+        if(req.method==="POST"){
+          const input=await body(req);
+          if(action==="tasks")return json(res,201,store.createTask(id,input));
+          if(action==="evidence")return json(res,201,store.submitEvidence(id,input));
+          if(action==="accept")return json(res,200,store.acceptMission(id,input));
+          if(action==="cancel")return json(res,200,store.cancelMission(id,input));
+          const review=action?.match(/^evidence\/([\da-f-]{36})\/review$/);
+          if(review)return json(res,200,store.reviewEvidence(id,review[1],input));
+          const acceptTask=action?.match(/^tasks\/([\da-f-]{36})\/accept$/);
+          if(acceptTask)return json(res,200,store.acceptTask(id,acceptTask[1],input));
+        }
+      }
       if(req.method==="POST"&&path==="/api/projects")return json(res,201,{project:store.createProject(await body(req))});
       if(req.method==="POST"&&path==="/api/media/accounts")return json(res,201,{account:store.createMediaAccount(await body(req))});
       if(req.method==="POST"&&path==="/api/media/campaigns")return json(res,201,{campaign:store.createMediaCampaign(await body(req))});
