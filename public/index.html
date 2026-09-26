@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1015">
+  <title>AGAS — Accessible General AI System</title>
+  <link rel="icon" href="/assets/agas-logo.jpg">
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to workspace</a>
+  <div class="app">
+    <aside class="sidebar" aria-label="Primary">
+      <div class="brand">
+        <img src="/assets/agas-logo.jpg" alt="AGAS dragon-eye logo">
+        <div><strong>AGAS</strong><small>ACCESSIBLE GENERAL AI SYSTEM</small></div>
+      </div>
+      <div class="workspace-switch"><span class="workspace-icon">A</span><span>Raghunath's organization<small>One workspace · seven hubs</small></span><span>⌄</span></div>
+      <div class="sidebar-label">WORKSPACE</div>
+      <nav id="nav" aria-label="Workspace views">
+        <button class="nav active" data-view="overview"><span>▦</span> Mission control</button>
+        <button class="nav" data-view="organization"><span>▤</span> Organization</button>
+        <button class="nav" data-view="goals"><span>◎</span> Goals</button>
+        <button class="nav" data-view="projects"><span>▣</span> Projects</button>
+        <button class="nav" data-view="missions"><span>◷</span> Missions</button>
+        <button class="nav" data-view="hubs"><span>◈</span> Hubs</button>
+        <button class="nav" data-view="agents"><span>✦</span> Agents</button>
+        <button class="nav" data-view="windows"><span>▣</span> Agent windows</button>
+        <button class="nav" data-view="knowledge"><span>▧</span> Knowledge & vault</button>
+        <button class="nav" data-view="activity"><span>◷</span> Activity</button>
+      </nav>
+      <div class="sidebar-label hubs-label">YOUR HUBS</div>
+      <div id="hub-nav" class="hub-nav"></div>
+      <div class="sidebar-bottom"><span class="status-pin"></span><div><strong>Native AGAS preview</strong><small>Five agent surfaces · check runtime readiness</small></div></div>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="topbar">
+        <div class="breadcrumb">AGAS <span>/</span> <strong id="crumb">Mission control</strong></div>
+        <div class="top-actions"><span class="local-badge">● LOCAL WORKSPACE</span><button id="new-mission" class="primary">+ New mission</button></div>
+      </header>
+      <div id="notice" role="status" aria-live="polite"></div>
+      <div id="content"></div>
+    </main>
+    <aside id="inspector" class="inspector" aria-label="Context inspector">
+      <div class="inspector-head"><span>CONTEXT INSPECTOR</span><button id="close-inspector" aria-label="Close inspector">×</button></div>
+      <div id="inspector-content"></div>
+    </aside>
+  </div>
+  <dialog id="modal"><form id="modal-form" method="dialog"></form></dialog>
+  <div id="login-overlay">
+    <form id="login-form" class="login">
+      <img src="/assets/agas-logo.jpg" alt="">
+      <span class="eyebrow">YOUR AGENT ORGANIZATION</span>
+      <h1>Welcome to AGAS.</h1>
+      <p>Connect to your local workspace. The development token is <code>agas-dev-token</code>; set your own with <code>AGAS_BOOTSTRAP_TOKEN</code>.</p>
+      <label for="token">Workspace token</label>
+      <input id="token" type="password" required autocomplete="off" placeholder="Enter token">
+      <button class="primary" type="submit">Open workspace →</button>
+      <span id="login-error" role="alert"></span>
+    </form>
+  </div>
+</body>
+</html>

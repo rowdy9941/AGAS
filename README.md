@@ -1,81 +1,76 @@
-# AGAS
+# AGAS · Accessible General AI System
 
-[![CI](https://github.com/rowdy9941/AGAS/actions/workflows/ci.yml/badge.svg)](https://github.com/rowdy9941/AGAS/actions/workflows/ci.yml)
+An original, local-first organization for AI work. AGAS has seven permanent hubs, an executive, hub CEOs, sourced specialist roles, scoped missions and knowledge, and a single Obsidian-compatible vault. The product is **under construction**. Codex and OpenCode Dev execution paths have process fixture coverage, but neither can be verified against an authenticated installation on this host.
 
-AGAS is an open control plane for governing, activating, and observing teams of
-AI agents across multiple runtimes. It keeps runtime discovery, agent identity,
-memory boundaries, hub composition, permissions, and execution state in one
-explicit model.
+## Start
 
-The control plane is dependency-free at runtime and stores its state in SQLite.
-It includes a recoverable background dispatcher, deterministic simulator, an
-opt-in local CLI adapter, and a responsive authenticated operator console.
-The console also includes a versioned Agency specialist catalog, Hermes/Codex/
-OpenCode persona projections, managed runtime activation, and a persistent Hub
-Builder with drag-and-drop and keyboard-equivalent controls. Context Fabric adds
-typed artifacts, cross-runtime handoffs, checkpoints, and rollback. The MCP
-Gateway projects least-privilege tool grants per runtime, while the vault
-projector produces deterministic Obsidian-compatible Markdown.
-Mission Authority adds approval-gated repository and research plans, dependency-
-aware background dispatch, task budgets, retries, cancellation, evidence-backed
-verification, and final reports. Durable organizations, projects, teams, and
-conversations implement the MVP's Paperclip responsibility.
+Install Node.js 24 or newer on Windows, macOS or Linux.
 
-## Run it
-
-Requirements: Node.js 22 or newer.
-
-```bash
-npm install
+```sh
+npm ci
 npm run check
 npm start
 ```
 
-The service listens on `http://127.0.0.1:4310` by default and persists state to
-`./data/agas.db`. Local development uses the token `agas-dev-token`. Set
-`AGAS_BOOTSTRAP_TOKEN` before the first start for a private administrator token.
-Set `AGAS_HOST`, `AGAS_PORT`, or `AGAS_DB_PATH` to override other defaults. Set
-`AGAS_VAULT_PATH` to choose the Markdown projection directory. AGAS refuses a
-non-loopback bind unless an explicit bootstrap token is configured. Open the
-service URL in a browser to use the operator console.
+Open `http://127.0.0.1:4310`. For a private local development session, enter `agas-dev-token`. Set `AGAS_BOOTSTRAP_TOKEN` to a secret token for real use; it is required before binding beyond loopback. Optional: `AGAS_DB_PATH`, `AGAS_VAULT_PATH`, `AGAS_WORKSPACES_PATH`, `AGAS_HOST`, `AGAS_PORT`. State and vault are stored under `data/` by default and are excluded from Git.
 
-```bash
-curl http://127.0.0.1:4310/healthz
-export AGAS_TOKEN=agas-dev-token
-curl -H "authorization: Bearer $AGAS_TOKEN" http://127.0.0.1:4310/v1/registry
-curl -H "authorization: Bearer $AGAS_TOKEN" http://127.0.0.1:4310/v1/runtimes/detect
+## What works now
 
-curl -X POST http://127.0.0.1:4310/v1/hubs/engineering/plan \
-  -H 'content-type: application/json' \
-  -H "authorization: Bearer $AGAS_TOKEN" \
-  -d '{"workspaceId":"demo"}'
+- Original responsive AGAS workspace and the supplied dragon-eye logo; seven hubs, executive and permanent CEO identities persist in SQLite. Projects organize software products and Media Empire brands. A Media campaign progresses through six owner-reviewed research, strategy, creation, editing, media and editorial stages. The final stage requires a rights and factuality declaration. Accepted stage bodies and references are hashed into a local publication packet scoped to one brand account; no external channel connection or publishing is implied.
+- Finance research projects can own an INR paper account. The local ledger accepts manually attributed price marks, simulates cash-only whole-unit buys and sells, caps each buy, accounts for entered fees and cost basis in integer paise, records positions and P&L, and makes repeated order requests idempotent. A separate historical manual-mark replay uses a prior-mark moving-average signal with a next-observed-mark simulated fill, cap and fees; its immutable input snapshot and outcome are hashed, with idempotent request IDs and no change to account holdings. Its sources and fill prices are unverified; there is no spread, liquidity, tax or corporate-action model, licensed feed, broker credential or live execution path.
+- Mission intake, a durable task board, evidence submissions, owner review, cancellation and a versioned event feed. A mission can record **owner acceptance** only after every task and criterion has reviewed evidence. This is a human decision; no independent runtime verification is connected yet.
+- Goals can nest under organization, hub and project ownership, align missions, and be marked achieved only after linked work is accepted. Tasks can depend on accepted predecessors and an explicitly accepted cross-hub handoff. Dev missions use a linked local Git repository, a sourced Agency role and a ready Codex or OpenCode CLI to run in detached worktrees; AGAS records changed-file hashes, stop/restart outcomes and run-attempt quotas. Other hubs can run bounded **text-only OpenCode or restricted OpenClaw** tasks; the text and its hash are recorded for owner review. These restrictions are runtime tool policies, not operating-system isolation. After owner acceptance and reviewed evidence for **every** changed Dev file, the owner may create a local `agas/<mission>/<run>` review branch. AGAS does not merge or push it.
+- The Agent windows view has tabs for Hermes, OpenClaw, OpenCode, Codex and Claude Code, with runtime status, assigned specialists, CEO reply status and AGAS run receipts. It can open configured local Hermes, OpenClaw or OpenCode web UIs in a panel where framing is permitted; an external-tab link stays available. Codex/Claude desktop and terminal apps remain separate, with their AGAS task evidence accessible in the tab. Providers run independently and handle their own login; direct desktop or interactive terminal embedding remains open work.
+- An accepted source mission can offer one reviewed evidence record to a named mission in another hub. The receiving owner inspects and acknowledges it before an agent may read it in its scoped prompt. A receiving task may require that exact receipt: it cannot launch while offered, declined, or tampered. The owner may opt that task into one automatic run after acknowledgement; an interrupted dispatch is reconciled on restart without replaying any previously recorded attempt. Source integrity is rechecked before run and owner acceptance. A child-process fixture covers OpenCode text output in Content → hash-backed owner review → accepted handoff → automatically dispatched Codex Dev worktree → reviewed file. Live authenticated provider calls remain unverified.
+- A local offline snapshot command copies the SQLite database, projected vault and recorded run workspaces into a checksummed bundle. Restore verifies every byte into a **new empty directory**, relocates run paths and clears links to external Git repositories. A restore drill checks a recorded artifact after relocation. Stop AGAS and its agent processes before taking a snapshot.
+- Direct CEO requests save to a durable inbox and surface in the executive feed. The owner can choose a ready Codex, OpenCode or restricted OpenClaw runtime for a bounded reply; response, errors and interrupted state survive restart. The prompt includes only organization and that hub's notes and recent conversation. Other hubs and private notes are excluded. Process fixtures are tested, while live provider replies are not verified on this host.
+- Twelve exact Agency prompt bodies, with verified upstream Git blob hashes and MIT license; the pinned index contains 295 source references at commit `053ddbbf392a1688fc7043d81529f47ef2cf86c8`. Role assignment is configuration, not activation. Codex and OpenCode readiness checks confirm local CLI login state; OpenClaw checks a live Gateway and its active `agas` policy. Hermes and Claude remain discovery only. A readiness check does not prove a provider run will complete.
+- Scoped knowledge records and a one-vault Obsidian Markdown projection. AGAS updates files it previously generated when their bytes are untouched, including mission tasks and evidence summaries. The Knowledge page can import edited AGAS notes and mission title/objective briefs against their exact IDs, metadata and revisions, then project the new revision. Mission criteria, tasks and evidence sections remain generated records; conflicting edits remain untouched. Import of other vault file types is still pending.
+
+To import the complete pinned Agency source, check out [msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents) at the exact commit above and run:
+
+```sh
+npm run import:agency -- /path/to/agency-agents
 ```
 
-See [docs/api.md](docs/api.md) for the complete HTTP surface and
-[docs/architecture.md](docs/architecture.md) for boundaries and next phases.
-Operational recovery is documented in [docs/operations.md](docs/operations.md),
-and the security boundary is documented in
-[docs/threat-model.md](docs/threat-model.md).
+The importer verifies the revision and each Git blob against `catalog/agency-index.json`; no Agency app or server is installed. Source prompt copies and license are in `vendor/agency/`. No AionUI, Paperclip or MBAs code is used in this product.
 
-## Safety model
+## Restricted OpenClaw text integration
 
-- Runtime detection is read-only and uses fixed version arguments with no shell.
-- Every memory write declares a scope and visibility.
-- Workspace and principal boundaries are enforced during memory search.
-- API tokens are stored only as SHA-256 hashes and use role/workspace policy.
-- Hub plans select only compatible runtimes and expose their permission envelope.
-- Execution records use a strict state machine and append-only audit events.
-- Runtime commands use no shell, a scrubbed environment, bounded output and time,
-  and a working directory constrained beneath `AGAS_WORKSPACE_ROOT`.
-- MCP records contain only `env:` or `vault:` secret references and every
-  runtime projection is constrained to explicitly granted tools.
-- Context handoffs require artifact evidence, and checkpoint rollback is
-  recorded in the workspace event stream.
-- JSON bodies are size-limited and errors are structured.
+Install and authenticate OpenClaw on the same machine, then configure a **dedicated** `agas` agent in its Gateway. Its active configuration must include these fields:
 
-## Project status
+```json5
+{
+  gateway: { mode: "local" },
+  agents: {
+    entries: {
+      agas: {
+        workspace: "~/.openclaw/workspace-agas",
+        skipBootstrap: true,
+        skills: [],
+        sandbox: { mode: "all", scope: "agent", workspaceAccess: "none" },
+        tools: { deny: ["*"] }
+      }
+    }
+  }
+}
+```
 
-AGAS 1.0.1 implements all seven MVP phases. See the
-[master architecture plan](docs/AGAS_MASTER_ARCHITECTURE_PLAN.md) for the full
-MVP contract, [evaluation suites](docs/evaluations.md), and
-[deployment guide](docs/deployment.md) for Node and Docker use.
+Keep the Gateway's own authentication and model setup in OpenClaw. AGAS checks `openclaw gateway status --require-rpc --json` and the Gateway's `config.get` revision against `appliedConfigHash` before it reports this adapter ready. A saved but unapplied policy is refused. AGAS sends each request to a fresh session of `--agent agas` with `--message-file` and `--json`, without `--deliver`, and records the returned text for owner review. This adapter does not run Dev code or send to channels. The policy can change between readiness and execution; isolate the Gateway and restrict configuration changes during work. [OpenClaw's per-agent configuration](https://docs.openclaw.ai/gateway/config-agents/entries-and-multi-agent) and [tool policy](https://docs.openclaw.ai/gateway/config-tools/tool-policy) define those controls.
+
+## Offline snapshot and restore
+
+Stop the AGAS server and agent runs. Use the same `AGAS_DB_PATH`, `AGAS_VAULT_PATH` and `AGAS_WORKSPACES_PATH` values that the server used, then:
+
+```sh
+npm run snapshot -- create /path/to/new/snapshot
+npm run snapshot -- restore /path/to/snapshot /path/to/new/restored-root
+```
+
+The restore destination must not exist. Set the three AGAS path variables to the corresponding files and directories under `restored-root/data/` before starting the restored server. Relink external Git repositories in Projects before any new Dev run. A bundle includes private AGAS records; store it with the same care as the original data. Symbolic links or special files in snapshot sources stop the snapshot rather than following them.
+
+## What is still to build
+
+Live authenticated Codex, OpenCode and OpenClaw provider runs and CEO replies, independently verified semantic outcomes, wider automatic planning and effect reconciliation, Dev integration/release beyond a local review branch, authorized external Media publishing and analytics, FinOS licensed data feeds, realistic validated backtests and broker reconciliation, dedicated workflows for the other hubs, vault import for records beyond notes and mission briefs, online coordinated snapshots, desktop installers, voice and spatial UI. Task creation does not start a run unless the owner opts an assigned task into automatic dispatch on acceptance of a required handoff. OpenCode's adapter currently supports the 1.x CLI protocol. Hermes and Claude are discovered and can show their local native UI where available; they have no executable task adapter yet. See the [complete product contract](docs/architecture/AGAS_MASTER_REQUIREMENTS_V4.md) and [composite scope and release gates](docs/architecture/AGAS_COMPOSITE_SCOPE_V5.md).
+
+The old AionUI/Paperclip trial is preserved in another branch. Its prior simulator and the earlier AGAS prototype remain in Git history, outside this native application's boot path.
