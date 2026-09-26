@@ -47,11 +47,11 @@ The selected runtime window is a view, not a permission grant. Third-party crede
 
 | Gate | Evidence required | Present state |
 |---|---|---|
-| Foundation | Seven durable hubs, roles, scoped missions and vault | Implemented with automated persistence/scope checks and revision-checked note import; import of other vault records remains absent. |
+| Foundation | Seven durable hubs, roles, scoped missions and vault | Implemented with automated persistence/scope checks and revision-checked note and mission brief imports; import of other vault records remains absent. |
 | Execution | Two **real** authenticated agent runtimes, cancellation, recovery, receipts | Codex and OpenCode 1.x code paths and process fixture tests, including a second end-to-end worktree/artifact flow; neither live provider is installed or authenticated here. |
 | Teamwork | CEO replies and two-runtime acknowledged handoff, permissions and durable approvals | Durable CEO reply route through Codex/OpenCode/OpenClaw has scoped process fixtures. Content OpenCode text run → owner review → accepted handoff → automatically queued Dev Codex run → reviewed file passes a child-process fixture. A crash after acknowledgement and before queueing is reconciled without a second attempt. OpenClaw's text path requires an applied, tool-denied local Gateway policy. Live provider runs and effect approvals remain pending. |
 | Domains | Dev integration/release; Media publish receipt; Finance, Business, Health, Security and Maintenance domain tests | Dev worktree run and local review branch; no merge/deploy. Media has six reviewed stages and a hashed per-account packet; no external publish. FinOS has deterministic manual-mark paper ledger; live data, brokers, backtests and remaining domains pending. |
 | Experience | Actual browser interaction, agent window capability tests, secure access and three clean OS installs | UI exists; automated browser binary and target OS installs unavailable in this workspace. |
-| Operations | Consistent database/artifact/vault backup, restore drill and release migration | Offline checksummed snapshot and new-directory restore drill implemented; known note files can import with revision checks. Coordinated online snapshot, other vault imports and release migration pending. |
+| Operations | Consistent database/artifact/vault backup, restore drill and release migration | Offline checksummed snapshot and new-directory restore drill implemented; known note and mission brief files import with revision checks. Coordinated online snapshot, other vault imports and release migration pending. |
 
 The owner authorized a merge after a **complete** working system. Until these gates pass, publish reviewable draft commits and keep `main` untouched.

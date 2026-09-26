@@ -1129,6 +1129,22 @@ export class Store {
     });
     return this.noteForOwner(id);
   }
+  importMissionBrief({id,title,objective,revision,hubId,project,goalId,path,sourceHash,baselineHash}) {
+    const nextTitle=nonempty(title,"title",140),nextObjective=nonempty(objective,"objective",4000);
+    if(nextTitle!==title||nextObjective!==objective||nextTitle.includes("\n")||nextTitle.includes("\r"))
+      throw new InputError("Mission brief has unsupported whitespace",409);
+    this.transaction(()=>{
+      const mission=this.checkedMission(id,revision);
+      if(mission.hub_id!==hubId||mission.project!==project||mission.goal_id!==goalId||
+        this.projectionHash(path)!==baselineHash||nextTitle===mission.title&&nextObjective===mission.objective)
+        throw new InputError("Mission brief changed; resolve the vault conflict in AGAS",409);
+      this.db.prepare("UPDATE missions SET title=?,objective=?,version=version+1,updated_at=? WHERE id=?")
+        .run(nextTitle,nextObjective,now(),id);
+      this.recordProjection(path,sourceHash);
+      this.event("mission.brief-imported",id,hubId,`Owner imported revised mission brief: ${nextTitle}`);
+    });
+    return this.missionDetail(id);
+  }
   projectionHash(path) {
     return this.db.prepare("SELECT sha256 FROM vault_projection WHERE path=?").get(path)?.sha256||null;
   }

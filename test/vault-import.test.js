@@ -43,3 +43,39 @@ test("an edited Obsidian note imports against its AGAS revision and conflicting 
     assert.equal(await readFile(file,"utf8"),conflict);
   } finally {await new Promise(resolve=>server.close(resolve))}
 });
+
+test("a mission brief imports only its title and objective against the exact projected revision",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"agas-mission-import-")),vault=join(root,"vault");
+  const {server}=createAgasServer({database:join(root,"agas.db"),vault,token:"mission-import",
+    workspaces:join(root,"workspaces"),adapters:{}});
+  await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
+  const base=`http://127.0.0.1:${server.address().port}`;
+  async function request(path,method="GET",data) {
+    const res=await fetch(base+path,{method,headers:{authorization:"Bearer mission-import",
+      ...(data?{"content-type":"application/json"}:{})},body:data?JSON.stringify(data):undefined});
+    return {status:res.status,data:await res.json()};
+  }
+  try {
+    const mission=(await request("/api/missions","POST",{hubId:"dev",title:"Original mission",objective:"Original objective",criteria:["Inspect reviewed work"]})).data.mission;
+    assert.equal((await request("/api/vault/project","POST",{})).status,200);
+    const file=join(vault,"03 Missions",`${mission.id}.md`),initial=await readFile(file,"utf8");
+    await writeFile(file,initial.replace("# Original mission\n\nOriginal objective\n\nLinked goal:",
+      "# Reviewed mission\n\nRevised local objective\n\nLinked goal:"));
+    const imported=await request("/api/vault/import","POST",{});
+    assert.equal(imported.status,200);
+    assert.deepEqual(imported.data.imported,[join("03 Missions",`${mission.id}.md`)]);
+    const updated=(await request(`/api/missions/${mission.id}`)).data.mission;
+    assert.equal(updated.title,"Reviewed mission");
+    assert.equal(updated.objective,"Revised local objective");
+    assert.equal(updated.version,2);
+    const projected=await readFile(file,"utf8");
+    assert.match(projected,/revision: 2/);
+    assert.equal((await request("/api/vault/import","POST",{})).data.imported.length,0);
+    const damaged=projected.replace("## Acceptance criteria","## Changed acceptance criteria");
+    await writeFile(file,damaged);
+    const rejected=await request("/api/vault/import","POST",{});
+    assert.deepEqual(rejected.data.conflicts,[join("03 Missions",`${mission.id}.md`)]);
+    assert.equal((await request(`/api/missions/${mission.id}`)).data.mission.version,2);
+    assert.equal(await readFile(file,"utf8"),damaged);
+  } finally {await new Promise(resolve=>server.close(resolve))}
+});

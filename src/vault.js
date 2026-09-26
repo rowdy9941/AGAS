@@ -11,8 +11,20 @@ const header = properties => `---\n${Object.entries(properties).map(([key,value]
 const sha256 = text => createHash("sha256").update(text).digest("hex");
 const noteFolder=note=>note.scope==="private"?"01 People and Organizations":
   note.scope==="project"?"02 Projects":note.scope==="hub"?"04 Hubs":"07 Knowledge";
+const missionMetadata=mission=>({agas_id:`mission:${mission.id}`,type:"mission",hub_id:mission.hub_id,
+  project:mission.project,goal_id:mission.goal_id,revision:mission.version,status:mission.status,provenance:"agas:mission"});
+function missionBody(store,state,mission) {
+  const criteria=mission.criteria.map(c=>`- [ ] ${c}`).join("\n");
+  const detail=store.missionDetail(mission.id);
+  const tasks=detail.tasks.map(t=>`- ${t.title} · ${t.status}${t.assignment_id?` · configured specialist ${t.assignment_id}`:""}${detail.dependencies.filter(d=>d.task_id===t.id).map(d=>` · depends on ${d.prerequisite_id}`).join("")}${t.required_handoff_id?` · requires handoff ${t.required_handoff_id}${t.auto_on_handoff?" · one automatic dispatch after prerequisites":""}`:""}`).join("\n");
+  const evidence=detail.evidence.map(e=>`- Criterion ${e.criterion_index+1}: ${e.title} · ${e.status} · SHA-256 ${e.sha256} · ${e.verification}`).join("\n");
+  const runs=detail.runs.map(r=>`- ${r.runtime} run ${r.id} · ${r.status} · ${r.base_commit?`base ${r.base_commit}`:"text-only"}${r.output_sha256?` · output SHA-256 ${r.output_sha256}`:""}${r.result?` · ${r.result}`:""}`).join("\n");
+  const artifacts=detail.artifacts.map(a=>`- ${a.path} · ${a.status} · SHA-256 ${a.sha256||"not recorded"}`).join("\n");
+  const branches=detail.reviewBranches.map(b=>`- ${b.branch} · commit ${b.commit_sha} · base ${b.base_commit}`).join("\n");
+  return header(missionMetadata(mission))+`# ${mission.title}\n\n${mission.objective}\n\nLinked goal: ${state.goals.find(g=>g.id===mission.goal_id)?.title||"None"}.\n\n## Acceptance criteria\n${criteria}\n\n## Tasks\n${tasks||"No tasks yet."}\n\n## Runs\n${runs||"No agent runs yet."}\n\n## Recorded files\n${artifacts||"No files yet."}\n\n## Review branches\n${branches||"No local review branch yet."}\n\n## Evidence ledger\n${evidence||"No evidence yet."}\n\nRecorded file or text integrity is checked for linked artifacts. Owner review remains separate from semantic or external verification. Full evidence stays in AGAS.\n`;
+}
 
-export async function importVaultNotes(store,basePath) {
+export async function importVaultEdits(store,basePath) {
   const root=resolve(basePath),conflicts=[],imported=[];
   const rootInfo=await lstat(root).catch(error=>{if(error.code==="ENOENT")return null;throw error});
   if(!rootInfo)return {imported,conflicts};
@@ -46,6 +58,31 @@ export async function importVaultNotes(store,basePath) {
     } catch(error) {
       if(error.code!=="ENOENT")conflicts.push(relative);
     }
+  }
+  const state=store.overview();
+  for(const mission of state.missions) {
+    const relative=join("03 Missions",`${mission.id}.md`),path=resolve(root,relative);
+    if(!path.startsWith(root+sep)){conflicts.push(relative);continue}
+    try {
+      const folder=await lstat(resolve(root,"03 Missions")),file=await lstat(path);
+      if(folder.isSymbolicLink()||!folder.isDirectory()||file.isSymbolicLink()||!file.isFile()||file.size>65536)
+        throw new Error("Vault mission is not a bounded regular file");
+      const body=await readFile(path,"utf8"),sourceHash=sha256(body),baselineHash=store.projectionHash(relative);
+      if(sourceHash===baselineHash)continue;
+      const expected=missionBody(store,state,mission),metadata=header(missionMetadata(mission));
+      if(!baselineHash||baselineHash!==sha256(expected))throw new Error("Mission changed since projection");
+      const originalBrief=`# ${mission.title}\n\n${mission.objective}`;
+      const immutable=expected.slice(metadata.length+originalBrief.length);
+      if(!body.startsWith(metadata)||!body.endsWith(immutable))
+        throw new Error("Mission metadata or generated sections changed");
+      const editable=body.slice(metadata.length,body.length-immutable.length);
+      const parsed=editable.match(/^# ([^\n]+)\n\n([\s\S]+)$/);
+      if(!parsed||parsed[1]===mission.title&&parsed[2]===mission.objective)
+        throw new Error("Edit only the mission title or objective");
+      store.importMissionBrief({id:mission.id,title:parsed[1],objective:parsed[2],revision:mission.version,
+        hubId:mission.hub_id,project:mission.project,goalId:mission.goal_id,path:relative,sourceHash,baselineHash});
+      imported.push(relative);
+    } catch(error) {if(error.code!=="ENOENT")conflicts.push(relative)}
   }
   return {imported,conflicts};
 }
@@ -111,15 +148,7 @@ export async function projectVault(store, basePath) {
       `# ${campaign.title}\n\n${campaign.objective}\n\nEditorial pipeline: research → strategy → creation → editing → media → review → local publication packet. Current stage: ${campaign.stage}.\n\n## Reviewed work\n${trail||"No submissions yet."}\n\n## Local publication packets\n${packets||"No packets yet; no external publication is claimed."}\n`);
   }
   for (const mission of state.missions) {
-    const criteria=mission.criteria.map(c=>`- [ ] ${c}`).join("\n");
-    const detail=store.missionDetail(mission.id);
-    const tasks=detail.tasks.map(t=>`- ${t.title} · ${t.status}${t.assignment_id?` · configured specialist ${t.assignment_id}`:""}${detail.dependencies.filter(d=>d.task_id===t.id).map(d=>` · depends on ${d.prerequisite_id}`).join("")}${t.required_handoff_id?` · requires handoff ${t.required_handoff_id}${t.auto_on_handoff?" · one automatic dispatch after prerequisites":""}`:""}`).join("\n");
-    const evidence=detail.evidence.map(e=>`- Criterion ${e.criterion_index+1}: ${e.title} · ${e.status} · SHA-256 ${e.sha256} · ${e.verification}`).join("\n");
-    const runs=detail.runs.map(r=>`- ${r.runtime} run ${r.id} · ${r.status} · ${r.base_commit?`base ${r.base_commit}`:"text-only"}${r.output_sha256?` · output SHA-256 ${r.output_sha256}`:""}${r.result?` · ${r.result}`:""}`).join("\n");
-    const artifacts=detail.artifacts.map(a=>`- ${a.path} · ${a.status} · SHA-256 ${a.sha256||"not recorded"}`).join("\n");
-    const branches=detail.reviewBranches.map(b=>`- ${b.branch} · commit ${b.commit_sha} · base ${b.base_commit}`).join("\n");
-    await managed("03 Missions",`${mission.id}.md`,header({agas_id:`mission:${mission.id}`,type:"mission",hub_id:mission.hub_id,project:mission.project,goal_id:mission.goal_id,revision:mission.version,status:mission.status,provenance:"agas:mission"})+
-      `# ${mission.title}\n\n${mission.objective}\n\nLinked goal: ${state.goals.find(g=>g.id===mission.goal_id)?.title||"None"}.\n\n## Acceptance criteria\n${criteria}\n\n## Tasks\n${tasks||"No tasks yet."}\n\n## Runs\n${runs||"No agent runs yet."}\n\n## Recorded files\n${artifacts||"No files yet."}\n\n## Review branches\n${branches||"No local review branch yet."}\n\n## Evidence ledger\n${evidence||"No evidence yet."}\n\nRecorded file or text integrity is checked for linked artifacts. Owner review remains separate from semantic or external verification. Full evidence stays in AGAS.\n`);
+    await managed("03 Missions",`${mission.id}.md`,missionBody(store,state,mission));
   }
   for (const handoff of state.handoffs) {
     await managed("09 Decisions and Evidence",`${handoff.id}.md`,header({agas_id:`handoff:${handoff.id}`,

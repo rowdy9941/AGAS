@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { timingSafeEqual } from "node:crypto";
 import { Store, InputError } from "./store.js";
-import { importVaultNotes, projectVault } from "./vault.js";
+import { importVaultEdits, projectVault } from "./vault.js";
 import { detectRuntimes } from "./runtimes.js";
 import { ExecutionManager, validateRepository } from "./execution.js";
 import { ConversationManager } from "./conversation.js";
@@ -182,7 +182,7 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       if(req.method==="POST"&&path==="/api/assignments")return json(res,201,{assignment:store.assignPersona(await body(req))});
       if(req.method==="POST"&&path==="/api/vault/project")return json(res,200,await projectVault(store,vault));
       if(req.method==="POST"&&path==="/api/vault/import"){
-        const result=await importVaultNotes(store,vault);
+        const result=await importVaultEdits(store,vault);
         const projection=await projectVault(store,vault);
         return json(res,200,{...result,projected:projection.written,projectionConflicts:projection.conflicts});
       }
