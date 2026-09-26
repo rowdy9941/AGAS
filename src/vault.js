@@ -113,7 +113,7 @@ export async function projectVault(store, basePath) {
   for (const mission of state.missions) {
     const criteria=mission.criteria.map(c=>`- [ ] ${c}`).join("\n");
     const detail=store.missionDetail(mission.id);
-    const tasks=detail.tasks.map(t=>`- ${t.title} · ${t.status}${t.assignment_id?` · configured specialist ${t.assignment_id}`:""}${detail.dependencies.filter(d=>d.task_id===t.id).map(d=>` · depends on ${d.prerequisite_id}`).join("")}${t.required_handoff_id?` · requires handoff ${t.required_handoff_id}`:""}`).join("\n");
+    const tasks=detail.tasks.map(t=>`- ${t.title} · ${t.status}${t.assignment_id?` · configured specialist ${t.assignment_id}`:""}${detail.dependencies.filter(d=>d.task_id===t.id).map(d=>` · depends on ${d.prerequisite_id}`).join("")}${t.required_handoff_id?` · requires handoff ${t.required_handoff_id}${t.auto_on_handoff?" · one automatic dispatch after prerequisites":""}`:""}`).join("\n");
     const evidence=detail.evidence.map(e=>`- Criterion ${e.criterion_index+1}: ${e.title} · ${e.status} · SHA-256 ${e.sha256} · ${e.verification}`).join("\n");
     const runs=detail.runs.map(r=>`- ${r.runtime} run ${r.id} · ${r.status} · ${r.base_commit?`base ${r.base_commit}`:"text-only"}${r.output_sha256?` · output SHA-256 ${r.output_sha256}`:""}${r.result?` · ${r.result}`:""}`).join("\n");
     const artifacts=detail.artifacts.map(a=>`- ${a.path} · ${a.status} · SHA-256 ${a.sha256||"not recorded"}`).join("\n");

@@ -188,7 +188,7 @@ export class ExecutionManager {
     if(!adapter)return {id,ready:false,reason:"AGAS has no executable adapter for this runtime"};
     return adapter.probe();
   }
-  resumeQueued(){this.enqueue()}
+  resumeQueued(){this.store.reconcileAutoHandoffRuns();this.enqueue()}
   enqueue() {
     if(this.busy||this.stopping)return;
     this.busy=true;
@@ -371,6 +371,9 @@ export class ExecutionManager {
     try {
       const context=this.store.claimRun(id);
       this.active={id,child:null};
+      if(context.task.required_handoff_id&&
+        !context.handoffs.some(handoff=>handoff.id===context.task.required_handoff_id))
+        throw new Error("Required cross-hub evidence changed before execution; inspect the handoff");
       const adapter=this.adapters[context.run.runtime];
       if(!adapter)throw new Error(`No adapter installed for ${context.run.runtime}`);
       const ready=await adapter.probe();

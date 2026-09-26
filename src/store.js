@@ -190,6 +190,8 @@ export class Store {
     if(!evidenceColumns.includes("verification"))this.db.exec("ALTER TABLE mission_evidence ADD COLUMN verification TEXT NOT NULL DEFAULT 'unverified'");
     if(!this.db.prepare("PRAGMA table_info(mission_tasks)").all().some(column=>column.name==="required_handoff_id"))
       this.db.exec("ALTER TABLE mission_tasks ADD COLUMN required_handoff_id TEXT REFERENCES handoffs(id)");
+    if(!this.db.prepare("PRAGMA table_info(mission_tasks)").all().some(column=>column.name==="auto_on_handoff"))
+      this.db.exec("ALTER TABLE mission_tasks ADD COLUMN auto_on_handoff INTEGER NOT NULL DEFAULT 0");
     const runColumns=this.db.prepare("PRAGMA table_info(mission_runs)").all().map(column=>column.name);
     if(!runColumns.includes("output_text"))this.db.exec("ALTER TABLE mission_runs ADD COLUMN output_text TEXT");
     if(!runColumns.includes("output_sha256"))this.db.exec("ALTER TABLE mission_runs ADD COLUMN output_sha256 TEXT");
@@ -611,6 +613,11 @@ export class Store {
     const title=nonempty(input.title,"title",140),objective=nonempty(input.objective,"objective",4000);
     const assignmentId=input.assignmentId?nonempty(input.assignmentId,"assignmentId",120):null;
     const requiredHandoffId=input.requiredHandoffId?nonempty(input.requiredHandoffId,"requiredHandoffId",120):null;
+    const autoOnHandoff=input.autoOnHandoff===true;
+    if(input.autoOnHandoff!==undefined&&typeof input.autoOnHandoff!=="boolean")
+      throw new InputError("Automatic handoff dispatch must be true or false");
+    if(autoOnHandoff&&(!requiredHandoffId||!assignmentId))
+      throw new InputError("Automatic dispatch needs a required handoff and assigned specialist");
     const taskId=randomUUID(),time=now();
     const dependsOn=input.dependsOn??[];
     if(!Array.isArray(dependsOn)||dependsOn.length>8||new Set(dependsOn).size!==dependsOn.length)
@@ -626,8 +633,8 @@ export class Store {
         if(!handoff||!["offered","accepted"].includes(handoff.status))
           throw new InputError("Choose an offered handoff for this receiving mission",409);
       }
-      this.db.prepare("INSERT INTO mission_tasks(id,mission_id,assignment_id,title,objective,created_at,updated_at,required_handoff_id) VALUES (?,?,?,?,?,?,?,?)")
-        .run(taskId,id,assignmentId,title,objective,time,time,requiredHandoffId);
+      this.db.prepare("INSERT INTO mission_tasks(id,mission_id,assignment_id,title,objective,created_at,updated_at,required_handoff_id,auto_on_handoff) VALUES (?,?,?,?,?,?,?,?,?)")
+        .run(taskId,id,assignmentId,title,objective,time,time,requiredHandoffId,autoOnHandoff?1:0);
       for(const predecessor of dependsOn){
         if(typeof predecessor!=="string"||!this.db.prepare("SELECT 1 FROM mission_tasks WHERE id=? AND mission_id=?").get(predecessor,id))
           throw new InputError("Task prerequisite must belong to this mission");
@@ -674,6 +681,25 @@ export class Store {
     return this.db.prepare("SELECT * FROM mission_runs WHERE id=?").get(runId);
   }
   queuedRuns(){return this.db.prepare("SELECT * FROM mission_runs WHERE status='queued' ORDER BY created_at,id").all()}
+  reconcileAutoHandoffRuns(handoffId=null) {
+    const tasks=this.db.prepare(`SELECT t.id,t.mission_id,m.hub_id
+      FROM mission_tasks t JOIN handoffs h ON h.id=t.required_handoff_id
+      JOIN missions m ON m.id=t.mission_id
+      WHERE t.auto_on_handoff=1 AND h.status='accepted'
+        AND (? IS NULL OR h.id=?) AND t.status IN ('queued','blocked')
+        AND m.status NOT IN ('accepted','cancelled')
+        AND NOT EXISTS (SELECT 1 FROM mission_runs r WHERE r.task_id=t.id)
+      ORDER BY t.created_at,t.id`).all(handoffId,handoffId);
+    const queued=[];
+    for(const task of tasks) {
+      try {queued.push(this.queueRun(task.mission_id,task.id,{expectedVersion:this.missionDetail(task.mission_id).mission.version,timeoutSeconds:600}))}
+      catch(error) {
+        if(!(error instanceof InputError))throw error;
+        this.event("handoff.dispatch-deferred",task.id,task.hub_id,`Automatic handoff dispatch deferred: ${error.message}`);
+      }
+    }
+    return queued;
+  }
   runContext(id) {
     const run=this.db.prepare("SELECT * FROM mission_runs WHERE id=?").get(id);
     if(!run)throw new InputError("Run not found",404);
@@ -959,6 +985,8 @@ export class Store {
       const task=this.db.prepare("SELECT * FROM mission_tasks WHERE id=? AND mission_id=?").get(taskId,id);
       if(!task)throw new InputError("Task not found",404);
       if(task.status!=="awaiting-review")throw new InputError("Task needs submitted evidence",409);
+      if(task.required_handoff_id&&!this.acceptedHandoffs(id).some(item=>item.id===task.required_handoff_id))
+        throw new InputError("Required cross-hub evidence changed; task cannot be accepted",409);
       const evidence=this.db.prepare("SELECT status FROM mission_evidence WHERE task_id=?").all(taskId);
       if(evidence.some(item=>item.status==="submitted")||!evidence.some(item=>item.status==="reviewed"))
         throw new InputError("Task requires reviewed evidence with no pending submissions",409);
@@ -976,6 +1004,9 @@ export class Store {
       const mission=this.checkedMission(id,input.expectedVersion),detail=this.missionDetail(id);
       if(!detail.tasks.length||detail.tasks.some(task=>task.status!=="accepted"))
         throw new InputError("All mission tasks need owner acceptance",409);
+      for(const task of detail.tasks.filter(item=>item.required_handoff_id))
+        if(!this.acceptedHandoffs(id).some(item=>item.id===task.required_handoff_id))
+          throw new InputError("Required cross-hub evidence changed; mission cannot be accepted",409);
       for(let index=0;index<mission.criteria.length;index++){
         if(!detail.evidence.some(e=>e.criterion_index===index&&e.status==="reviewed"&&
           detail.tasks.some(task=>task.id===e.task_id&&task.status==="accepted")))

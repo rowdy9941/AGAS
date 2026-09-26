@@ -76,7 +76,11 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
               throw new InputError("Mission changed; reload before creating a review branch",409);
             return json(res,201,{receipt:await executor.createReviewBranch(id,reviewBranch[1])});
           }
-          if(action==="tasks")return json(res,201,store.createTask(id,input));
+          if(action==="tasks"){
+            store.createTask(id,input);
+            if(input.autoOnHandoff){store.reconcileAutoHandoffRuns(input.requiredHandoffId);executor.enqueue()}
+            return json(res,201,store.missionDetail(id));
+          }
           if(action==="evidence")return json(res,201,store.submitEvidence(id,input));
           if(action==="artifact-evidence")return json(res,201,store.submitRunArtifact(id,input));
           if(action==="output-evidence")return json(res,201,store.submitRunOutput(id,input));
@@ -102,13 +106,25 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
           const review=action?.match(/^evidence\/([\da-f-]{36})\/review$/);
           if(review)return json(res,200,store.reviewEvidence(id,review[1],input));
           const acceptTask=action?.match(/^tasks\/([\da-f-]{36})\/accept$/);
-          if(acceptTask)return json(res,200,store.acceptTask(id,acceptTask[1],input));
+          if(acceptTask){
+            store.acceptTask(id,acceptTask[1],input);
+            store.reconcileAutoHandoffRuns();
+            executor.enqueue();
+            return json(res,200,store.missionDetail(id));
+          }
         }
       }
       if(req.method==="POST"&&path==="/api/projects")return json(res,201,{project:store.createProject(await body(req))});
       if(req.method==="POST"&&path==="/api/handoffs")return json(res,201,{handoff:store.offerHandoff(await body(req))});
       const handoffReview=path.match(/^\/api\/handoffs\/([\da-f-]{36})\/review$/);
-      if(req.method==="POST"&&handoffReview)return json(res,200,{handoff:store.reviewHandoff(handoffReview[1],await body(req))});
+      if(req.method==="POST"&&handoffReview){
+        const handoff=store.reviewHandoff(handoffReview[1],await body(req));
+        if(handoff.status==="accepted"){
+          store.reconcileAutoHandoffRuns(handoff.id);
+          executor.enqueue();
+        }
+        return json(res,200,{handoff});
+      }
       if(req.method==="POST"&&path==="/api/goals")return json(res,201,{goal:store.createGoal(await body(req))});
       const achieve=path.match(/^\/api\/goals\/([\da-f-]{36})\/achieve$/);
       if(req.method==="POST"&&achieve)return json(res,200,{goal:store.completeGoal(achieve[1],await body(req))});

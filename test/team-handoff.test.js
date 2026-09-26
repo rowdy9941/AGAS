@@ -87,16 +87,21 @@ test("two runtime runs transfer only reviewed text through an acknowledged, requ
     const handoff=(await request("/api/handoffs","POST",{sourceMissionId:source.id,targetMissionId:target.id,evidenceId:evidence.id,title:"Reviewed audience",purpose:"Implement the accessible summary"})).data.handoff;
     assert.equal(handoff.status,"offered");
     const devAssignment=(await request("/api/assignments","POST",{hubId:"dev",path:"engineering/engineering-frontend-developer.md",runtime:"codex"})).data.assignment;
-    const targetTask=(await request(`/api/missions/${target.id}/tasks`,"POST",{title:"Build summary",objective:"Write a summary from the received brief",assignmentId:devAssignment.id,requiredHandoffId:handoff.id,expectedVersion:1})).data.tasks[0];
-    assert.equal((await request(`/api/missions/${target.id}/tasks/${targetTask.id}/run`,"POST",{expectedVersion:2,timeoutSeconds:30})).status,409);
+    const prerequisite=(await request(`/api/missions/${target.id}/tasks`,"POST",{title:"Approve outline",objective:"Review the local outline",expectedVersion:1})).data.tasks[0];
+    const targetTask=(await request(`/api/missions/${target.id}/tasks`,"POST",{title:"Build summary",objective:"Write a summary from the received brief",assignmentId:devAssignment.id,requiredHandoffId:handoff.id,autoOnHandoff:true,dependsOn:[prerequisite.id],expectedVersion:2})).data.tasks.find(task=>task.title==="Build summary");
+    assert.equal((await request(`/api/missions/${target.id}/tasks/${targetTask.id}/run`,"POST",{expectedVersion:3,timeoutSeconds:30})).status,409);
     assert.equal(prompts.code.length,0);
+    app.store.db.prepare("UPDATE mission_runs SET output_text='changed before approval' WHERE id=?").run(sourceRun.runs[0].id);
+    assert.equal((await request(`/api/handoffs/${handoff.id}/review`,"POST",{decision:"accepted",responseNote:"Inspected evidence and scope",expectedVersion:1})).status,409);
+    app.store.db.prepare("UPDATE mission_runs SET output_text=? WHERE id=?").run(sourceRun.runs[0].output_text,sourceRun.runs[0].id);
     assert.equal((await request(`/api/handoffs/${handoff.id}/review`,"POST",{decision:"accepted",responseNote:"Inspected evidence and scope",expectedVersion:1})).status,200);
     assert.equal(app.store.acceptedHandoffs(target.id).length,1);
-    app.store.db.prepare("UPDATE mission_runs SET output_text='changed after approval' WHERE id=?").run(sourceRun.runs[0].id);
-    assert.equal((await request(`/api/missions/${target.id}/tasks/${targetTask.id}/run`,"POST",{expectedVersion:3,timeoutSeconds:30})).status,409);
-    app.store.db.prepare("UPDATE mission_runs SET output_text=? WHERE id=?").run(sourceRun.runs[0].output_text,sourceRun.runs[0].id);
-    const launched=await request(`/api/missions/${target.id}/tasks/${targetTask.id}/run`,"POST",{expectedVersion:3,timeoutSeconds:30});
-    assert.equal(launched.status,202,JSON.stringify(launched.data));
+    assert.equal((await request(`/api/missions/${target.id}`)).data.runs.length,0,"prerequisite should defer automatic dispatch");
+    const prepEvidence=await request(`/api/missions/${target.id}/evidence`,"POST",{taskId:prerequisite.id,criterionIndex:0,kind:"artifact",title:"Reviewed outline",content:"Outline approved for this scope",expectedVersion:4});
+    assert.equal(prepEvidence.status,201);
+    const prepReview=await request(`/api/missions/${target.id}/evidence/${prepEvidence.data.evidence[0].id}/review`,"POST",{decision:"reviewed",reviewNote:"Outline checked",expectedVersion:prepEvidence.data.mission.version});
+    assert.equal(prepReview.status,200);
+    assert.equal((await request(`/api/missions/${target.id}/tasks/${prerequisite.id}/accept`,"POST",{expectedVersion:prepReview.data.mission.version})).status,200);
     const targetRun=await until(async()=>{
       const detail=(await request(`/api/missions/${target.id}`)).data;
       return detail.runs[0]?.status==="succeeded"?detail:null;
@@ -108,11 +113,15 @@ test("two runtime runs transfer only reviewed text through an acknowledged, requ
     assert.equal((await readFile(join(targetRun.runs[0].workspace,"summary.txt"),"utf8")),"Accessible summary implemented\n");
     const completed=await request(`/api/missions/${target.id}/artifact-evidence`,"POST",{runId:targetRun.runs[0].id,taskId:targetTask.id,path:"summary.txt",criterionIndex:0,title:"Actual summary file",expectedVersion:targetRun.mission.version});
     assert.equal(completed.status,201);
-    const targetEvidence=completed.data.evidence[0];
+    const targetEvidence=completed.data.evidence.find(item=>item.task_id===targetTask.id);
     const targetReview=await request(`/api/missions/${target.id}/evidence/${targetEvidence.id}/review`,"POST",{decision:"reviewed",reviewNote:"Inspected the actual bytes",expectedVersion:completed.data.mission.version});
     assert.equal(targetReview.status,200);
+    app.store.db.prepare("UPDATE mission_runs SET output_text='changed after the target run' WHERE id=?").run(sourceRun.runs[0].id);
+    assert.equal((await request(`/api/missions/${target.id}/tasks/${targetTask.id}/accept`,"POST",{expectedVersion:targetReview.data.mission.version})).status,409);
+    app.store.db.prepare("UPDATE mission_runs SET output_text=? WHERE id=?").run(sourceRun.runs[0].output_text,sourceRun.runs[0].id);
     assert.equal((await request(`/api/missions/${target.id}/tasks/${targetTask.id}/accept`,"POST",{expectedVersion:targetReview.data.mission.version})).status,200);
     assert.equal((await request(`/api/missions/${target.id}/accept`,"POST",{expectedVersion:targetReview.data.mission.version+1})).data.mission.status,"accepted");
+    assert.equal(app.store.reconcileAutoHandoffRuns().length,0);
     await new Promise(resolve=>app.server.close(resolve));
     const restored=new Store(database);
     try {

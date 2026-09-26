@@ -43,3 +43,29 @@ test("cross-hub evidence enters a receiving agent prompt only after explicit ack
     manager.shutdown();
   } finally {store.close()}
 });
+
+test("an acknowledged automatic handoff is queued once after restart if dispatch was interrupted",async()=>{
+  const path=join(await mkdtemp(join(tmpdir(),"agas-auto-recovery-")),"agas.db");
+  let store=new Store(path);
+  const source=store.createMission({hubId:"content",title:"Reviewed brief",objective:"Prepare evidence",criteria:["Brief reviewed"]});
+  const sourceTask=store.createTask(source.id,{title:"Research",objective:"Describe audience",expectedVersion:1}).tasks[0];
+  const submitted=store.submitEvidence(source.id,{taskId:sourceTask.id,criterionIndex:0,kind:"artifact",title:"Brief",content:"Approved content-only facts",expectedVersion:2});
+  store.reviewEvidence(source.id,submitted.evidence[0].id,{decision:"reviewed",reviewNote:"Checked facts",expectedVersion:3});
+  store.acceptTask(source.id,sourceTask.id,{expectedVersion:4});
+  store.acceptMission(source.id,{expectedVersion:5});
+  const target=store.createMission({hubId:"business",title:"Business plan",objective:"Use the brief",criteria:["Plan reviewed"]});
+  const handoff=store.offerHandoff({sourceMissionId:source.id,targetMissionId:target.id,evidenceId:submitted.evidence[0].id,title:"Reviewed facts",purpose:"Use in the business plan"});
+  const assigned=store.assignPersona({hubId:"business",path:"specialized/business-strategist.md",runtime:"opencode"});
+  const targetTask=store.createTask(target.id,{title:"Draft plan",objective:"Produce a scoped plan",assignmentId:assigned.id,requiredHandoffId:handoff.id,autoOnHandoff:true,expectedVersion:1}).tasks[0];
+  store.reviewHandoff(handoff.id,{decision:"accepted",responseNote:"Inspected facts",expectedVersion:1});
+  assert.equal(store.missionDetail(target.id).runs.length,0);
+  store.close();
+  store=new Store(path);
+  try {
+    assert.equal(store.reconcileAutoHandoffRuns().length,1);
+    assert.equal(store.reconcileAutoHandoffRuns().length,0);
+    assert.equal(store.missionDetail(target.id).runs.length,1);
+    assert.equal(store.missionDetail(target.id).runs[0].task_id,targetTask.id);
+    assert.equal(store.queuedRuns().length,1);
+  } finally {store.close()}
+});
