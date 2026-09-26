@@ -123,7 +123,13 @@ function agentsPage() {
     `<div class="section-head"><h2>Execution runtimes</h2><span>Codex/OpenCode logins are checked; OpenClaw additionally needs a verified, tool-denied Gateway profile. Hermes and Claude are discovery only</span></div><div class="agent-grid">${d.runtimes.map(r=>`<div class="card agent-card"><span class="emoji">${esc(r.icon)}</span><h3>${esc(r.name)}</h3><p>${r.ready?`CLI and task policy checked at ${esc(r.path)}. ${r.id==="openclaw"?"Bounded text replies and non-Dev tasks only":"Dev worktrees"}${r.id==="opencode"?"; bounded non-Dev text tasks too":""}.`:r.state==="detected"?`Executable found at ${esc(r.path)}. ${esc(r.reason||"Authentication and task execution have not been checked.")}`:"Not detected on this host."}</p><footer><span>${esc(r.state)}</span><span class="badge ${r.ready?"":"warn"}">${r.ready?"Ready for assigned tasks":"Not ready"}</span></footer></div>`).join("")}</div>`+
     `<div class="panel" style="margin-top:18px"><h3>Source provenance</h3><p class="helper">Agency Agents · pinned commit <code>${esc(d.agency.commit)}</code> · MIT license. The included 12 files are exact upstream prompts with verified blob hashes. Import all ${d.agency.count} with <code>npm run import:agency -- /path/to/agency-agents</code> after checking out the pinned revision.</p></div>`;
 }
-const nativeWindows={hermes:{name:"Hermes dashboard",defaultUrl:"http://127.0.0.1:9119/",instruction:"Start Hermes locally with hermes dashboard --no-open. Use its own sign-in where required."},openclaw:{name:"OpenClaw Control UI",defaultUrl:"http://127.0.0.1:18789/",instruction:"Start your local OpenClaw Gateway; pair and authenticate through OpenClaw itself."},opencode:{name:"OpenCode web",defaultUrl:"",instruction:"Start the OpenCode web UI and paste its local URL. The port varies by version and configuration."}};
+const nativeWindows={
+  hermes:{name:"Hermes",defaultUrl:"http://127.0.0.1:9119/",instruction:"Start the local Hermes dashboard and sign in there. Hermes task execution in AGAS is pending."},
+  openclaw:{name:"OpenClaw",defaultUrl:"http://127.0.0.1:18789/",instruction:"Start your local OpenClaw Gateway; pair and authenticate through OpenClaw itself."},
+  opencode:{name:"OpenCode",defaultUrl:"",instruction:"Start the OpenCode web UI and paste its local URL. The port varies by version and configuration."},
+  codex:{name:"Codex",instruction:"Open the Codex desktop app or CLI on this computer. AGAS can inspect its own worktree runs here; a desktop window cannot be framed in the browser."},
+  claude:{name:"Claude Code",instruction:"Open Claude Code's desktop app or CLI on this computer. AGAS has no executable Claude adapter yet; a desktop window cannot be framed in the browser."}
+};
 function localWindowUrl(value) {
   try {
     const url=new URL(value);
@@ -140,14 +146,18 @@ function savedWindowUrl(id) {
 function windowsPage() {
   const local=["localhost","127.0.0.1","[::1]"].includes(location.hostname);
   const choice=nativeWindows[state.windowId];
-  const current=state.windowUrl||savedWindowUrl(state.windowId)||choice?.defaultUrl||"";
+  const web=Object.hasOwn(choice,"defaultUrl"),current=web?(state.windowUrl||savedWindowUrl(state.windowId)||choice.defaultUrl):"";
   const selected=state.data.runtimes.find(r=>r.id===state.windowId);
-  return heading("RUNTIME WORKSPACES","Agent windows","Open an agent's actual local web UI alongside AGAS missions. The provider controls its own authentication and may block framing.")+
+  const assignments=state.data.assignments.filter(a=>a.runtime===state.windowId),runs=state.data.runs.filter(r=>r.runtime===state.windowId).slice(0,12);
+  const replies=state.data.messages.filter(m=>m.runtime===state.windowId).slice(0,8);
+  return heading("RUNTIME WORKSPACES","Agent windows","See each runtime's configured team and AGAS receipts. Local web UIs can open alongside missions where their provider permits framing.")+
     `<div class="window-tabs">${Object.entries(nativeWindows).map(([id,window])=>`<button class="secondary ${state.windowId===id?"selected":""}" data-action="select-window" data-id="${id}">${esc(window.name)}</button>`).join("")}</div>`+
-    `<div class="panel window-header"><div><h3>${esc(choice.name)}</h3><p class="helper">${esc(choice.instruction)}<br>CLI on this AGAS host: ${esc(selected?.state||"unknown")}. Web UI availability is independent of CLI discovery.</p></div><form id="window-form" class="window-form"><label class="field">Local web address<input name="url" type="url" value="${esc(current)}" placeholder="http://127.0.0.1:PORT/" required></label><button class="primary" type="submit">Open in panel</button>${current?`<a class="secondary" href="${esc(current)}" target="_blank" rel="noopener noreferrer">Open native tab ↗</a>`:""}</form></div>`+
-    (!local?`<div class="panel empty">Open AGAS on the same machine as this browser to use loopback agent windows. A hosted AGAS needs an authenticated remote-window integration.</div>`:
+    `<div class="panel window-header"><div><h3>${esc(choice.name)} workspace</h3><p class="helper">${esc(choice.instruction)}<br>CLI on this AGAS host: ${esc(selected?.state||"unknown")}${selected?.reason?` · ${esc(selected.reason)}`:""}. ${web?"Web UI availability is independent of CLI discovery.":"The run list below contains only work launched through AGAS."}</p></div>${web?`<form id="window-form" class="window-form"><label class="field">Local web address<input name="url" type="url" value="${esc(current)}" placeholder="http://127.0.0.1:PORT/" required></label><button class="primary" type="submit">Open in panel</button>${current?`<a class="secondary" href="${esc(current)}" target="_blank" rel="noopener noreferrer">Open native tab ↗</a>`:""}</form>`:`<div class="panel empty">Use the provider's separate desktop or terminal application for its native interface. Open a linked AGAS mission below to inspect the controlled work and evidence.</div>`}</div>`+
+    (!web?"":!local?`<div class="panel empty">Open AGAS on the same machine as this browser to use loopback agent windows. A hosted AGAS needs an authenticated remote-window integration.</div>`:
       state.windowUrl?`<div class="window-frame"><iframe src="${esc(state.windowUrl)}" title="${esc(choice.name)} native web interface" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" referrerpolicy="no-referrer"></iframe></div><p class="helper">If the agent denies framing or its login cannot complete here, use “Open native tab”. AGAS never bypasses the agent's frame or login policy.</p>`:
-      `<div class="panel empty">Select a local agent address to show its real interface here. Codex and OpenCode runs and logs are available inside Dev missions; Codex and Claude desktop or CLI interfaces require a separate native integration.</div>`);
+      `<div class="panel empty">Select a local agent address to show its actual web interface here. The AGAS task receipts below remain available without framing.</div>`)+
+    `<div class="split window-ledger"><section class="panel"><h3>Configured team · ${assignments.length}</h3>${assignments.map(a=>`<p>${esc(state.data.personas.find(p=>p.path===a.persona_path)?.title||a.persona_path)} · ${esc(state.data.hubs.find(h=>h.id===a.hub_id)?.name||a.hub_id)} · ${esc(a.status)}</p>`).join("")||'<p class="helper">No specialist bound to this runtime.</p>'}</section><section class="panel"><h3>CEO replies · ${replies.length}</h3>${replies.map(m=>`<p>${esc(state.data.hubs.find(h=>h.id===m.hub_id)?.name||m.hub_id)} · ${esc(m.status)} · ${esc(new Date(m.created_at).toLocaleString())}</p>`).join("")||'<p class="helper">No CEO reply through this runtime.</p>'}</section></div>`+
+    `<div class="section-head"><h2>AGAS runs</h2><span>${runs.length} recent attempts</span></div><div class="mission-table">${runs.map(r=>`<article class="card work-card"><div><strong>${esc(state.data.missions.find(m=>m.id===r.mission_id)?.title||"Mission")} · ${esc(r.status)}</strong><p>${esc(r.result||"Queued or in progress")}</p><small>${esc(r.created_at)} · ${esc(r.id)}</small></div><div class="work-actions"><button class="secondary" data-action="inspect-run" data-id="${esc(r.id)}" data-mission="${esc(r.mission_id)}">Inspect receipt</button><button class="ghost" data-action="open-mission" data-id="${esc(r.mission_id)}">Open mission →</button></div></article>`).join("")||'<div class="panel empty">No AGAS run on this runtime yet.</div>'}</div>`;
 }
 function knowledgePage() {
   const notes=state.data.notes;
@@ -158,6 +168,7 @@ function knowledgePage() {
 function activityPage(){return heading("AUDIT & PROGRESS","Activity","The executive sees mission, CEO and knowledge events as they happen.")+`<div class="panel list">${eventRows(state.data.events)}</div>`}
 function renderInspector() {
   const selected=state.inspected;
+  $("#inspector").classList.toggle("open",Boolean(selected));
   if(selected?.type==="run") {
     const {run,logs,artifacts}=selected.data;
     $("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">RUN · ${esc(run.runtime)}</span><h3>${esc(run.status)}</h3><p>${esc(run.result||"The run is still active.")}</p><div class="kv"><span>Base commit</span><strong>${esc(run.base_commit||"Text-only run")}</strong></div><div class="kv"><span>Exit</span><strong>${esc(run.exit_code??"pending")}</strong></div></div>${run.output_sha256?`<div class="inspector-section"><h3>Recorded text · SHA-256 ${esc(run.output_sha256)}</h3><p style="white-space:pre-wrap">${esc(run.output_text)}</p></div>`:""}<div class="inspector-section"><h3>Recorded files</h3>${artifacts.map(a=>`<p>${esc(a.path)} · ${esc(a.status)} · ${esc(a.sha256||"no hash")}</p>`).join("")||"<p>No changed files recorded yet.</p>"}</div><div class="inspector-section"><h3>Process events</h3><div class="run-log" aria-label="Agent run events">${logs.map(row=>`<p><small>${esc(row.channel)} · ${esc(new Date(row.occurred_at).toLocaleTimeString())}</small><br>${esc(row.message)}</p>`).join("")||"<p>No events yet.</p>"}</div></div>`;
@@ -302,8 +313,8 @@ function proveOutput(runId) {
     `<p class="helper" style="white-space:pre-wrap">${esc(run.output_text)}</p><label class="field">Acceptance criterion<select name="criterionIndex">${m.criteria.map((c,i)=>`<option value="${i}">${i+1}. ${esc(c)}</option>`).join("")}</select></label><label class="field">Evidence title<input name="title" required maxlength="140" value="${esc(run.id)} result"></label>`,
     data=>api(`/api/missions/${m.id}/output-evidence`,{method:"POST",body:JSON.stringify({runId,criterionIndex:Number(data.get("criterionIndex")),title:data.get("title"),expectedVersion:state.detail.mission.version})}));
 }
-async function inspectRun(id) {
-  try {const data=await api(`/api/missions/${state.missionId}/runs/${id}/logs`);state.inspected={type:"run",data};renderInspector()}
+async function inspectRun(id,missionId=state.missionId) {
+  try {const data=await api(`/api/missions/${missionId}/runs/${id}/logs`);state.inspected={type:"run",data};renderInspector()}
   catch(error){notify(error.message,true)}
 }
 function newMediaAccount() {
@@ -398,7 +409,7 @@ document.addEventListener("click",async event=>{
   }
   else if(type==="run-limit")setRunLimit(id);
   else if(type==="launch-run")launchRun(id);
-  else if(type==="inspect-run")inspectRun(id);
+  else if(type==="inspect-run")inspectRun(id,action.dataset.mission||state.missionId);
   else if(type==="review-branch")reviewBranch(id);
   else if(type==="prove-artifact")proveArtifact(id,path);
   else if(type==="prove-output")proveOutput(id);
