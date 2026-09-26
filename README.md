@@ -12,7 +12,7 @@ npm run check
 npm start
 ```
 
-Open `http://127.0.0.1:4310`. For a private local development session, enter `agas-dev-token`. Set `AGAS_BOOTSTRAP_TOKEN` to a secret token for real use; it is required before binding beyond loopback. Optional: `AGAS_DB_PATH`, `AGAS_VAULT_PATH`, `AGAS_HOST`, `AGAS_PORT`. State and vault are stored under `data/` by default and are excluded from Git.
+Open `http://127.0.0.1:4310`. For a private local development session, enter `agas-dev-token`. Set `AGAS_BOOTSTRAP_TOKEN` to a secret token for real use; it is required before binding beyond loopback. Optional: `AGAS_DB_PATH`, `AGAS_VAULT_PATH`, `AGAS_WORKSPACES_PATH`, `AGAS_HOST`, `AGAS_PORT`. State and vault are stored under `data/` by default and are excluded from Git.
 
 ## What works now
 
@@ -21,6 +21,7 @@ Open `http://127.0.0.1:4310`. For a private local development session, enter `ag
 - Goals can nest under organization, hub and project ownership, align missions, and be marked achieved only after linked work is accepted. Dev tasks can depend on accepted predecessors. A linked local Git repository, a configured Agency role and a ready Codex CLI allow bounded runs in separate detached worktrees; AGAS persists output, changed-file hashes, stop/restart outcomes and run-attempt quotas. File integrity is checked again during review. The agent does not commit to, deploy, or modify the source checkout.
 - The Agent windows view can open a configured local Hermes, OpenClaw or OpenCode web UI in an AGAS panel where that UI permits framing. Its external-tab link stays available. The provider runs independently and handles its own login; Codex/Claude native GUI and interactive terminal integration remain open work.
 - An accepted source mission can offer one reviewed evidence record to a named mission in another hub. The receiving owner inspects and acknowledges it before a Dev agent may read it in its scoped prompt. The handoff receipt is durable, projected to the vault, and rechecks evidence integrity.
+- A local offline snapshot command copies the SQLite database, projected vault and recorded run workspaces into a checksummed bundle. Restore verifies every byte into a **new empty directory**, relocates run paths and clears links to external Git repositories. A restore drill checks a recorded artifact after relocation. Stop AGAS and its agent processes before taking a snapshot.
 - Direct CEO requests save to a durable inbox and surface in the executive feed, labelled `awaiting-runtime` until an adapter exists.
 - Twelve exact Agency prompt bodies, with verified upstream Git blob hashes and MIT license; the pinned index contains 295 source references at commit `053ddbbf392a1688fc7043d81529f47ef2cf86c8`. Role assignment is configuration, not activation. CLI presence detection is read-only, never marked authenticated/ready.
 - Scoped knowledge records and a one-vault Obsidian Markdown projection. AGAS updates files it previously generated when their bytes are untouched, including mission tasks and evidence summaries. User edits in Obsidian remain untouched and are reported as conflicts; there is no vault import yet.
@@ -33,8 +34,19 @@ npm run import:agency -- /path/to/agency-agents
 
 The importer verifies the revision and each Git blob against `catalog/agency-index.json`; no Agency app or server is installed. Source prompt copies and license are in `vendor/agency/`. No AionUI, Paperclip or MBAs code is used in this product.
 
+## Offline snapshot and restore
+
+Stop the AGAS server and agent runs. Use the same `AGAS_DB_PATH`, `AGAS_VAULT_PATH` and `AGAS_WORKSPACES_PATH` values that the server used, then:
+
+```sh
+npm run snapshot -- create /path/to/new/snapshot
+npm run snapshot -- restore /path/to/snapshot /path/to/new/restored-root
+```
+
+The restore destination must not exist. Set the three AGAS path variables to the corresponding files and directories under `restored-root/data/` before starting the restored server. Relink external Git repositories in Projects before any new Dev run. A bundle includes private AGAS records; store it with the same care as the original data. Symbolic links or special files in snapshot sources stop the snapshot rather than following them.
+
 ## What is still to build
 
-Live Codex authentication check, a second real task adapter, independent semantic verification, automatic two-runtime handoff delivery, CEO responses, effect approvals, full Dev integration/release and Media publishing, each remaining hub's domain workflows, version-checked Obsidian import and full backup/restore, desktop installers, voice and spatial UI. The CEO inbox is not a conversation with a live agent until an adapter answers it. Task creation alone does not start a run; the owner launches a configured ready Codex task explicitly. See the [complete product contract](docs/architecture/AGAS_MASTER_REQUIREMENTS_V4.md) and [composite scope and release gates](docs/architecture/AGAS_COMPOSITE_SCOPE_V5.md).
+Live Codex authentication check, a second real task adapter, independent semantic verification, automatic two-runtime handoff delivery, CEO responses, effect approvals, full Dev integration/release and Media publishing, each remaining hub's domain workflows, version-checked Obsidian import, online coordinated snapshots, desktop installers, voice and spatial UI. The CEO inbox is not a conversation with a live agent until an adapter answers it. Task creation alone does not start a run; the owner launches a configured ready Codex task explicitly. See the [complete product contract](docs/architecture/AGAS_MASTER_REQUIREMENTS_V4.md) and [composite scope and release gates](docs/architecture/AGAS_COMPOSITE_SCOPE_V5.md).
 
 The old AionUI/Paperclip trial is preserved in another branch. Its prior simulator and the earlier AGAS prototype remain in Git history, outside this native application's boot path.

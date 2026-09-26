@@ -132,6 +132,8 @@ if(process.argv[1]&&resolve(process.argv[1])===new URL(import.meta.url).pathname
   if(!["127.0.0.1","localhost","::1"].includes(host)&&!process.env.AGAS_BOOTSTRAP_TOKEN)
     throw new Error("Set AGAS_BOOTSTRAP_TOKEN before binding to a network interface");
   const {server}=createAgasServer({database:process.env.AGAS_DB_PATH||"data/agas.db",
-    vault:process.env.AGAS_VAULT_PATH||"data/AGAS Vault",token:process.env.AGAS_BOOTSTRAP_TOKEN||"agas-dev-token"});
+    vault:process.env.AGAS_VAULT_PATH||"data/AGAS Vault",
+    workspaces:process.env.AGAS_WORKSPACES_PATH||"data/workspaces",
+    token:process.env.AGAS_BOOTSTRAP_TOKEN||"agas-dev-token"});
   server.listen(port,host,()=>console.log(`AGAS native workspace at http://${host}:${port}`));
 }

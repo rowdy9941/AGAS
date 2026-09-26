@@ -52,6 +52,6 @@ The selected runtime window is a view, not a permission grant. Third-party crede
 | Teamwork | CEO replies and two-runtime acknowledged handoff, permissions and durable approvals | Manual cross-hub evidence receipt and acknowledgement implemented; automatic two-runtime handoffs, CEO replies and effect approvals pending. |
 | Domains | Dev integration/release; Media publish receipt; Finance, Business, Health, Security and Maintenance domain tests | Dev worktree slice and media planning records; full workflows pending. |
 | Experience | Actual browser interaction, agent window capability tests, secure access and three clean OS installs | UI exists; automated browser binary and target OS installs unavailable in this workspace. |
-| Operations | Consistent database/artifact/vault backup, restore drill and release migration | Pending. |
+| Operations | Consistent database/artifact/vault backup, restore drill and release migration | Offline checksummed snapshot and new-directory restore drill implemented; coordinated online snapshot and release migration pending. |
 
 The owner authorized a merge after a **complete** working system. Until these gates pass, publish reviewable draft commits and keep `main` untouched.
