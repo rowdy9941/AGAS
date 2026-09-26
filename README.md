@@ -16,7 +16,7 @@ Open `http://127.0.0.1:4310`. For a private local development session, enter `ag
 
 ## What works now
 
-- Original responsive AGAS workspace and the supplied dragon-eye logo; seven hubs, executive and permanent CEO identities persist in SQLite.
+- Original responsive AGAS workspace and the supplied dragon-eye logo; seven hubs, executive and permanent CEO identities persist in SQLite. Projects organize software products and Media Empire brands; content accounts, niches and campaign briefs are durable planning records.
 - Mission intake with explicit acceptance criteria and an event feed; no fake execution or accepted outcomes.
 - Direct CEO requests save to a durable inbox and surface in the executive feed, labelled `awaiting-runtime` until an adapter exists.
 - Twelve exact Agency prompt bodies, with verified upstream Git blob hashes and MIT license; the pinned index contains 295 source references at commit `053ddbbf392a1688fc7043d81529f47ef2cf86c8`. Role assignment is configuration, not activation. CLI presence detection is read-only, never marked authenticated/ready.

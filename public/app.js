@@ -59,6 +59,17 @@ function hubsPage() {
   return heading("HUB WORKSPACE",h.name,h.mandate,`<span class="head-count">${esc(missions(h.id).length)} missions</span>`)+
     `<div class="two-column"><section class="panel"><div class="ceo-card"><div class="ceo-avatar">${esc(h.icon)}</div><div><strong>${esc(h.name)} CEO</strong><small>Persistent leader record · runtime unbound</small></div></div><div class="conversation" aria-label="CEO inbox">${messages.length?messages.map(m=>`<div class="bubble">${esc(m.text)}<small>Owner · awaiting runtime · ${esc(new Date(m.created_at).toLocaleString())}</small></div>`).join(""):`<div class="empty">Tell the chief what you want to do. It will stay queued until a runtime is ready.</div>`}</div><form id="message-form" class="composer"><textarea name="text" required maxlength="4000" placeholder="Ask this CEO about a goal, campaign, or project..." aria-label="Message to CEO"></textarea><button class="primary" type="submit">Send</button></form></section><section><div class="panel"><h3>Mission queue</h3><div class="mission-table">${missionRows(missions(h.id))}</div><button class="secondary" data-action="new-mission" style="margin-top:12px">+ Plan mission</button></div><div class="panel" style="margin-top:16px"><h3>Projects</h3>${state.data.projects.filter(p=>p.hub_id===h.id).map(p=>`<div class="row"><span class="avatar-small">${esc(h.icon)}</span><span class="row-main"><strong>${esc(p.title)}</strong><small>${esc(p.kind)} · ${esc(p.status)}</small></span></div>`).join("")||`<p class="helper">Create a software product, media brand or other project.</p>`}<button class="ghost" data-action="new-project">+ Project</button></div><div class="panel" style="margin-top:16px"><h3>Specialist team</h3>${assigned.length?assigned.map(a=>`<div class="row"><span class="avatar-small">${esc(state.data.personas.find(p=>p.path===a.persona_path)?.emoji||"✦")}</span><span class="row-main"><strong>${esc(state.data.personas.find(p=>p.path===a.persona_path)?.title||a.persona_path)}</strong><small>${esc(a.runtime)} · configured, readiness pending</small></span></div>`).join(""):`<p class="helper">No specialists assigned. Import a role and bind a runtime from Agents.</p>`}<button class="ghost" data-action="view" data-id="agents">Manage agents →</button></div></section></div>`;
 }
+function mediaPanels() {
+  const d=state.data,brands=d.projects.filter(p=>p.hub_id==="content"&&p.kind==="media-brand");
+  return `<div class="section-head"><h2>Media Empire</h2><span>${brands.length} brands · ${d.mediaAccounts.length} accounts</span></div>
+    <div class="split"><section class="panel"><h3>Brand & channel portfolio</h3>
+    ${brands.length?brands.map(p=>`<div class="row"><span class="avatar-small">◈</span><span class="row-main"><strong>${esc(p.title)}</strong><small>${esc(p.description)} · ${d.mediaAccounts.filter(a=>a.project_id===p.id).length} accounts</small></span></div>`).join(""):`<p class="helper">Create your first media-brand project to organize niches and channel accounts.</p>`}
+    ${d.mediaAccounts.map(a=>`<div class="row"><span class="avatar-small">◎</span><span class="row-main"><strong>${esc(a.platform)} · ${esc(a.handle)}</strong><small>${esc(a.niche)} · ${esc(a.language)} · planned</small></span></div>`).join("")}
+    <button class="secondary" data-action="new-media-account" ${brands.length?"":"disabled"}>+ Add account</button></section>
+    <section class="panel"><h3>Campaign pipeline</h3><p class="helper">Research → strategy → creation → editing → media → review → publishing → engagement → analytics. These are planning records. No channel has been connected or published to.</p>
+    ${d.mediaCampaigns.map(c=>`<div class="row"><span class="avatar-small">◷</span><span class="row-main"><strong>${esc(c.title)}</strong><small>${esc(d.projects.find(p=>p.id===c.project_id)?.title)} · ${esc(c.stage)} · ${esc(c.status)}</small></span></div>`).join("")}
+    <button class="secondary" data-action="new-media-campaign" ${brands.length?"":"disabled"}>+ Campaign brief</button></section></div>`;
+}
 function agentsPage() {
   const d=state.data,imported=new Map(d.personas.map(p=>[p.path,p]));
   const terms=state.search.toLowerCase();
@@ -93,6 +104,7 @@ function render() {
   document.querySelectorAll(".nav").forEach(button=>button.classList.toggle("active",button.dataset.view===state.view));
   $("#hub-nav").innerHTML=hubs().map(h=>`<button class="hub-link ${state.view==="hubs"&&state.hub===h.id?"active":""}" data-action="hub" data-id="${esc(h.id)}"><span>${esc(h.icon)}</span>${esc(h.name)}</button>`).join("");
   $("#content").innerHTML=({overview:dashboard,organization,projects:projectsPage,hubs:hubsPage,agents:agentsPage,knowledge:knowledgePage,activity:activityPage}[state.view]||dashboard)();
+  if(state.view==="hubs"&&state.hub==="content")$("#content").insertAdjacentHTML("beforeend",mediaPanels());
   renderInspector();
 }
 function openModal(title,description,fields,submit) {
@@ -114,6 +126,20 @@ function newProject() {
     `<label class="field">Hub<select name="hubId">${hubs().map(h=>`<option value="${esc(h.id)}" ${h.id===selected?"selected":""}>${esc(h.name)}</option>`).join("")}</select></label><label class="field">Type<select name="kind"><option value="media-brand">Media brand</option><option value="software">Software product</option><option value="research">Research</option><option value="business">Business</option><option value="health">Health</option><option value="security">Security</option><option value="operations">Operations</option><option value="general">General</option></select></label><label class="field">Name<input name="title" required maxlength="140" placeholder="Project name"></label><label class="field">Mandate<textarea name="description" required maxlength="4000" placeholder="Who it serves and what the team will produce"></textarea></label>`,
     data=>api("/api/projects",{method:"POST",body:JSON.stringify(Object.fromEntries(data))}));
 }
+function newMediaAccount() {
+  const brands=state.data.projects.filter(p=>p.hub_id==="content"&&p.kind==="media-brand");
+  if(!brands.length)return notify("Create a Media Empire brand project first.",true);
+  openModal("Add a channel account","Register the logical account and niche. No credentials or publishing permissions are stored.",
+    `<label class="field">Media brand<select name="projectId">${brands.map(p=>`<option value="${esc(p.id)}">${esc(p.title)}</option>`).join("")}</select></label><label class="field">Platform<select name="platform"><option>youtube</option><option>instagram</option><option>tiktok</option><option>facebook</option><option>x</option><option>linkedin</option><option>podcast</option><option>other</option></select></label><label class="field">Handle<input name="handle" required maxlength="120" placeholder="Channel or account identifier"></label><label class="field">Niche<input name="niche" required maxlength="140" placeholder="Audience and content focus"></label><label class="field">Language<input name="language" required maxlength="60" placeholder="English, Telugu, Hindi..."></label>`,
+    data=>api("/api/media/accounts",{method:"POST",body:JSON.stringify(Object.fromEntries(data))}));
+}
+function newMediaCampaign() {
+  const brands=state.data.projects.filter(p=>p.hub_id==="content"&&p.kind==="media-brand");
+  if(!brands.length)return notify("Create a Media Empire brand project first.",true);
+  openModal("Plan a campaign","Create a research brief. Drafting, review and publishing require later workflow adapters.",
+    `<label class="field">Media brand<select name="projectId">${brands.map(p=>`<option value="${esc(p.id)}">${esc(p.title)}</option>`).join("")}</select></label><label class="field">Title<input name="title" required maxlength="140" placeholder="Campaign name"></label><label class="field">Objective<textarea name="objective" required maxlength="4000" placeholder="Audience, channel, topics, desired outcome and constraints"></textarea></label>`,
+    data=>api("/api/media/campaigns",{method:"POST",body:JSON.stringify(Object.fromEntries(data))}));
+}
 function assign(path) {
   const p=state.data.personas.find(item=>item.path===path);
   openModal(`Assign ${p?.title||"specialist"}`,"Choose a hub and intended runtime. Assignment does not start a session.",
@@ -127,6 +153,8 @@ document.addEventListener("click",async event=>{
   else if(type==="hub")setView("hubs",id);
   else if(type==="new-mission")newMission();
   else if(type==="new-project")newProject();
+  else if(type==="new-media-account")newMediaAccount();
+  else if(type==="new-media-campaign")newMediaCampaign();
   else if(type==="assign")assign(path);
   else if(type==="toggle-catalog"){state.onlyImported=!state.onlyImported;render()}
   else if(type==="inspect-mission"||type==="inspect-note"){state.inspected={type:type==="inspect-mission"?"mission":"note",id};renderInspector()}

@@ -55,6 +55,19 @@ test("Agency bundled prompts have the pinned source hashes",()=>{
     assert.equal(loadBundledAgency(path).sourceSha,agencyIndex.agents.find(item=>item.path===path).sha);
 });
 
+test("media brands own account and campaign configs without publishing or credentials",()=>{
+  const store=new Store();
+  const brand=store.createProject({hubId:"content",title:"AGAS Media",description:"Document product learning",kind:"media-brand"});
+  const account=store.createMediaAccount({projectId:brand.id,platform:"youtube",handle:"AGAS Studio",niche:"AI products",language:"English"});
+  const campaign=store.createMediaCampaign({projectId:brand.id,title:"First series",objective:"Research a sourced introduction"});
+  assert.equal(account.status,"planned");
+  assert.equal(campaign.stage,"research");
+  assert.throws(()=>store.createMediaAccount({projectId:brand.id,platform:"youtube",handle:"AGAS Studio",niche:"AI products",language:"English"}),/already exists/);
+  const software=store.createProject({hubId:"dev",title:"AGAS app",description:"Workspace",kind:"software"});
+  assert.throws(()=>store.createMediaCampaign({projectId:software.id,title:"Wrong owner",objective:"No publishing"}),/Media Empire/);
+  store.close();
+});
+
 test("API authorization, mission write and static logo work",async()=>{
   const root=await mkdtemp(join(tmpdir(),"agas-http-"));
   const {server}=createAgasServer({database:join(root,"state.db"),vault:join(root,"vault"),token:"test-secret"});

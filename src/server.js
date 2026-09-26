@@ -47,6 +47,8 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       if(req.method==="GET"&&path.startsWith("/api/notes/"))return json(res,200,{note:store.noteForOwner(path.slice("/api/notes/".length))});
       if(req.method==="POST"&&path==="/api/missions")return json(res,201,{mission:store.createMission(await body(req))});
       if(req.method==="POST"&&path==="/api/projects")return json(res,201,{project:store.createProject(await body(req))});
+      if(req.method==="POST"&&path==="/api/media/accounts")return json(res,201,{account:store.createMediaAccount(await body(req))});
+      if(req.method==="POST"&&path==="/api/media/campaigns")return json(res,201,{campaign:store.createMediaCampaign(await body(req))});
       if(req.method==="POST"&&path==="/api/messages")return json(res,201,{message:store.sendMessage(await body(req))});
       if(req.method==="POST"&&path==="/api/notes")return json(res,201,{note:store.createNote(await body(req))});
       if(req.method==="POST"&&path==="/api/assignments")return json(res,201,{assignment:store.assignPersona(await body(req))});

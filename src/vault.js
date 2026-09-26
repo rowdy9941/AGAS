@@ -35,6 +35,14 @@ export async function projectVault(store, basePath) {
     await managed("02 Projects",`${project.id}.md`,header({agas_id:`project:${project.id}`,type:"project",hub_id:project.hub_id,kind:project.kind,status:project.status,provenance:"agas:project"})+
       `# ${project.title}\n\n${project.description}\n`);
   }
+  for (const account of state.mediaAccounts) {
+    await managed("02 Projects",`${account.id}.md`,header({agas_id:`media-account:${account.id}`,type:"media-account",project_id:account.project_id,platform:account.platform,status:account.status,provenance:"agas:media"})+
+      `# ${account.handle}\n\nNiche: ${account.niche}\nLanguage: ${account.language}\n\nNo publishing connection or credentials are stored in this note.\n`);
+  }
+  for (const campaign of state.mediaCampaigns) {
+    await managed("03 Missions",`${campaign.id}.md`,header({agas_id:`media-campaign:${campaign.id}`,type:"media-campaign",project_id:campaign.project_id,stage:campaign.stage,status:campaign.status,provenance:"agas:media"})+
+      `# ${campaign.title}\n\n${campaign.objective}\n\nEditorial pipeline: research → strategy → creation → editing → media → review → publishing → engagement → analytics. Current stage: research.\n`);
+  }
   for (const mission of state.missions) {
     const criteria=mission.criteria.map(c=>`- [ ] ${c}`).join("\n");
     await managed("03 Missions",`${mission.id}.md`,header({agas_id:`mission:${mission.id}`,type:"mission",hub_id:mission.hub_id,project:mission.project,revision:mission.version,status:mission.status,provenance:"agas:mission"})+
@@ -46,5 +54,6 @@ export async function projectVault(store, basePath) {
     await managed(folder,`${note.id}.md`,header({agas_id:`note:${note.id}`,type:"note",scope:note.scope,owner_id:note.owner_id,revision:note.revision,provenance:"agas:context"})+
       `# ${note.title}\n\n${note.content}\n`);
   }
-  return { root, written, conflicts, projectCount:state.projects.length, noteCount:store.allNotesForVault().length, missionCount:state.missions.length };
+  return { root, written, conflicts, projectCount:state.projects.length, mediaAccountCount:state.mediaAccounts.length,
+    mediaCampaignCount:state.mediaCampaigns.length, noteCount:store.allNotesForVault().length, missionCount:state.missions.length };
 }

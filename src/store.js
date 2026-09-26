@@ -33,6 +33,16 @@ export class Store {
         id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), title TEXT NOT NULL, kind TEXT NOT NULL,
         description TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS media_accounts (
+        id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), platform TEXT NOT NULL,
+        handle TEXT NOT NULL, niche TEXT NOT NULL, language TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'planned',
+        created_at TEXT NOT NULL, UNIQUE(project_id,platform,handle)
+      );
+      CREATE TABLE IF NOT EXISTS media_campaigns (
+        id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), title TEXT NOT NULL,
+        objective TEXT NOT NULL, stage TEXT NOT NULL DEFAULT 'research', status TEXT NOT NULL DEFAULT 'planned',
+        created_at TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS missions (
         id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), project TEXT NOT NULL DEFAULT '',
         title TEXT NOT NULL, objective TEXT NOT NULL, criteria TEXT NOT NULL,
@@ -95,6 +105,8 @@ export class Store {
       hubs: all("SELECT * FROM hubs"),
       leaders: all("SELECT * FROM leaders"),
       projects: all("SELECT * FROM projects ORDER BY created_at DESC"),
+      mediaAccounts: all("SELECT * FROM media_accounts ORDER BY created_at DESC"),
+      mediaCampaigns: all("SELECT * FROM media_campaigns ORDER BY created_at DESC"),
       missions: all("SELECT * FROM missions ORDER BY created_at DESC").map(m => ({ ...m,criteria:JSON.parse(m.criteria) })),
       messages: all("SELECT * FROM messages ORDER BY created_at DESC LIMIT 60"),
       notes: all("SELECT id,title,scope,owner_id,revision,created_at,updated_at FROM notes ORDER BY updated_at DESC LIMIT 100"),
@@ -119,6 +131,39 @@ export class Store {
       this.event("project.created",id,hubId,`New project: ${title}`);
     });
     return this.db.prepare("SELECT * FROM projects WHERE id=?").get(id);
+  }
+  requireMediaBrand(id) {
+    const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(id);
+    if(!project||project.hub_id!=="content"||project.kind!=="media-brand")
+      throw new InputError("Choose a Media Empire brand project");
+    return project;
+  }
+  createMediaAccount(input) {
+    const projectId=nonempty(input.projectId,"projectId",120);
+    this.requireMediaBrand(projectId);
+    const platform=nonempty(input.platform,"platform",30).toLowerCase();
+    if(!["youtube","instagram","tiktok","facebook","x","linkedin","podcast","other"].includes(platform))
+      throw new InputError("Unsupported media platform");
+    const handle=nonempty(input.handle,"handle",120),niche=nonempty(input.niche,"niche",140);
+    const language=nonempty(input.language,"language",60),id=randomUUID(),time=now();
+    this.transaction(()=>{
+      try {this.db.prepare("INSERT INTO media_accounts(id,project_id,platform,handle,niche,language,created_at) VALUES (?,?,?,?,?,?,?)").run(id,projectId,platform,handle,niche,language,time)}
+      catch(error){if(error.code==="ERR_SQLITE_ERROR"&&error.message.includes("UNIQUE"))throw new InputError("This account already exists for the brand",409);throw error}
+      this.event("media.account.created",id,"content",`Media account registered: ${platform} · ${handle}`);
+    });
+    return this.db.prepare("SELECT * FROM media_accounts WHERE id=?").get(id);
+  }
+  createMediaCampaign(input) {
+    const projectId=nonempty(input.projectId,"projectId",120);
+    this.requireMediaBrand(projectId);
+    const title=nonempty(input.title,"title",140),objective=nonempty(input.objective,"objective",4000);
+    const id=randomUUID(),time=now();
+    this.transaction(()=>{
+      this.db.prepare("INSERT INTO media_campaigns(id,project_id,title,objective,created_at) VALUES (?,?,?,?,?)")
+        .run(id,projectId,title,objective,time);
+      this.event("media.campaign.created",id,"content",`Campaign brief created: ${title}`);
+    });
+    return this.db.prepare("SELECT * FROM media_campaigns WHERE id=?").get(id);
   }
   createMission(input) {
     const hubId=nonempty(input.hubId,"hubId",30); this.requireHub(hubId);
