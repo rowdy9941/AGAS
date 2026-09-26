@@ -21,6 +21,10 @@ const nonempty = (value, field, max = 4000) => {
 const MEDIA_STAGES=["research","strategy","creation","editing","media","review"];
 const mediaHash=({stage,title,content,sources,rights_note})=>createHash("sha256")
   .update(JSON.stringify({stage,title,content,sources:JSON.parse(sources),rightsNote:rights_note})).digest("hex");
+const boundedInteger=(value,name,min,max)=>{
+  if(!Number.isSafeInteger(value)||value<min||value>max)throw new InputError(`${name} must be an integer from ${min} to ${max}`);
+  return value;
+};
 export class InputError extends Error { constructor(message, status = 400) { super(message); this.status = status; } }
 
 export class Store {
@@ -63,6 +67,31 @@ export class Store {
         account_id TEXT NOT NULL REFERENCES media_accounts(id), content TEXT NOT NULL,
         sha256 TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'prepared', created_at TEXT NOT NULL,
         UNIQUE(campaign_id,account_id)
+      );
+      CREATE TABLE IF NOT EXISTS paper_accounts (
+        id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), title TEXT NOT NULL,
+        currency TEXT NOT NULL DEFAULT 'INR', starting_cash_paise INTEGER NOT NULL,
+        cash_paise INTEGER NOT NULL, realized_pnl_paise INTEGER NOT NULL DEFAULT 0,
+        max_trade_bps INTEGER NOT NULL, version INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS paper_marks (
+        id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES paper_accounts(id), symbol TEXT NOT NULL,
+        price_paise INTEGER NOT NULL, source_url TEXT NOT NULL, as_of TEXT NOT NULL, created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS paper_marks_account ON paper_marks(account_id,symbol,created_at);
+      CREATE TABLE IF NOT EXISTS paper_positions (
+        account_id TEXT NOT NULL REFERENCES paper_accounts(id), symbol TEXT NOT NULL,
+        quantity INTEGER NOT NULL, cost_paise INTEGER NOT NULL, PRIMARY KEY(account_id,symbol)
+      );
+      CREATE TABLE IF NOT EXISTS paper_orders (
+        id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES paper_accounts(id), request_id TEXT NOT NULL,
+        mark_id TEXT NOT NULL REFERENCES paper_marks(id), symbol TEXT NOT NULL, side TEXT NOT NULL,
+        quantity INTEGER NOT NULL, price_paise INTEGER NOT NULL, fee_paise INTEGER NOT NULL,
+        gross_paise INTEGER NOT NULL, cash_after_paise INTEGER NOT NULL,
+        position_after INTEGER NOT NULL, realized_pnl_paise INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'simulated', created_at TEXT NOT NULL,
+        UNIQUE(account_id,request_id)
       );
       CREATE TABLE IF NOT EXISTS missions (
         id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), project TEXT NOT NULL DEFAULT '',
@@ -200,6 +229,7 @@ export class Store {
       mediaCampaigns: all("SELECT * FROM media_campaigns ORDER BY created_at DESC"),
       mediaArtifacts: all("SELECT * FROM media_artifacts ORDER BY created_at DESC LIMIT 120"),
       mediaPackets: all("SELECT id,campaign_id,account_id,sha256,status,created_at FROM media_publication_packets ORDER BY created_at DESC LIMIT 120"),
+      paperAccounts: all("SELECT * FROM paper_accounts ORDER BY created_at DESC"),
       missions: all("SELECT * FROM missions ORDER BY created_at DESC").map(m => ({ ...m,criteria:JSON.parse(m.criteria) })),
       runs: all("SELECT * FROM mission_runs ORDER BY created_at DESC LIMIT 80"),
       reviewBranches: all("SELECT * FROM project_review_branches ORDER BY created_at DESC LIMIT 80"),
@@ -404,6 +434,124 @@ export class Store {
       this.event("media.packet.prepared",packetId,"content",`Local publication packet prepared for ${campaign.title} on ${account.platform}`);
     });
     return this.db.prepare("SELECT * FROM media_publication_packets WHERE id=?").get(packetId);
+  }
+  createPaperAccount(input) {
+    const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(nonempty(input.projectId,"projectId",120));
+    if(!project||project.hub_id!=="finance"||project.kind!=="research")
+      throw new InputError("Choose a Finance research project for paper trading");
+    const title=nonempty(input.title,"title",140);
+    const starting=boundedInteger(input.startingCashPaise,"startingCashPaise",100,1_000_000_000_000_000);
+    const limit=boundedInteger(input.maxTradeBps??500,"maxTradeBps",1,10_000);
+    const id=randomUUID();
+    this.transaction(()=>{
+      this.db.prepare("INSERT INTO paper_accounts(id,project_id,title,starting_cash_paise,cash_paise,max_trade_bps,created_at) VALUES (?,?,?,?,?,?,?)")
+        .run(id,project.id,title,starting,starting,limit,now());
+      this.event("finance.paper-account",id,"finance",`Paper-only account created for ${project.title}`);
+    });
+    return this.paperAccountDetail(id).account;
+  }
+  paperAccountDetail(id) {
+    const account=this.db.prepare("SELECT * FROM paper_accounts WHERE id=?").get(id);
+    if(!account)throw new InputError("Paper account not found",404);
+    const marks=this.db.prepare(`SELECT m.* FROM paper_marks m WHERE m.account_id=? AND
+      m.rowid=(SELECT MAX(rowid) FROM paper_marks WHERE account_id=m.account_id AND symbol=m.symbol)
+      ORDER BY m.rowid DESC`).all(id);
+    const positions=this.db.prepare("SELECT * FROM paper_positions WHERE account_id=? ORDER BY symbol").all(id);
+    const orders=this.db.prepare("SELECT * FROM paper_orders WHERE account_id=? ORDER BY rowid DESC LIMIT 100").all(id);
+    const values=positions.map(position=>{
+      const mark=marks.find(item=>item.symbol===position.symbol);
+      return {...position,mark:mark||null,market_value_paise:mark?position.quantity*mark.price_paise:null};
+    });
+    const marketTotal=values.reduce((sum,item)=>sum+(item.market_value_paise||0),0);
+    const costTotal=values.reduce((sum,item)=>sum+item.cost_paise,0);
+    const valued=values.every(item=>item.mark&&Number.isSafeInteger(item.market_value_paise))&&
+      [marketTotal,costTotal,account.cash_paise+marketTotal,marketTotal-costTotal].every(Number.isSafeInteger);
+    return {account,marks,positions:values,orders,
+      valuation:valued?{
+        equity_paise:account.cash_paise+marketTotal,
+        unrealized_pnl_paise:marketTotal-costTotal,
+        realized_pnl_paise:account.realized_pnl_paise,
+        as_of:values.length?values.map(item=>item.mark.as_of).sort()[0]:null,
+        source:"manual price marks; simulated fills"
+      }:null};
+  }
+  recordPaperMark(id,input) {
+    const symbol=nonempty(input.symbol,"symbol",32).toUpperCase();
+    if(!/^[A-Z0-9][A-Z0-9._:-]{0,31}$/.test(symbol))throw new InputError("Use a simple instrument symbol");
+    const price=boundedInteger(input.pricePaise,"pricePaise",1,1_000_000_000);
+    let url;
+    try {url=new URL(nonempty(input.sourceUrl,"sourceUrl",1000))}catch{throw new InputError("Provide a source URL for this manual price")}
+    if(!["http:","https:"].includes(url.protocol)||url.username||url.password)
+      throw new InputError("Price source must be an HTTP(S) URL without credentials");
+    const asOf=nonempty(input.asOf,"asOf",40),timestamp=Date.parse(asOf);
+    if(!Number.isFinite(timestamp)||timestamp>Date.now()+5*60*1000)
+      throw new InputError("Mark time must be valid and cannot be in the future");
+    const markId=randomUUID();
+    this.transaction(()=>{
+      const account=this.db.prepare("SELECT * FROM paper_accounts WHERE id=?").get(id);
+      if(!account||account.version!==input.expectedVersion)throw new InputError("Paper account changed; reload",409);
+      this.db.prepare("INSERT INTO paper_marks VALUES (?,?,?,?,?,?,?)")
+        .run(markId,id,symbol,price,url.href,new Date(timestamp).toISOString(),now());
+      this.db.prepare("UPDATE paper_accounts SET version=version+1 WHERE id=?").run(id);
+      this.event("finance.mark.manual",markId,"finance",`Manual paper price recorded for ${symbol}; source not independently checked`);
+    });
+    return this.paperAccountDetail(id);
+  }
+  simulatePaperOrder(id,input) {
+    const requestId=nonempty(input.requestId,"requestId",120);
+    const side=input.side;
+    if(!["buy","sell"].includes(side))throw new InputError("Choose buy or sell");
+    const quantity=boundedInteger(input.quantity,"quantity",1,1_000_000);
+    const fee=boundedInteger(input.feePaise,"feePaise",0,1_000_000_000);
+    const markId=nonempty(input.markId,"markId",120);
+    let order;
+    this.transaction(()=>{
+      const existing=this.db.prepare("SELECT * FROM paper_orders WHERE account_id=? AND request_id=?").get(id,requestId);
+      if(existing){
+        if(existing.mark_id!==markId||existing.side!==side||existing.quantity!==quantity||existing.fee_paise!==fee)
+          throw new InputError("This paper order request ID already has different details",409);
+        order=existing;return;
+      }
+      const account=this.db.prepare("SELECT * FROM paper_accounts WHERE id=?").get(id);
+      if(!account||account.version!==input.expectedVersion)throw new InputError("Paper account changed; reload",409);
+      const mark=this.db.prepare("SELECT * FROM paper_marks WHERE id=? AND account_id=?").get(markId,id);
+      if(!mark||Date.now()-Date.parse(mark.as_of)>24*60*60*1000||
+        this.db.prepare("SELECT id FROM paper_marks WHERE account_id=? AND symbol=? ORDER BY rowid DESC LIMIT 1").get(id,mark.symbol)?.id!==markId)
+        throw new InputError("Choose a current, most recent manual mark for this paper account",409);
+      const gross=quantity*mark.price_paise;
+      if(!Number.isSafeInteger(gross)||!Number.isSafeInteger(gross+fee))throw new InputError("Paper amount exceeds the safe accounting range");
+      const before=this.db.prepare("SELECT * FROM paper_positions WHERE account_id=? AND symbol=?").get(id,mark.symbol);
+      const prior=before||{quantity:0,cost_paise:0};
+      let cash,after,basis=0,realized=0;
+      if(side==="buy"){
+        if(BigInt(gross)*10_000n>BigInt(account.starting_cash_paise)*BigInt(account.max_trade_bps))
+          throw new InputError("Paper purchase exceeds the account's per-trade limit",409);
+        cash=account.cash_paise-gross-fee;
+        after={quantity:prior.quantity+quantity,cost_paise:prior.cost_paise+gross+fee};
+        if(cash<0||!Number.isSafeInteger(after.quantity)||!Number.isSafeInteger(after.cost_paise))
+          throw new InputError("Insufficient paper cash or accounting range exceeded",409);
+      } else {
+        if(prior.quantity<quantity)throw new InputError("Paper selling cannot exceed the held long position",409);
+        if(fee>gross)throw new InputError("Paper fees cannot exceed sale proceeds",409);
+        basis=Number(BigInt(prior.cost_paise)*BigInt(quantity)/BigInt(prior.quantity));
+        realized=gross-fee-basis;
+        cash=account.cash_paise+gross-fee;
+        after={quantity:prior.quantity-quantity,cost_paise:prior.cost_paise-basis};
+        if(!Number.isSafeInteger(cash))throw new InputError("Paper cash exceeds the safe accounting range",409);
+      }
+      this.db.prepare("INSERT INTO paper_positions(account_id,symbol,quantity,cost_paise) VALUES (?,?,?,?) ON CONFLICT(account_id,symbol) DO UPDATE SET quantity=excluded.quantity,cost_paise=excluded.cost_paise")
+        .run(id,mark.symbol,after.quantity,after.cost_paise);
+      if(!Number.isSafeInteger(account.realized_pnl_paise+realized))
+        throw new InputError("Paper P&L exceeds the safe accounting range",409);
+      this.db.prepare("UPDATE paper_accounts SET cash_paise=?,realized_pnl_paise=realized_pnl_paise+?,version=version+1 WHERE id=?")
+        .run(cash,realized,id);
+      const orderId=randomUUID();
+      this.db.prepare("INSERT INTO paper_orders(id,account_id,request_id,mark_id,symbol,side,quantity,price_paise,fee_paise,gross_paise,cash_after_paise,position_after,realized_pnl_paise,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+        .run(orderId,id,requestId,markId,mark.symbol,side,quantity,mark.price_paise,fee,gross,cash,after.quantity,realized,now());
+      this.event("finance.paper-order",orderId,"finance",`Simulated ${side} ${quantity} ${mark.symbol} at a manually supplied mark; no broker order`);
+      order=this.db.prepare("SELECT * FROM paper_orders WHERE id=?").get(orderId);
+    });
+    return {order,detail:this.paperAccountDetail(id)};
   }
   createMission(input) {
     const hubId=nonempty(input.hubId,"hubId",30); this.requireHub(hubId);

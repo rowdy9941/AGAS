@@ -109,6 +109,11 @@ function mediaPanels() {
     ${d.mediaCampaigns.map(c=>{const pending=d.mediaArtifacts.find(a=>a.campaign_id===c.id&&a.stage===c.stage&&a.status==="submitted"),packets=d.mediaPackets.filter(p=>p.campaign_id===c.id);return `<div class="row"><span class="avatar-small">◷</span><span class="row-main"><strong>${esc(c.title)}</strong><small>${esc(d.projects.find(p=>p.id===c.project_id)?.title)} · ${esc(c.stage)} · ${esc(c.status)} · ${packets.length} prepared packets</small></span><span class="work-actions"><button class="ghost" data-action="inspect-media" data-id="${esc(c.id)}">Inspect</button>${pending?`<button class="secondary" data-action="review-media" data-id="${esc(c.id)}" data-artifact="${esc(pending.id)}">Review ${esc(c.stage)}</button>`:c.status==="ready-for-publishing"?`<button class="secondary" data-action="prepare-media" data-id="${esc(c.id)}">Prepare packet</button>`:`<button class="secondary" data-action="submit-media" data-id="${esc(c.id)}">Submit ${esc(c.stage)}</button>`}</span></div>`}).join("")}
     <button class="secondary" data-action="new-media-campaign" ${brands.length?"":"disabled"}>+ Campaign brief</button></section></div>`;
 }
+const rupees=paise=>`₹${(Number(paise)/100).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+function financePanels() {
+  const d=state.data,projects=d.projects.filter(p=>p.hub_id==="finance"&&p.kind==="research");
+  return `<div class="section-head"><h2>FinOS · paper ledger</h2><span>${d.paperAccounts.length} simulated accounts</span></div><div class="panel"><p class="helper">Manual source references and prices. Paper fills use those marks and entered fees; they are not broker executions, verified quotes or investment advice. Each buy has a configured size cap, cash only and no short positions.</p><div class="mission-table">${d.paperAccounts.map(a=>`<article class="card work-card"><div><strong>${esc(a.title)}</strong><p>${esc(d.projects.find(p=>p.id===a.project_id)?.title)} · Paper cash ${rupees(a.cash_paise)}</p><small>Single purchase cap ${esc((a.max_trade_bps/100).toFixed(2))}% of starting cash · revision ${a.version}</small></div><div class="work-actions"><button class="secondary" data-action="inspect-paper" data-id="${esc(a.id)}">Ledger</button><button class="secondary" data-action="paper-mark" data-id="${esc(a.id)}">Record price</button><button class="primary" data-action="paper-order" data-id="${esc(a.id)}">Simulate trade</button></div></article>`).join("")||'<div class="empty">Create a Finance research project, then a paper account.</div>'}</div><button class="secondary" data-action="new-paper-account" ${projects.length?"":"disabled"}>+ Paper account</button></div>`;
+}
 function agentsPage() {
   const d=state.data,imported=new Map(d.personas.map(p=>[p.path,p]));
   const terms=state.search.toLowerCase();
@@ -167,6 +172,11 @@ function renderInspector() {
     $("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">MEDIA · ${esc(campaign.stage)}</span><h3>${esc(campaign.title)}</h3><p>${esc(campaign.objective)}</p><p>${esc(campaign.status)} · revision ${esc(campaign.version)}</p></div><div class="inspector-section"><h3>Stage trail</h3>${artifacts.map(a=>`<p><strong>${esc(a.stage)} · ${esc(a.status)}</strong><br>${esc(a.title)} · SHA-256 ${esc(a.sha256)}<br><span style="white-space:pre-wrap">${esc(a.content)}</span><br>References: ${esc(JSON.parse(a.sources).join(" · ")||"None")}<br>Rights: ${esc(a.rights_note||"Not supplied")}<br>Owner review: ${esc(a.review_note||"Pending")}</p>`).join("")||"<p>Submit a source-backed research brief to begin.</p>"}</div><div class="inspector-section"><h3>Prepared packets</h3>${packets.map(p=>`<p>${esc(p.account_id)} · ${esc(p.status)}<br>SHA-256 ${esc(p.sha256)}<br><span style="white-space:pre-wrap">${esc(p.content)}</span></p>`).join("")||"<p>No packet prepared. Nothing has been published.</p>"}</div>`;
     return;
   }
+  if(selected?.type==="paper") {
+    const {account,marks,positions,orders,valuation}=selected.data;
+    $("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">FINOS · SIMULATION</span><h3>${esc(account.title)}</h3><p>Paper cash ${rupees(account.cash_paise)} · starting ${rupees(account.starting_cash_paise)}.</p><p>${valuation?`Marked equity ${rupees(valuation.equity_paise)} · realized ${rupees(valuation.realized_pnl_paise)} · unrealized ${rupees(valuation.unrealized_pnl_paise)}. Oldest mark: ${esc(valuation.as_of||"none")}.`:"A complete marked valuation is not available."}</p></div><div class="inspector-section"><h3>Positions</h3>${positions.map(p=>`<p>${esc(p.symbol)} · ${p.quantity} units · cost ${rupees(p.cost_paise)} · manual mark ${p.mark?rupees(p.mark.price_paise):"missing"}</p>`).join("")||"<p>No positions.</p>"}</div><div class="inspector-section"><h3>Manual marks</h3>${marks.slice(0,20).map(m=>`<p>${esc(m.symbol)} · ${rupees(m.price_paise)} · ${esc(m.as_of)}<br>${esc(m.source_url)}</p>`).join("")||"<p>No prices recorded.</p>"}</div><div class="inspector-section"><h3>Simulated fills</h3>${orders.slice(0,30).map(o=>`<p>${esc(o.side)} ${o.quantity} ${esc(o.symbol)} · ${rupees(o.price_paise)} each · fee ${rupees(o.fee_paise)} · realized ${rupees(o.realized_pnl_paise)}<br>${esc(o.id)} · ${esc(o.status)}</p>`).join("")||"<p>No paper orders.</p>"}</div>`;
+    return;
+  }
   if(selected?.type==="note") {
     $("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">KNOWLEDGE</span><h3 style="margin-top:13px">Loading scoped note…</h3></div>`;
     api("/api/notes/"+encodeURIComponent(selected.id)).then(result=>{const n=result.note;if(n&&state.inspected?.id===selected.id)$("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">${esc(n.scope)} · ${esc(n.owner_id)}</span><h3 style="margin-top:14px">${esc(n.title)}</h3><p style="white-space:pre-wrap">${esc(n.content)}</p><div class="kv"><span>Revision</span><strong>${n.revision}</strong></div></div>`}).catch(error=>notify(error.message,true));return;
@@ -181,6 +191,7 @@ function render() {
   $("#content").innerHTML=({overview:dashboard,organization,goals:goalsPage,projects:projectsPage,missions:missionsPage,mission:missionPage,hubs:hubsPage,agents:agentsPage,windows:windowsPage,knowledge:knowledgePage,activity:activityPage}[state.view]||dashboard)();
   if(state.view==="mission"&&state.detail)$("#content").insertAdjacentHTML("beforeend",handoffsPanel(state.detail));
   if(state.view==="hubs"&&state.hub==="content")$("#content").insertAdjacentHTML("beforeend",mediaPanels());
+  if(state.view==="hubs"&&state.hub==="finance")$("#content").insertAdjacentHTML("beforeend",financePanels());
   renderInspector();
 }
 function openModal(title,description,fields,submit) {
@@ -328,6 +339,34 @@ async function inspectMediaCampaign(id) {
   try {const detail=await api(`/api/media/campaigns/${id}`);state.inspected={type:"media",data:detail};renderInspector()}
   catch(error){notify(error.message,true)}
 }
+async function inspectPaperAccount(id) {
+  try {state.inspected={type:"paper",data:await api(`/api/finance/paper-accounts/${id}`)};renderInspector()}
+  catch(error){notify(error.message,true)}
+}
+function newPaperAccount() {
+  const projects=state.data.projects.filter(p=>p.hub_id==="finance"&&p.kind==="research");
+  if(!projects.length)return notify("Create a Finance research project first.",true);
+  openModal("Create paper account","All balances and trades are simulated in INR paise. The trade cap applies to each purchase as a share of the initial paper cash.",
+    `<label class="field">Research project<select name="projectId">${projects.map(p=>`<option value="${esc(p.id)}">${esc(p.title)}</option>`).join("")}</select></label><label class="field">Name<input name="title" maxlength="140" required></label><label class="field">Starting paper cash (₹)<input name="cash" type="number" min="1" step="0.01" required></label><label class="field">Maximum single buy (% of starting cash)<input name="limit" type="number" min="0.01" max="100" step="0.01" value="5" required></label>`,
+    async data=>{const result=await api("/api/finance/paper-accounts",{method:"POST",body:JSON.stringify({projectId:data.get("projectId"),title:data.get("title"),startingCashPaise:Math.round(Number(data.get("cash"))*100),maxTradeBps:Math.round(Number(data.get("limit"))*100)})});state.inspected={type:"paper",data:await api(`/api/finance/paper-accounts/${result.account.id}`)}});
+}
+async function recordPaperMark(id) {
+  let detail;
+  try {detail=await api(`/api/finance/paper-accounts/${id}`)}catch(error){return notify(error.message,true)}
+  openModal("Record manual paper price","Enter a price, time and public source URL. AGAS stores the reference but does not verify the quote or connect to a market feed.",
+    `<label class="field">Instrument symbol<input name="symbol" required maxlength="32" placeholder="NSE:EXAMPLE"></label><label class="field">Price (₹ per unit)<input name="price" type="number" min="0.01" step="0.01" required></label><label class="field">Price time<input name="asOf" type="datetime-local" value="${esc(new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16))}" required></label><label class="field">Source URL<input name="sourceUrl" type="url" required maxlength="1000" placeholder="https://example.com/quote"></label>`,
+    async data=>{const result=await api(`/api/finance/paper-accounts/${id}/marks`,{method:"POST",body:JSON.stringify({symbol:data.get("symbol"),pricePaise:Math.round(Number(data.get("price"))*100),asOf:new Date(data.get("asOf")).toISOString(),sourceUrl:data.get("sourceUrl"),expectedVersion:detail.account.version})});state.inspected={type:"paper",data:result}});
+}
+async function simulatePaperOrder(id) {
+  let detail;
+  try {detail=await api(`/api/finance/paper-accounts/${id}`)}catch(error){return notify(error.message,true)}
+  const symbols=new Set(),marks=detail.marks.filter(m=>{if(symbols.has(m.symbol))return false;symbols.add(m.symbol);return true});
+  if(!marks.length)return notify("Record a manual price for this paper account first.",true);
+  const requestId=crypto.randomUUID();
+  openModal("Simulate a paper trade","The selected manual mark determines this simulated fill. No broker order is sent. Selling cannot exceed the long position; buys obey the cash and size limits.",
+    `<label class="field">Side<select name="side"><option value="buy">Paper buy</option><option value="sell">Paper sell</option></select></label><label class="field">Latest manual mark<select name="markId">${marks.map(m=>`<option value="${esc(m.id)}">${esc(m.symbol)} · ${rupees(m.price_paise)} · ${esc(m.as_of)}</option>`).join("")}</select></label><label class="field">Whole units<input name="quantity" type="number" min="1" step="1" required></label><label class="field">Simulated fee (₹)<input name="fee" type="number" min="0" step="0.01" value="0" required></label>`,
+    async data=>{const result=await api(`/api/finance/paper-accounts/${id}/orders`,{method:"POST",body:JSON.stringify({side:data.get("side"),markId:data.get("markId"),quantity:Number(data.get("quantity")),feePaise:Math.round(Number(data.get("fee"))*100),requestId,expectedVersion:detail.account.version})});state.inspected={type:"paper",data:result.detail}});
+}
 function assign(path) {
   const p=state.data.personas.find(item=>item.path===path);
   openModal(`Assign ${p?.title||"specialist"}`,"Choose a hub and intended runtime. Assignment does not start a session.",
@@ -370,6 +409,10 @@ document.addEventListener("click",async event=>{
   else if(type==="review-media")reviewMediaArtifact(id,action.dataset.artifact);
   else if(type==="prepare-media")prepareMediaPacket(id);
   else if(type==="inspect-media")inspectMediaCampaign(id);
+  else if(type==="new-paper-account")newPaperAccount();
+  else if(type==="inspect-paper")inspectPaperAccount(id);
+  else if(type==="paper-mark")recordPaperMark(id);
+  else if(type==="paper-order")simulatePaperOrder(id);
   else if(type==="assign")assign(path);
   else if(type==="select-window"){state.windowId=id;state.windowUrl=null;render()}
   else if(type==="toggle-catalog"){state.onlyImported=!state.onlyImported;render()}

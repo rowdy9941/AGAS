@@ -96,6 +96,13 @@ export async function projectVault(store, basePath) {
     await managed("02 Projects",`${account.id}.md`,header({agas_id:`media-account:${account.id}`,type:"media-account",project_id:account.project_id,platform:account.platform,status:account.status,provenance:"agas:media"})+
       `# ${account.handle}\n\nNiche: ${account.niche}\nLanguage: ${account.language}\n\nNo publishing connection or credentials are stored in this note.\n`);
   }
+  for (const paper of state.paperAccounts) {
+    const detail=store.paperAccountDetail(paper.id);
+    const positions=detail.positions.map(p=>`- ${p.symbol}: ${p.quantity} units · cost ${p.cost_paise} paise · manually marked ${p.mark?.price_paise??"unavailable"} paise`).join("\n");
+    await managed("02 Projects",`${paper.id}.md`,header({agas_id:`paper-account:${paper.id}`,type:"paper-account",project_id:paper.project_id,
+      version:paper.version,scope:"finance",provenance:"agas:paper-ledger"})+
+      `# ${paper.title}\n\nSimulation only. No broker connection, live orders or independently verified prices.\n\nCurrency: ${paper.currency}. Starting cash: ${paper.starting_cash_paise} paise. Current paper cash: ${paper.cash_paise} paise. Single purchase cap: ${paper.max_trade_bps}/10000 of starting cash.\n\n## Paper positions\n${positions||"No positions."}\n\nManual mark sources and simulated orders are recorded in AGAS.\n`);
+  }
   for (const campaign of state.mediaCampaigns) {
     const detail=store.mediaCampaignDetail(campaign.id);
     const trail=detail.artifacts.map(item=>`- ${item.stage} · ${item.status} · ${item.title} · SHA-256 ${item.sha256}`).join("\n");
