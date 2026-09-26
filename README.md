@@ -2,6 +2,13 @@
 
 [![CI](https://github.com/rowdy9941/AGAS/actions/workflows/ci.yml/badge.svg)](https://github.com/rowdy9941/AGAS/actions/workflows/ci.yml)
 
+> **Native rebuild branch (`rebuild/agas-native`):** The independent AGAS
+> platform is in design and implementation. Read the
+> [native v3 blueprint](docs/architecture/AGAS_NATIVE_V3_BLUEPRINT.md). The
+> code and `npm start` command below still run the **historical prototype**;
+> they do not yet run the new organization, seven hubs, or real missions. The
+> AionUI/Paperclip experiment remains on `rebuild/agas-foundations` for review.
+
 AGAS is an open control plane for governing, activating, and observing teams of
 AI agents across multiple runtimes. It keeps runtime discovery, agent identity,
 memory boundaries, hub composition, permissions, and execution state in one
@@ -75,7 +82,9 @@ and the security boundary is documented in
 
 ## Project status
 
-AGAS 1.0.1 implements all seven MVP phases. See the
+AGAS 1.0.1 is a historical prototype whose seven MVP phase checks include
+simulated execution. Those checks do not establish the new native product.
+See the
 [master architecture plan](docs/AGAS_MASTER_ARCHITECTURE_PLAN.md) for the full
 MVP contract, [evaluation suites](docs/evaluations.md), and
 [deployment guide](docs/deployment.md) for Node and Docker use.
