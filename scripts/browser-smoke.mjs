@@ -51,6 +51,7 @@ async function fillAndSubmit(fields) {
     "the UI showed an error toast");
 }
 async function screenshot(name) {
+  await waitFor("return !document.querySelector('#notice').textContent","notice dismissal before screenshot");
   await execute("window.scrollTo(0,0);document.querySelector('#main').scrollTop=0");
   const bytes=await command("GET",`/session/${session}/screenshot`);
   await mkdir(resolve("data"),{recursive:true});
