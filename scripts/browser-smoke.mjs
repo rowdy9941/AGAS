@@ -50,6 +50,12 @@ async function fillAndSubmit(fields) {
   assert.equal(await execute("return document.querySelector('#notice').style.background === 'rgb(84, 45, 50)'"),false,
     "the UI showed an error toast");
 }
+async function screenshot(name) {
+  await execute("window.scrollTo(0,0);document.querySelector('#main').scrollTop=0");
+  const bytes=await command("GET",`/session/${session}/screenshot`);
+  await mkdir(resolve("data"),{recursive:true});
+  await writeFile(resolve(`data/${name}`),Buffer.from(bytes,"base64"));
+}
 try {
   await new Promise(resolve=>app.server.listen(0,"127.0.0.1",resolve));
   let available=false;
@@ -65,10 +71,15 @@ try {
   assert.ok(session,"Chrome did not return a WebDriver session");
   await command("POST",`/session/${session}/url`,{url:`http://127.0.0.1:${app.server.address().port}`});
   await waitFor("return !!document.querySelector('#login-form #token')","login screen");
+  await execute(`window.__agasBrowserErrors=[];
+    window.addEventListener('error',e=>window.__agasBrowserErrors.push(e.message));
+    window.addEventListener('unhandledrejection',e=>window.__agasBrowserErrors.push(String(e.reason)));
+    const original=console.error;console.error=(...args)=>{window.__agasBrowserErrors.push(args.map(String).join(' '));original(...args)};`);
   const token=await element("#token");
   await command("POST",`/session/${session}/element/${token}/value`,{text:"browser-smoke"});
   await click("#login-form button[type=submit]");
   await waitFor("return document.querySelector('#login-overlay').classList.contains('hidden') && document.querySelector('#content').innerText.includes('Mission control')","authenticated workspace");
+  await screenshot("agas-overview.png");
   await click('[data-action="hub"][data-id="security"]');
   await waitFor("return document.querySelector('#content').innerText.includes('Authorized Security · findings')","Security hub");
   await click('[data-action="new-project"]');
@@ -91,10 +102,9 @@ try {
   await click('[data-action="new-care-item"]');
   await fillAndSubmit({kind:"document",title:"Check paperwork",nextStep:"Confirm forms with owner"});
   await waitFor("return document.querySelector('#content').innerText.includes('Check paperwork')","Health care item");
-  const screenshot=await command("GET",`/session/${session}/screenshot`);
-  await mkdir(resolve("data"),{recursive:true});
-  await writeFile(resolve("data/browser-smoke.png"),Buffer.from(screenshot,"base64"));
-  console.log("Chrome UI pass: login, Security assessment, Health consent and care item; screenshot data/browser-smoke.png");
+  assert.deepEqual(await execute("return window.__agasBrowserErrors"),[],"browser reported page errors");
+  await screenshot("agas-health.png");
+  console.log("Chrome UI pass: login, Security assessment, Health consent and care item; no page errors");
 } finally {
   if(session)await command("DELETE",`/session/${session}`).catch(()=>{});
   driver.kill();

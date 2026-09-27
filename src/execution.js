@@ -154,6 +154,48 @@ export class OpenCodeAdapter {
   }
 }
 
+// Claude Code is admitted for text-only work only on CLI versions that expose
+// restricted mode, safe mode, tool exclusion and unattended denial of prompts.
+export class ClaudeAdapter {
+  constructor({binary=null,environment=process.env}={}) {this.binary=binary;this.environment=environment}
+  executable() {return this.binary||detectRuntimes(this.environment).find(item=>item.id==="claude")?.path}
+  async probe() {
+    const binary=this.executable();
+    if(!binary)return {id:"claude",ready:false,reason:"Claude Code CLI is not installed on this host"};
+    try {
+      const command=resolveAgentCommand(binary),env=childEnv(this.environment);
+      const version=(await execFile(command.binary,[...command.args,"--version"],{env,timeout:5000,maxBuffer:4096})).stdout.trim();
+      const match=version.match(/\b(\d+)\.(\d+)\.(\d+)\b/);
+      if(!match||Number(match[1])<2||Number(match[1])===2&&
+        (Number(match[2])<1||Number(match[2])===1&&Number(match[3])<259))
+        return {id:"claude",ready:false,version,reason:"Text-only Claude runs require Claude Code 2.1.259 or newer"};
+      const help=(await execFile(command.binary,[...command.args,"--help"],{env,timeout:5000,maxBuffer:128*1024})).stdout;
+      if(["--restricted","--safe-mode","--tools","--disallowedTools","--permission-prompts",
+        "--no-session-persistence","--output-format"].some(flag=>!help.includes(flag)))
+        throw new Error("Required tool-free CLI flags unavailable");
+      const status=JSON.parse((await execFile(command.binary,[...command.args,"auth","status"],
+        {env,timeout:5000,maxBuffer:8192})).stdout);
+      if(status.loggedIn!==true)throw new Error("Stored login not confirmed");
+      return {id:"claude",ready:true,version,path:binary,capability:"text-only"};
+    } catch(error) {
+      return {id:"claude",ready:false,reason:error instanceof InputError?error.message:
+        "Claude Code needs a compatible CLI and confirmed local login; run claude auth status locally"};
+    }
+  }
+  launchMessage(workspace,prompt) {
+    const binary=this.executable();
+    if(!binary)throw new InputError("Claude Code CLI is missing",409);
+    const command=resolveAgentCommand(binary);
+    return spawn(command.binary,[...command.args,"-p","--restricted","--safe-mode","--tools","",
+      "--disallowedTools","mcp__*","--permission-prompts","none","--no-session-persistence",
+      "--no-chrome","--max-turns","3","--max-budget-usd","0.50",
+      "--output-format","stream-json","--verbose",prompt],{
+      cwd:workspace,env:childEnv(this.environment),stdio:["ignore","pipe","pipe"],shell:false,
+      detached:process.platform!=="win32"
+    });
+  }
+}
+
 // OpenClaw work is admitted only to a dedicated Gateway agent whose active
 // policy denies every tool. Gateway configuration must have been applied,
 // not merely written to disk, before AGAS can send a scoped prompt.
@@ -207,7 +249,8 @@ export class OpenClawAdapter {
 export class ExecutionManager {
   constructor(store,{workspaces="data/workspaces",adapter,adapters}={}) {
     this.store=store;this.root=resolve(workspaces);
-    this.adapters=adapters||(adapter?{codex:adapter}:{codex:new CodexAdapter(),opencode:new OpenCodeAdapter(),openclaw:new OpenClawAdapter()});
+    this.adapters=adapters||(adapter?{codex:adapter}:{codex:new CodexAdapter(),opencode:new OpenCodeAdapter(),
+      openclaw:new OpenClawAdapter(),claude:new ClaudeAdapter()});
     this.active=null;this.busy=false;this.stopping=false;this.promoting=new Set();
     this.store.recoverRuns();
   }
@@ -419,15 +462,17 @@ export class ExecutionManager {
       this.store.runningRun(id,child.pid||null);
       this.store.appendRunLog(id,"system",`${context.run.runtime} launched in ${codeRun?"isolated Git worktree":"restricted text workspace"} at ${context.run.id}`);
       const budget={used:0};
-      let output="",outputOverflow=false;
+      let output="",outputOverflow=false,providerError=false;
       this.logStream(id,"agent",child.stdout,budget,line=>{
         if(codeRun||outputOverflow)return;
         try {
           const event=JSON.parse(line);
+          if(event.type==="result"&&event.is_error===true){providerError=true;return}
           const part=event.type==="text"&&event.part?.type==="text"?event.part.text:
-            event.ok===true&&event.status==="ok"&&!event.deliveryStatus?event.final:null;
+            event.ok===true&&event.status==="ok"&&!event.deliveryStatus?event.final:
+            event.type==="result"&&event.is_error===false?event.result:null;
           if(typeof part!=="string")return;
-          const next=output+part;
+          const next=event.type==="result"?part:output+part;
           if(next.length>12000){outputOverflow=true;this.terminate(child);return}
           output=next;
         } catch {}
@@ -441,7 +486,7 @@ export class ExecutionManager {
       const {code,signal}=await completed;
       if(this.stopping||terminal.has(this.store.runContext(id).run.status))return;
       const artifacts=codeRun?await this.artifacts(workspace,id):[];
-      const succeeded=code===0&&!timedOut&&(codeRun||!outputOverflow&&budget.used<MAX_LOG_BYTES&&!!output.trim());
+      const succeeded=code===0&&!timedOut&&!providerError&&(codeRun||!outputOverflow&&budget.used<MAX_LOG_BYTES&&!!output.trim());
       this.store.completeRun(id,{status:succeeded?"succeeded":"failed",exitCode:code,
         result:timedOut?`Timed out after ${context.run.timeout_seconds} seconds`:
           outputOverflow?"Text output exceeded 12,000 characters":

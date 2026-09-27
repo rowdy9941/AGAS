@@ -25,11 +25,11 @@ jobs:
       - run: npm ci
       - run: npm run check
       - if: matrix.os == 'ubuntu-latest'
-        run: node test/browser-smoke.mjs
+        run: node scripts/browser-smoke.mjs
       - if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: agas-browser-smoke
-          path: data/browser-smoke.png
+          path: data/agas-*.png
       - if: matrix.os == 'ubuntu-latest'
         run: npm audit --audit-level=high

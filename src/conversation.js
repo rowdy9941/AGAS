@@ -49,12 +49,15 @@ export class ConversationManager {
       child=adapter.launchMessage(workspace,this.prompt(context));
       this.active.child=child;
       child.stderr.on("data",()=>{});
-      let bytes=0,pending="",reply="";
+      let bytes=0,pending="",reply="",providerError=false;
       const consume=line=>{
         try {
           const event=JSON.parse(line),item=event.part||event.item;
+          if(event.type==="result"&&event.is_error===true){providerError=true;return}
           if(event.ok===true&&event.status==="ok"&&!event.deliveryStatus&&typeof event.final==="string")
             reply=event.final.trim().slice(0,8000);
+          else if(event.type==="result"&&event.is_error===false&&typeof event.result==="string")
+            reply=event.result.trim().slice(0,8000);
           else if((event.type==="text"&&item?.type==="text")||
             (event.type==="item.completed"&&item?.type==="agent_message"))
             reply=(reply+"\n"+String(item.text||"")).trim().slice(-8000);
@@ -76,7 +79,7 @@ export class ConversationManager {
       timer=setTimeout(()=>{timedOut=true;this.executor.terminate(child)},120000);
       const {code}=await completed;
       if(this.stopping)return;
-      if(code===0&&!timedOut&&reply)this.store.completeCeoReply(id,{status:"completed",reply});
+      if(code===0&&!timedOut&&!providerError&&reply)this.store.completeCeoReply(id,{status:"completed",reply});
       else this.store.completeCeoReply(id,{status:"failed",error:timedOut?"CEO response timed out":
         bytes>128*1024?"CEO response exceeded output limit":`Runtime exited ${code??"without a code"} or supplied no text reply`});
     } catch(error) {
