@@ -137,6 +137,11 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       const runLimit=path.match(/^\/api\/projects\/([\da-f-]{36})\/run-limit$/);
       if(req.method==="POST"&&runLimit)return json(res,200,{project:store.setRunLimit(runLimit[1],await body(req))});
       if(req.method==="POST"&&path==="/api/media/accounts")return json(res,201,{account:store.createMediaAccount(await body(req))});
+      if(req.method==="POST"&&path==="/api/business/opportunities")
+        return json(res,201,{opportunity:store.createBusinessOpportunity(await body(req))});
+      const businessDecision=path.match(/^\/api\/business\/opportunities\/([\da-f-]{36})\/decide$/);
+      if(req.method==="POST"&&businessDecision)
+        return json(res,200,{opportunity:store.decideBusinessOpportunity(businessDecision[1],await body(req))});
       if(req.method==="POST"&&path==="/api/media/campaigns")return json(res,201,{campaign:store.createMediaCampaign(await body(req))});
       const campaignRoute=path.match(/^\/api\/media\/campaigns\/([\da-f-]{36})(?:\/(.*))?$/);
       if(campaignRoute){

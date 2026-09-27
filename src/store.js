@@ -109,6 +109,14 @@ export class Store {
         receipt_json TEXT NOT NULL, receipt_sha256 TEXT NOT NULL, created_at TEXT NOT NULL,
         UNIQUE(account_id,request_id)
       );
+      CREATE TABLE IF NOT EXISTS business_opportunities (
+        id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id),
+        title TEXT NOT NULL, segment TEXT NOT NULL, hypothesis TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'idea', version INTEGER NOT NULL DEFAULT 1,
+        mission_id TEXT REFERENCES missions(id), evidence_id TEXT REFERENCES mission_evidence(id),
+        evidence_sha256 TEXT, decision_note TEXT NOT NULL DEFAULT '', reviewed_at TEXT,
+        created_at TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS missions (
         id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), project TEXT NOT NULL DEFAULT '',
         title TEXT NOT NULL, objective TEXT NOT NULL, criteria TEXT NOT NULL,
@@ -255,6 +263,8 @@ export class Store {
       mediaCampaigns: all("SELECT * FROM media_campaigns ORDER BY created_at DESC"),
       mediaArtifacts: all("SELECT * FROM media_artifacts ORDER BY created_at DESC LIMIT 120"),
       mediaPackets: all("SELECT id,campaign_id,account_id,sha256,status,created_at FROM media_publication_packets ORDER BY created_at DESC LIMIT 120"),
+      businessOpportunities: all("SELECT * FROM business_opportunities ORDER BY created_at DESC LIMIT 120")
+        .map(item=>({...item,evidence_current:this.businessEvidenceCurrent(item)})),
       paperAccounts: all("SELECT * FROM paper_accounts ORDER BY created_at DESC"),
       missions: all("SELECT * FROM missions ORDER BY created_at DESC").map(m => ({ ...m,criteria:JSON.parse(m.criteria) })),
       runs: all("SELECT * FROM mission_runs ORDER BY created_at DESC LIMIT 80"),
@@ -479,6 +489,57 @@ export class Store {
       packet=this.db.prepare("SELECT * FROM media_publication_packets WHERE id=?").get(packetId);
     });
     return packet;
+  }
+  createBusinessOpportunity(input) {
+    const projectId=nonempty(input.projectId,"projectId",120);
+    const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(projectId);
+    if(!project||project.hub_id!=="business"||project.kind!=="business")
+      throw new InputError("Choose an AGAS Business project; MBAs is a separate product",409);
+    const title=nonempty(input.title,"title",140),segment=nonempty(input.segment,"segment",140);
+    const hypothesis=nonempty(input.hypothesis,"hypothesis",4000),id=randomUUID();
+    this.transaction(()=>{
+      this.db.prepare("INSERT INTO business_opportunities(id,project_id,title,segment,hypothesis,created_at) VALUES (?,?,?,?,?,?)")
+        .run(id,projectId,title,segment,hypothesis,now());
+      this.event("business.opportunity.created",id,"business",`Opportunity proposed for ${project.title}: ${title}`);
+    });
+    return this.db.prepare("SELECT * FROM business_opportunities WHERE id=?").get(id);
+  }
+  decideBusinessOpportunity(id,input) {
+    const missionId=nonempty(input.missionId,"missionId",120),evidenceId=nonempty(input.evidenceId,"evidenceId",120);
+    const note=nonempty(input.reviewNote,"reviewNote",2000),decision=input.decision;
+    if(!["continue","discard"].includes(decision))throw new InputError("Choose continue or discard");
+    let opportunity;
+    this.transaction(()=>{
+      opportunity=this.db.prepare("SELECT * FROM business_opportunities WHERE id=?").get(id);
+      if(!opportunity)throw new InputError("Business opportunity not found",404);
+      if(opportunity.version!==input.expectedVersion||opportunity.status!=="idea")
+        throw new InputError("Opportunity changed; reload before review",409);
+      const detail=this.missionDetail(missionId),mission=detail.mission;
+      const evidence=detail.evidence.find(item=>item.id===evidenceId);
+      if(mission.hub_id!=="business"||mission.project!==opportunity.project_id||mission.status!=="accepted"||
+        evidence?.status!=="reviewed"||!detail.tasks.some(task=>task.id===evidence?.task_id&&task.status==="accepted")||
+        createHash("sha256").update(evidence.content).digest("hex")!==evidence.sha256||
+        !this.verifyEvidenceReceipt(evidence))
+        throw new InputError("Use unchanged, reviewed evidence from an accepted mission in this Business project",409);
+      this.db.prepare(`UPDATE business_opportunities SET status=?,version=version+1,mission_id=?,evidence_id=?,
+        evidence_sha256=?,decision_note=?,reviewed_at=? WHERE id=?`)
+        .run(decision==="continue"?"owner-reviewed":"discarded",missionId,evidenceId,evidence.sha256,note,now(),id);
+      this.event("business.opportunity.reviewed",id,"business",`Owner chose ${decision} for ${opportunity.title}; no outside commitment`);
+      opportunity=this.db.prepare("SELECT * FROM business_opportunities WHERE id=?").get(id);
+    });
+    return opportunity;
+  }
+  businessEvidenceCurrent(opportunity) {
+    if(!opportunity.evidence_id)return null;
+    try {
+      const detail=this.missionDetail(opportunity.mission_id),evidence=detail.evidence.find(item=>item.id===opportunity.evidence_id);
+      return detail.mission.status==="accepted"&&detail.mission.hub_id==="business"&&
+        detail.mission.project===opportunity.project_id&&evidence?.status==="reviewed"&&
+        detail.tasks.some(task=>task.id===evidence.task_id&&task.status==="accepted")&&
+        evidence.sha256===opportunity.evidence_sha256&&
+        createHash("sha256").update(evidence.content).digest("hex")===evidence.sha256&&
+        this.verifyEvidenceReceipt(evidence);
+    } catch {return false}
   }
   createPaperAccount(input) {
     const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(nonempty(input.projectId,"projectId",120));

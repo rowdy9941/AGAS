@@ -114,6 +114,10 @@ function financePanels() {
   const d=state.data,projects=d.projects.filter(p=>p.hub_id==="finance"&&p.kind==="research");
   return `<div class="section-head"><h2>FinOS · paper ledger</h2><span>${d.paperAccounts.length} simulated accounts</span></div><div class="panel"><p class="helper">Manual source references and prices. Paper fills and historical replays use those marks; they are not broker executions, verified quotes or investment advice. Each buy has a configured size cap, cash only and no short positions.</p><div class="mission-table">${d.paperAccounts.map(a=>`<article class="card work-card"><div><strong>${esc(a.title)}</strong><p>${esc(d.projects.find(p=>p.id===a.project_id)?.title)} · Paper cash ${rupees(a.cash_paise)}</p><small>Single purchase cap ${esc((a.max_trade_bps/100).toFixed(2))}% of starting cash · revision ${a.version}</small></div><div class="work-actions"><button class="secondary" data-action="inspect-paper" data-id="${esc(a.id)}">Ledger</button><button class="secondary" data-action="paper-mark" data-id="${esc(a.id)}">Record price</button><button class="secondary" data-action="paper-replay" data-id="${esc(a.id)}">Replay marks</button><button class="primary" data-action="paper-order" data-id="${esc(a.id)}">Simulate trade</button></div></article>`).join("")||'<div class="empty">Create a Finance research project, then a paper account.</div>'}</div><button class="secondary" data-action="new-paper-account" ${projects.length?"":"disabled"}>+ Paper account</button></div>`;
 }
+function businessPanels() {
+  const d=state.data,projects=d.projects.filter(p=>p.hub_id==="business"&&p.kind==="business");
+  return `<div class="section-head"><h2>Business · opportunity review</h2><span>${d.businessOpportunities.length} ideas</span></div><div class="panel"><p class="helper">Record a venture hypothesis, run a scoped Business mission, then decide whether to continue using accepted, owner-reviewed evidence. A decision does not contact customers, copy MBAs data or make a commercial commitment.</p><div class="mission-table">${d.businessOpportunities.map(o=>`<article class="card work-card"><div><strong>${esc(o.title)}</strong><p>${esc(o.hypothesis)}</p><small>${esc(d.projects.find(p=>p.id===o.project_id)?.title)} · ${esc(o.segment)} · ${esc(o.status)} · revision ${o.version}${o.evidence_current===false?" · SOURCE CHANGED":""}</small>${o.decision_note?`<small>Owner review: ${esc(o.decision_note)} · evidence SHA-256 ${esc(o.evidence_sha256)}</small>`:""}</div><div class="work-actions">${o.status==="idea"?`<button class="secondary" data-action="decide-business" data-id="${esc(o.id)}">Review evidence</button>`:o.mission_id?`<button class="ghost" data-action="open-mission" data-id="${esc(o.mission_id)}">Source mission →</button>`:""}</div></article>`).join("")||'<div class="empty">Create a Business project, then record its first opportunity.</div>'}</div><button class="secondary" data-action="new-business-opportunity" ${projects.length?"":"disabled"}>+ Opportunity</button></div>`;
+}
 function agentsPage() {
   const d=state.data,imported=new Map(d.personas.map(p=>[p.path,p]));
   const terms=state.search.toLowerCase();
@@ -208,6 +212,7 @@ function render() {
   if(state.view==="mission"&&state.detail)$("#content").insertAdjacentHTML("beforeend",handoffsPanel(state.detail));
   if(state.view==="hubs"&&state.hub==="content")$("#content").insertAdjacentHTML("beforeend",mediaPanels());
   if(state.view==="hubs"&&state.hub==="finance")$("#content").insertAdjacentHTML("beforeend",financePanels());
+  if(state.view==="hubs"&&state.hub==="business")$("#content").insertAdjacentHTML("beforeend",businessPanels());
   renderInspector();
 }
 function openModal(title,description,fields,submit) {
@@ -366,6 +371,25 @@ function approveMediaPacket(id,packetId) {
     `<p class="helper" style="white-space:pre-wrap">Target account ${esc(packet.account_id)} · SHA-256 ${esc(packet.sha256)}<br>${esc(packet.content)}</p><label class="field">What did you verify?<textarea name="approvalNote" required maxlength="2000"></textarea></label>`,
     async data=>{await api(`/api/media/campaigns/${id}/packets/${packetId}/approve`,{method:"POST",body:JSON.stringify({approvalNote:data.get("approvalNote"),expectedVersion:campaign.version})});state.inspected={type:"media",data:await api(`/api/media/campaigns/${id}`)};});
 }
+function newBusinessOpportunity() {
+  const projects=state.data.projects.filter(p=>p.hub_id==="business"&&p.kind==="business");
+  if(!projects.length)return notify("Create an AGAS Business project first.",true);
+  openModal("Record a business opportunity","Describe a hypothesis for this AGAS project. MBAs remains its own application.",
+    `<label class="field">Project<select name="projectId">${projects.map(p=>`<option value="${esc(p.id)}">${esc(p.title)}</option>`).join("")}</select></label><label class="field">Title<input name="title" required maxlength="140"></label><label class="field">Customer segment<input name="segment" required maxlength="140"></label><label class="field">Hypothesis<textarea name="hypothesis" required maxlength="4000" placeholder="What should this business learn or deliver?"></textarea></label>`,
+    data=>api("/api/business/opportunities",{method:"POST",body:JSON.stringify(Object.fromEntries(data))}));
+}
+async function decideBusinessOpportunity(id) {
+  const opportunity=state.data.businessOpportunities.find(item=>item.id===id);
+  if(!opportunity||opportunity.status!=="idea")return notify("Refresh this opportunity before reviewing.",true);
+  const missions=state.data.missions.filter(m=>m.hub_id==="business"&&m.project===opportunity.project_id&&m.status==="accepted").slice(0,40);
+  const records=await Promise.all(missions.map(m=>api(`/api/missions/${m.id}`)));
+  const choices=records.flatMap(detail=>detail.evidence.filter(e=>e.status==="reviewed"&&detail.tasks.some(t=>t.id===e.task_id&&t.status==="accepted"))
+    .map(e=>({mission:detail.mission,evidence:e})));
+  if(!choices.length)return notify("Accept a Business mission with reviewed evidence in this project first.",true);
+  openModal("Review business opportunity","Choose the exact accepted mission evidence and record your own decision. No external customer or MBAs action occurs.",
+    `<label class="field">Reviewed source<select name="source">${choices.map((row,index)=>`<option value="${index}">${esc(row.mission.title)} · ${esc(row.evidence.title)} · SHA-256 ${esc(row.evidence.sha256)}</option>`).join("")}</select></label><label class="field">Decision<select name="decision"><option value="continue">Continue planning</option><option value="discard">Discard this idea</option></select></label><label class="field">Reason<textarea name="reviewNote" required maxlength="2000" placeholder="What did you check in the source evidence?"></textarea></label>`,
+    data=>{const selected=choices[Number(data.get("source"))];return api(`/api/business/opportunities/${id}/decide`,{method:"POST",body:JSON.stringify({missionId:selected.mission.id,evidenceId:selected.evidence.id,decision:data.get("decision"),reviewNote:data.get("reviewNote"),expectedVersion:opportunity.version})})});
+}
 async function inspectMediaCampaign(id) {
   try {const detail=await api(`/api/media/campaigns/${id}`);state.inspected={type:"media",data:detail};renderInspector()}
   catch(error){notify(error.message,true)}
@@ -454,6 +478,8 @@ document.addEventListener("click",async event=>{
   else if(type==="review-media")reviewMediaArtifact(id,action.dataset.artifact);
   else if(type==="prepare-media")prepareMediaPacket(id);
   else if(type==="approve-media-packet")approveMediaPacket(id,action.dataset.packet);
+  else if(type==="new-business-opportunity")newBusinessOpportunity();
+  else if(type==="decide-business")decideBusinessOpportunity(id).catch(error=>notify(error.message,true));
   else if(type==="inspect-media")inspectMediaCampaign(id);
   else if(type==="new-paper-account")newPaperAccount();
   else if(type==="inspect-paper")inspectPaperAccount(id);

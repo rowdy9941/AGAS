@@ -141,6 +141,12 @@ export async function projectVault(store, basePath) {
       version:paper.version,scope:"finance",provenance:"agas:paper-ledger"})+
       `# ${paper.title}\n\nSimulation only. No broker connection, live orders or independently verified prices.\n\nCurrency: ${paper.currency}. Starting cash: ${paper.starting_cash_paise} paise. Current paper cash: ${paper.cash_paise} paise. Single purchase cap: ${paper.max_trade_bps}/10000 of starting cash.\n\n## Paper positions\n${positions||"No positions."}\n\n## Historical manual-mark replays\n${replays||"No replay yet."}\n\nManual mark sources and simulated orders are recorded in AGAS.\n`);
   }
+  for (const opportunity of state.businessOpportunities) {
+    await managed("02 Projects",`${opportunity.id}.md`,header({agas_id:`business-opportunity:${opportunity.id}`,
+      type:"business-opportunity",project_id:opportunity.project_id,revision:opportunity.version,
+      status:opportunity.status,scope:"business",provenance:"agas:business"})+
+      `# ${opportunity.title}\n\nCustomer segment: ${opportunity.segment}\n\nHypothesis: ${opportunity.hypothesis}\n\nOwner review: ${opportunity.decision_note||"Pending an accepted Business mission"}.\n\nSource mission: ${opportunity.mission_id||"None"}. Reviewed evidence: ${opportunity.evidence_id||"None"}. SHA-256: ${opportunity.evidence_sha256||"None"}. Source integrity: ${opportunity.evidence_current===null?"Not yet reviewed":opportunity.evidence_current?"Current":"Changed; inspect before use"}.\n\nNo customer contact or commercial commitment is recorded by this decision. MBAs stays separate.\n`);
+  }
   for (const campaign of state.mediaCampaigns) {
     const detail=store.mediaCampaignDetail(campaign.id);
     const trail=detail.artifacts.map(item=>`- ${item.stage} · ${item.status} · ${item.title} · SHA-256 ${item.sha256}`).join("\n");
