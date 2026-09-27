@@ -116,7 +116,14 @@ try {
     "the native web panel opens only after a local address is selected");
   assert.deepEqual(await execute("return window.__agasBrowserErrors"),[],"agent window navigation reported page errors");
   await screenshot("agas-agent-windows.png");
-  console.log("Chrome UI pass: login, Security assessment, Health consent/item, five agent windows; no page errors");
+  await command("POST",`/session/${session}/window/rect`,{width:390,height:844});
+  await click('#nav button[data-view="overview"]');
+  await waitFor("return document.querySelector('#content').innerText.includes('Mission control')","mobile overview");
+  assert.equal(await execute("return document.documentElement.scrollWidth <= window.innerWidth + 1"),true,
+    "mobile workspace must not overflow the viewport horizontally");
+  assert.deepEqual(await execute("return window.__agasBrowserErrors"),[],"mobile navigation reported page errors");
+  await screenshot("agas-mobile.png");
+  console.log("Chrome UI pass: login, Security, Health, five agent windows and mobile overview; no page errors");
 } finally {
   if(session)await command("DELETE",`/session/${session}`).catch(()=>{});
   driver.kill();
