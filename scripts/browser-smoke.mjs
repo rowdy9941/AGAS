@@ -104,7 +104,19 @@ try {
   await waitFor("return document.querySelector('#content').innerText.includes('Check paperwork')","Health care item");
   assert.deepEqual(await execute("return window.__agasBrowserErrors"),[],"browser reported page errors");
   await screenshot("agas-health.png");
-  console.log("Chrome UI pass: login, Security assessment, Health consent and care item; no page errors");
+  await click('#nav button[data-view="windows"]');
+  await waitFor("return document.querySelector('.window-tabs')?.querySelectorAll('button').length === 5","five agent windows");
+  await click('[data-action="select-window"][data-id="claude"]');
+  await waitFor("return document.querySelector('.window-header')?.innerText.includes('bounded text tasks')","Claude workspace and capability");
+  assert.equal(await execute("return !!document.querySelector('.window-header iframe')"),false,
+    "desktop agent window must not masquerade as an embedded native UI");
+  await click('[data-action="select-window"][data-id="hermes"]');
+  await waitFor("return !!document.querySelector('#window-form input[name=url]')","Hermes native URL form");
+  assert.equal(await execute("return !!document.querySelector('.window-frame iframe')"),false,
+    "the native web panel opens only after a local address is selected");
+  assert.deepEqual(await execute("return window.__agasBrowserErrors"),[],"agent window navigation reported page errors");
+  await screenshot("agas-agent-windows.png");
+  console.log("Chrome UI pass: login, Security assessment, Health consent/item, five agent windows; no page errors");
 } finally {
   if(session)await command("DELETE",`/session/${session}`).catch(()=>{});
   driver.kill();
