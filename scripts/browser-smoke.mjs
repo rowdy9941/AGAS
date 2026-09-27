@@ -119,10 +119,18 @@ try {
   await command("POST",`/session/${session}/window/rect`,{width:390,height:844});
   await click('#nav button[data-view="overview"]');
   await waitFor("return document.querySelector('#content').innerText.includes('Mission control')","mobile overview");
-  assert.equal(await execute("return document.documentElement.scrollWidth <= window.innerWidth + 1"),true,
-    "mobile workspace must not overflow the viewport horizontally");
-  assert.deepEqual(await execute("return window.__agasBrowserErrors"),[],"mobile navigation reported page errors");
+  const mobileLayout=await execute(`return {
+    viewport:window.innerWidth,document:document.documentElement.scrollWidth,
+    offenders:Array.from(document.querySelectorAll('body *')).filter(node=>{
+      const rect=node.getBoundingClientRect(),style=getComputedStyle(node);
+      return style.display!=='none'&&rect.width>0&&rect.right>window.innerWidth+1;
+    }).slice(0,15).map(node=>({tag:node.tagName,className:String(node.className).slice(0,100),
+      right:Math.round(node.getBoundingClientRect().right),width:Math.round(node.getBoundingClientRect().width)}))
+  }`);
   await screenshot("agas-mobile.png");
+  assert.equal(mobileLayout.document<=mobileLayout.viewport+1,true,
+    `mobile workspace must not overflow the viewport horizontally: ${JSON.stringify(mobileLayout)}`);
+  assert.deepEqual(await execute("return window.__agasBrowserErrors"),[],"mobile navigation reported page errors");
   console.log("Chrome UI pass: login, Security, Health, five agent windows and mobile overview; no page errors");
 } finally {
   if(session)await command("DELETE",`/session/${session}`).catch(()=>{});
