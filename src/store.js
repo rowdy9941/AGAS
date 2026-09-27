@@ -961,13 +961,13 @@ export class Store {
   verifyRecordedFile(runId,path,expectedSha) {
     const run=this.db.prepare("SELECT workspace FROM mission_runs WHERE id=?").get(runId);
     if(!run?.workspace||typeof path!=="string"||!path||!expectedSha)return false;
-    const full=resolve(run.workspace,path);
-    if(!full.startsWith(run.workspace+sep))return false;
     try {
+      const workspace=realpathSync(run.workspace),full=resolve(workspace,path);
+      if(!full.startsWith(workspace+sep))return false;
       const info=lstatSync(full);
       if(!info.isFile()||info.size>10*1024*1024)return false;
       const actual=realpathSync(full);
-      if(actual!==full&&!actual.startsWith(run.workspace+sep))return false;
+      if(actual!==full&&!actual.startsWith(workspace+sep))return false;
       return createHash("sha256").update(readFileSync(full)).digest("hex")===expectedSha;
     } catch {return false}
   }

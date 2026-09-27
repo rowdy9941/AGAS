@@ -10,9 +10,11 @@ const policy={gateway:{mode:"local"},agents:{entries:{agas:{skipBootstrap:true,s
   tools:{deny:["*"]},sandbox:{mode:"all",scope:"agent",workspaceAccess:"none"}}}}};
 
 test("OpenClaw admits only an applied local Gateway policy and records bounded CEO and hub text",async()=>{
-  const root=await mkdtemp(join(tmpdir(),"agas-claw-")),binary=join(root,"openclaw"),config=join(root,"agas-openclaw-fixture.json");
+  const root=await mkdtemp(join(tmpdir(),"agas-claw-")),script=join(root,"openclaw-fixture.js"),
+    binary=process.platform==="win32"?process.execPath:script,
+    commandArgs=process.platform==="win32"?[script]:[],config=join(root,"agas-openclaw-fixture.json");
   await writeFile(config,JSON.stringify({config:policy,configRevisionHash:"current",appliedConfigHash:"current"}));
-  await writeFile(binary,`#!/usr/bin/env node
+  await writeFile(script,`#!/usr/bin/env node
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const args=process.argv.slice(2),fixture=JSON.parse(readFileSync(join(process.env.HOME,'agas-openclaw-fixture.json'),'utf8'));
@@ -26,8 +28,8 @@ else if(args[0]==='agent'){
  console.log(JSON.stringify({ok:true,status:'ok',final:'Scoped result: '+(prompt.includes('Allowed content')?'Allowed content':'No content note')}));
 }else process.exit(2);
 `);
-  await chmod(binary,0o700);
-  const adapter=new OpenClawAdapter({binary,environment:{HOME:root,PATH:process.env.PATH}});
+  await chmod(script,0o700);
+  const adapter=new OpenClawAdapter({binary,commandArgs,environment:{HOME:root,PATH:process.env.PATH}});
   assert.equal((await adapter.probe()).ready,true);
   await writeFile(config,JSON.stringify({config:policy,configRevisionHash:"current",appliedConfigHash:"older"}));
   assert.equal((await adapter.probe()).ready,false);

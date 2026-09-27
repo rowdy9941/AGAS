@@ -8,8 +8,10 @@ import { createAgasServer } from "../src/server.js";
 import { OpenCodeAdapter } from "../src/execution.js";
 
 async function fixture(root) {
-  const binary=join(root,"opencode-fixture");
-  await writeFile(binary,`#!/usr/bin/env node
+  const script=join(root,"opencode-fixture.js");
+  const binary=process.platform==="win32"?process.execPath:script;
+  const commandArgs=process.platform==="win32"?[script]:[];
+  await writeFile(script,`#!/usr/bin/env node
 const fs=require('node:fs');
 if(process.argv.includes('--version')) {console.log('opencode 1.2.3');process.exit(0)}
 if(process.argv.includes('--help')) {console.log('--format json');process.exit(0)}
@@ -31,8 +33,8 @@ if(process.argv.includes('run')) {
 }
 process.exit(5);
 `);
-  await chmod(binary,0o700);
-  return binary;
+  await chmod(script,0o700);
+  return {binary,commandArgs,script};
 }
 
 test("an assigned OpenCode process passes readiness, executes in a Git worktree and records a hashed artifact",async()=>{
@@ -41,8 +43,8 @@ test("an assigned OpenCode process passes readiness, executes in a Git worktree 
   await writeFile(join(repo,"README.md"),"Source remains unchanged\n");
   execFileSync("git",["-C",repo,"add","README.md"]);
   execFileSync("git",["-C",repo,"-c","user.name=AGAS Test","-c","user.email=test@example.invalid","commit","-q","-m","Base"]);
-  const binary=await fixture(root);
-  const opencode=new OpenCodeAdapter({binary,environment:{PATH:process.env.PATH,HOME:root,SECRET_AGAS_TEST_TOKEN:"must-not-pass"}});
+  const command=await fixture(root);
+  const opencode=new OpenCodeAdapter({...command,environment:{PATH:process.env.PATH,HOME:root,SECRET_AGAS_TEST_TOKEN:"must-not-pass"}});
   const {server}=createAgasServer({database:join(root,"agas.db"),vault:join(root,"vault"),
     workspaces:join(root,"workspaces"),token:"test-token",adapters:{opencode}});
   await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
@@ -94,9 +96,9 @@ test("an assigned OpenCode process passes readiness, executes in a Git worktree 
 });
 
 test("OpenCode rejects unsupported protocol or missing login before launch",async()=>{
-  const root=await mkdtemp(join(tmpdir(),"agas-opencode-probe-")),binary=await fixture(root);
-  const adapter=new OpenCodeAdapter({binary,environment:{PATH:process.env.PATH,HOME:root}});
+  const root=await mkdtemp(join(tmpdir(),"agas-opencode-probe-")),command=await fixture(root);
+  const adapter=new OpenCodeAdapter({...command,environment:{PATH:process.env.PATH,HOME:root}});
   assert.equal((await adapter.probe()).ready,true);
-  await writeFile(binary,"#!/usr/bin/env node\nif(process.argv.includes('--version'))console.log('opencode 2.0.0');else console.log('0 credentials');\n");
+  await writeFile(command.script,"#!/usr/bin/env node\nif(process.argv.includes('--version'))console.log('opencode 2.0.0');else console.log('0 credentials');\n");
   assert.equal((await adapter.probe()).ready,false);
 });

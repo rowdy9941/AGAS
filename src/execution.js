@@ -84,19 +84,19 @@ export class CodexAdapter {
 }
 
 export class OpenCodeAdapter {
-  constructor({binary=null,environment=process.env}={}) {this.binary=binary;this.environment=environment}
+  constructor({binary=null,commandArgs=[],environment=process.env}={}) {this.binary=binary;this.commandArgs=commandArgs;this.environment=environment}
   executable() {return this.binary||detectRuntimes(this.environment).find(item=>item.id==="opencode")?.path}
   async probe() {
     const binary=this.executable();
     if(!binary)return {id:"opencode",ready:false,reason:"OpenCode CLI is not installed on this host"};
     try {
       const env=childEnv(this.environment);
-      const version=(await execFile(binary,["--version"],{env,timeout:5000,maxBuffer:4096})).stdout.trim();
+      const version=(await execFile(binary,[...this.commandArgs,"--version"],{env,timeout:5000,maxBuffer:4096})).stdout.trim();
       const major=Number(version.match(/(?:^|\s)v?(\d+)\./)?.[1]);
       if(major!==1)return {id:"opencode",ready:false,reason:"AGAS currently supports the OpenCode 1.x CLI protocol",version};
-      const help=(await execFile(binary,["run","--help"],{env,timeout:5000,maxBuffer:16384})).stdout;
+      const help=(await execFile(binary,[...this.commandArgs,"run","--help"],{env,timeout:5000,maxBuffer:16384})).stdout;
       if(!help.includes("--format"))throw new Error("JSON run events unavailable");
-      const output=(await execFile(binary,["auth","list"],{env,timeout:5000,maxBuffer:8192})).stdout
+      const output=(await execFile(binary,[...this.commandArgs,"auth","list"],{env,timeout:5000,maxBuffer:8192})).stdout
         .replace(/\u001b\[[0-9;]*m/g,"");
       if(!/\b[1-9]\d*\s+credentials?\b/i.test(output))
         return {id:"opencode",ready:false,reason:"OpenCode has no confirmed stored provider credential; run opencode auth list locally",version};
@@ -112,14 +112,14 @@ export class OpenCodeAdapter {
       "*":"deny",read:"allow",edit:"allow",glob:"allow",grep:"allow",external_directory:"deny"
     }),OPENCODE_AUTO_SHARE:"false",OPENCODE_DISABLE_AUTOUPDATE:"true",
       OPENCODE_DISABLE_LSP_DOWNLOAD:"true",OPENCODE_DISABLE_DEFAULT_PLUGINS:"true"};
-    return spawn(binary,["--pure","run","--format","json",prompt+"\n\nAGAS permits only local file read, edit and search in this worktree. Shell tools and external directories are disabled. State honestly when checks could not be run."],{
+    return spawn(binary,[...this.commandArgs,"--pure","run","--format","json",prompt+"\n\nAGAS permits only local file read, edit and search in this worktree. Shell tools and external directories are disabled. State honestly when checks could not be run."],{
       cwd:workspace,env,stdio:["ignore","pipe","pipe"],shell:false,detached:process.platform!=="win32"
     });
   }
   launchMessage(workspace,prompt) {
     const binary=this.executable();
     if(!binary)throw new InputError("OpenCode CLI is missing",409);
-    return spawn(binary,["--pure","run","--format","json",prompt],{
+    return spawn(binary,[...this.commandArgs,"--pure","run","--format","json",prompt],{
       cwd:workspace,env:{...childEnv(this.environment),OPENCODE_PERMISSION:JSON.stringify({"*":"deny"}),
         OPENCODE_AUTO_SHARE:"false",OPENCODE_DISABLE_AUTOUPDATE:"true",
         OPENCODE_DISABLE_DEFAULT_PLUGINS:"true",OPENCODE_DISABLE_LSP_DOWNLOAD:"true"},
@@ -132,20 +132,20 @@ export class OpenCodeAdapter {
 // policy denies every tool. Gateway configuration must have been applied,
 // not merely written to disk, before AGAS can send a scoped prompt.
 export class OpenClawAdapter {
-  constructor({binary=null,environment=process.env}={}) {this.binary=binary;this.environment=environment}
+  constructor({binary=null,commandArgs=[],environment=process.env}={}) {this.binary=binary;this.commandArgs=commandArgs;this.environment=environment}
   executable() {return this.binary||detectRuntimes(this.environment).find(item=>item.id==="openclaw")?.path}
   async probe() {
     const binary=this.executable();
     if(!binary)return {id:"openclaw",ready:false,reason:"OpenClaw CLI is not installed on this host"};
     try {
       const env=childEnv(this.environment),options={env,timeout:10000,maxBuffer:512*1024};
-      const version=(await execFile(binary,["--version"],options)).stdout.trim();
-      const help=(await execFile(binary,["agent","--help"],options)).stdout;
+      const version=(await execFile(binary,[...this.commandArgs,"--version"],options)).stdout.trim();
+      const help=(await execFile(binary,[...this.commandArgs,"agent","--help"],options)).stdout;
       if(!["--agent","--message-file","--session-key","--json"].every(flag=>help.includes(flag)))
         throw new Error("OpenClaw agent JSON protocol is unavailable");
-      const status=JSON.parse((await execFile(binary,["gateway","status","--require-rpc","--json"],options)).stdout);
+      const status=JSON.parse((await execFile(binary,[...this.commandArgs,"gateway","status","--require-rpc","--json"],options)).stdout);
       if(status.ok!==true)throw new Error("Gateway read probe failed");
-      const snapshot=JSON.parse((await execFile(binary,["gateway","call","config.get","--params","{}","--json"],options)).stdout);
+      const snapshot=JSON.parse((await execFile(binary,[...this.commandArgs,"gateway","call","config.get","--params","{}","--json"],options)).stdout);
       const active=snapshot.result||snapshot;
       const agent=active.config?.agents?.entries?.agas;
       if(!active.configRevisionHash||active.configRevisionHash!==active.appliedConfigHash||
@@ -165,7 +165,7 @@ export class OpenClawAdapter {
     const file=join(workspace,`agas-request-${randomUUID()}.txt`);
     writeFileSync(file,prompt,{encoding:"utf8",mode:0o600,flag:"wx"});
     try {
-      const child=spawn(binary,["agent","--agent","agas","--session-key",`agas-${randomUUID()}`,
+      const child=spawn(binary,[...this.commandArgs,"agent","--agent","agas","--session-key",`agas-${randomUUID()}`,
         "--message-file",file,"--timeout","120","--json"],{
         cwd:workspace,env:childEnv(this.environment),stdio:["ignore","pipe","pipe"],shell:false,
         detached:process.platform!=="win32"
@@ -232,6 +232,7 @@ export class ExecutionManager {
     const root=await validateRepository(context.project.repository_path);
     await mkdir(this.root,{recursive:true,mode:0o700});
     if((await lstat(this.root)).isSymbolicLink())throw new Error("Workspaces directory cannot be a symlink");
+    this.root=await realpath(this.root);
     const workspace=join(this.root,context.run.id);
     const base=await git(root,"rev-parse","HEAD");
     if(!/^[a-f0-9]{40}$/.test(base))throw new Error("Unsupported Git commit identifier");
@@ -243,6 +244,7 @@ export class ExecutionManager {
   async prepareText(context) {
     await mkdir(this.root,{recursive:true,mode:0o700});
     if((await lstat(this.root)).isSymbolicLink())throw new Error("Workspaces directory cannot be a symlink");
+    this.root=await realpath(this.root);
     const workspace=await mkdtemp(join(this.root,`text-${context.run.id}-`));
     this.store.preparedRun(context.run.id,workspace,null);
     return workspace;
@@ -337,7 +339,8 @@ export class ExecutionManager {
       if(existing)return existing;
       const root=await validateRepository(project.repository_path);
       const workspace=await realpath(run.workspace);
-      if(workspace!==join(this.root,runId)||await git(workspace,"rev-parse","--show-toplevel")!==workspace)
+      if(workspace!==join(await realpath(this.root),runId)||
+        await realpath(await git(workspace,"rev-parse","--show-toplevel"))!==workspace)
         throw new InputError("Run worktree is no longer in AGAS's workspace directory",409);
       const ref=`refs/heads/agas/${mission.id}/${runId}`;
       let commit;
