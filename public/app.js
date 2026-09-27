@@ -130,6 +130,10 @@ function incidentPanels() {
   const d=state.data;
   return `<div class="section-head"><h2>Management · run incidents</h2><span>${d.incidents.filter(i=>i.status!=="resolved").length} open or acknowledged</span></div><div class="panel"><p class="helper">Failed, interrupted and stopped active runs open one incident and one dedicated Management mission. Inspect partial work before retrying; an accepted response mission with reviewed evidence is required to resolve it.</p><div class="mission-table">${d.incidents.map(i=>{const run=d.runs.find(r=>r.id===i.run_id);return `<article class="card work-card"><div><strong>${esc(i.title)}</strong><p>${esc(i.source_hub_id)} · ${esc(i.status)} · run ${esc(i.run_id)}</p><small>Revision ${i.version}${i.evidence_current===false?" · RESOLUTION SOURCE CHANGED":""}</small>${i.acknowledgement_note?`<small>Initial review: ${esc(i.acknowledgement_note)}</small>`:""}${i.resolution_note?`<small>Resolution: ${esc(i.resolution_note)} · SHA-256 ${esc(i.evidence_sha256)}</small>`:""}</div><div class="work-actions">${run?`<button class="ghost" data-action="inspect-run" data-id="${esc(i.run_id)}" data-mission="${esc(run.mission_id)}">Source run</button>`:""}<button class="ghost" data-action="open-mission" data-id="${esc(i.resolution_mission_id)}">Response mission</button>${i.status==="open"?`<button class="secondary" data-action="review-incident" data-id="${esc(i.id)}">Acknowledge</button>`:i.status==="acknowledged"?`<button class="secondary" data-action="review-incident" data-id="${esc(i.id)}">Resolve</button>`:""}</div></article>`}).join("")||'<div class="empty">No recorded run incidents.</div>'}</div></div>`;
 }
+function procedurePanels(hubId) {
+  const rows=state.data.procedures.filter(p=>p.hub_id===hubId);
+  return `<div class="section-head"><h2>Reviewed procedures</h2><span>${rows.filter(p=>p.status==="active").length} active in this hub</span></div><div class="panel"><p class="helper">Reuse a procedure only after accepted source evidence, a separate accepted evaluation mission and an owner activation. Project sources remain in that project. This stores procedural guidance; it does not train a model or grant a tool permission. Changed evidence is excluded from new runs.</p><div class="mission-table">${rows.map(p=>`<article class="card work-card"><div><strong>${esc(p.title)}</strong><p>${esc(p.instructions)}</p><small>${esc(p.project_id?state.data.projects.find(row=>row.id===p.project_id)?.title||p.project_id:"Hub-wide")} · ${esc(p.status)} · revision ${p.version} · procedure ${esc(p.id)}</small><small>Source ${esc(p.source_sha256)} · ${p.source_current?"current":"CHANGED"} · evaluation ${p.evaluation_current===null?"pending":p.evaluation_current?"current":"CHANGED"}</small>${p.review_note?`<small>Owner decision: ${esc(p.review_note)}</small>`:""}</div><div class="work-actions"><button class="ghost" data-action="open-mission" data-id="${esc(p.source_mission_id)}">Source mission</button>${p.evaluation_mission_id?`<button class="ghost" data-action="open-mission" data-id="${esc(p.evaluation_mission_id)}">Evaluation mission</button>`:""}${p.status==="proposed"?`<button class="secondary" data-action="review-procedure" data-id="${esc(p.id)}">Record evaluation</button>`:p.status==="evaluated"?`<button class="secondary" data-action="review-procedure" data-id="${esc(p.id)}">Activate</button>`:p.status==="active"?`<button class="secondary" data-action="review-procedure" data-id="${esc(p.id)}">Roll back</button>`:""}</div></article>`).join("")||'<div class="empty">No procedures proposed. Complete and accept a mission with reviewed evidence first.</div>'}</div><button class="secondary" data-action="new-procedure">+ Propose procedure</button></div>`;
+}
 function agentsPage() {
   const d=state.data,imported=new Map(d.personas.map(p=>[p.path,p]));
   const terms=state.search.toLowerCase();
@@ -228,6 +232,7 @@ function render() {
   if(state.view==="hubs"&&state.hub==="security")$("#content").insertAdjacentHTML("beforeend",securityPanels());
   if(state.view==="hubs"&&state.hub==="health")$("#content").insertAdjacentHTML("beforeend",healthPanels());
   if(state.view==="hubs"&&state.hub==="management")$("#content").insertAdjacentHTML("beforeend",incidentPanels());
+  if(state.view==="hubs"&&state.hub)$("#content").insertAdjacentHTML("beforeend",procedurePanels(state.hub));
   renderInspector();
 }
 function openModal(title,description,fields,submit) {
@@ -494,6 +499,40 @@ async function reviewIncident(id) {
     `<label class="field">Resolution evidence<select name="evidenceId">${choices.map(e=>`<option value="${esc(e.id)}">${esc(e.title)} · SHA-256 ${esc(e.sha256)}</option>`).join("")}</select></label><label class="field">Resolution note<textarea name="reviewNote" required maxlength="2000" placeholder="State what was reconciled and why the incident can close."></textarea></label>`,
     data=>api(`/api/incidents/${id}/review`,{method:"POST",body:JSON.stringify({decision:"resolve",missionId:incident.resolution_mission_id,evidenceId:data.get("evidenceId"),reviewNote:data.get("reviewNote"),expectedVersion:incident.version})}));
 }
+async function procedureSources(missions) {
+  const details=await Promise.all(missions.slice(0,50).map(m=>api(`/api/missions/${m.id}`)));
+  return details.flatMap(detail=>detail.evidence.filter(e=>e.status==="reviewed"&&
+    detail.tasks.some(t=>t.id===e.task_id&&t.status==="accepted"))
+    .map(evidence=>({mission:detail.mission,evidence})));
+}
+async function newProcedure() {
+  const hubId=state.hub;
+  const sources=await procedureSources(state.data.missions.filter(m=>m.hub_id===hubId&&m.status==="accepted"));
+  if(!sources.length)return notify("Accept a mission with reviewed evidence in this hub before proposing a procedure.",true);
+  openModal("Propose a reusable procedure","Source evidence stays within its hub and project. This proposal cannot change runtime permissions or become active without a separate evaluation and owner decision.",
+    `<label class="field">Accepted source evidence<select name="source">${sources.map((row,i)=>`<option value="${i}">${esc(row.mission.title)} · ${esc(row.evidence.title)} · ${esc(row.mission.project||"Hub-wide")}</option>`).join("")}</select></label><label class="field">Procedure title<input name="title" required maxlength="140"></label><label class="field">Reusable instructions<textarea name="instructions" required maxlength="3000" placeholder="Describe a repeatable method and when it applies"></textarea></label>`,
+    data=>{const row=sources[Number(data.get("source"))];return api("/api/procedures",{method:"POST",body:JSON.stringify({hubId,missionId:row.mission.id,evidenceId:row.evidence.id,title:data.get("title"),instructions:data.get("instructions")})})});
+}
+async function reviewProcedure(id) {
+  const p=state.data.procedures.find(item=>item.id===id);
+  if(!p)return notify("Refresh this hub before reviewing the procedure.",true);
+  const decision={proposed:"evaluate",evaluated:"activate",active:"rollback"}[p.status];
+  if(!decision)return notify("This procedure has already been rolled back.",true);
+  let sources=[];
+  if(decision==="evaluate"){
+    sources=await procedureSources(state.data.missions.filter(m=>m.hub_id===p.hub_id&&
+      (m.project||null)===p.project_id&&m.id!==p.source_mission_id&&m.status==="accepted"&&
+      m.created_at>=p.created_at));
+    if(!sources.length)return notify("Accept a separate evaluation mission created after this proposal, with reviewed evidence in the same scope.",true);
+  }
+  openModal(`${decision[0].toUpperCase()+decision.slice(1)} procedure`,
+    decision==="activate"?"Owner activation adds this guidance to new runs in its scoped hub/project. It grants no new capabilities.":
+      decision==="rollback"?"Stop using this guidance on new runs. Earlier run receipts remain available.":
+      "Choose reviewed evidence from a separate accepted evaluation mission; record what was tested and the observed result.",
+    `<p class="helper">${esc(p.title)} · revision ${p.version} · source ${p.source_current?"current":"changed"}</p>${sources.length?`<label class="field">Evaluation evidence<select name="source">${sources.map((row,i)=>`<option value="${i}">${esc(row.mission.title)} · ${esc(row.evidence.title)}</option>`).join("")}</select></label>`:""}<label class="field">Owner review note<textarea name="reviewNote" required maxlength="2000" placeholder="What was checked and what decision was made?"></textarea></label>`,
+    data=>{const row=sources[Number(data.get("source"))];return api(`/api/procedures/${id}/review`,{method:"POST",body:JSON.stringify({decision,reviewNote:data.get("reviewNote"),expectedVersion:p.version,
+      missionId:row?.mission.id,evidenceId:row?.evidence.id})})});
+}
 async function inspectMediaCampaign(id) {
   try {const detail=await api(`/api/media/campaigns/${id}`);state.inspected={type:"media",data:detail};renderInspector()}
   catch(error){notify(error.message,true)}
@@ -593,6 +632,8 @@ document.addEventListener("click",async event=>{
   else if(type==="new-care-item")newHealthCareItem(id);
   else if(type==="review-care-item")reviewHealthCareItem(id).catch(error=>notify(error.message,true));
   else if(type==="review-incident")reviewIncident(id).catch(error=>notify(error.message,true));
+  else if(type==="new-procedure")newProcedure().catch(error=>notify(error.message,true));
+  else if(type==="review-procedure")reviewProcedure(id).catch(error=>notify(error.message,true));
   else if(type==="inspect-media")inspectMediaCampaign(id);
   else if(type==="new-paper-account")newPaperAccount();
   else if(type==="inspect-paper")inspectPaperAccount(id);

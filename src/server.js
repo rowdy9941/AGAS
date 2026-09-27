@@ -162,6 +162,11 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
       const incidentReview=path.match(/^\/api\/incidents\/([\da-f-]{36})\/review$/);
       if(req.method==="POST"&&incidentReview)
         return json(res,200,{incident:store.reviewIncident(incidentReview[1],await body(req))});
+      if(req.method==="POST"&&path==="/api/procedures")
+        return json(res,201,{procedure:store.createProcedure(await body(req))});
+      const procedureReview=path.match(/^\/api\/procedures\/([\da-f-]{36})\/review$/);
+      if(req.method==="POST"&&procedureReview)
+        return json(res,200,{procedure:store.reviewProcedure(procedureReview[1],await body(req))});
       const businessDecision=path.match(/^\/api\/business\/opportunities\/([\da-f-]{36})\/decide$/);
       if(req.method==="POST"&&businessDecision)
         return json(res,200,{opportunity:store.decideBusinessOpportunity(businessDecision[1],await body(req))});

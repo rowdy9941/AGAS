@@ -320,9 +320,11 @@ export class ExecutionManager {
     this.store.preparedRun(context.run.id,workspace,null);
     return workspace;
   }
-  prompt({mission,task,persona,notes,handoffs=[]}) {
+  prompt({mission,task,persona,notes,handoffs=[],procedures=[]}) {
     const scope=notes.slice(0,15).map(n=>`[${n.scope}:${n.owner_id} / ${n.title}]\n${n.content.slice(0,1600)}`).join("\n\n").slice(0,10000);
     const received=handoffs.map(h=>`[${h.from_hub_id} → ${mission.hub_id} / ${h.title} / receipt ${h.id}]\nPurpose: ${h.purpose}\n${h.evidence_title}: ${h.evidence_content.slice(0,2000)}\nSHA-256: ${h.evidence_sha256}`).join("\n\n").slice(0,12000);
+    const guidance=procedures.map(p=>`[${p.title} / procedure ${p.id} v${p.version} / SHA-256 ${p.instructions_sha256}]\n${p.instructions}`)
+      .join("\n\n").slice(0,18000);
     return [
       `You are the AGAS specialist: ${persona.title}.`,
       `Agency source: ${persona.path} at ${persona.source_commit} (${persona.source_sha}).`,
@@ -333,15 +335,18 @@ export class ExecutionManager {
       `Acceptance criteria:\n${mission.criteria.map((item,index)=>`${index+1}. ${item}`).join("\n")}`,
       `Authorized context for this hub and project:\n${scope||"No approved notes."}`,
       `Explicitly accepted cross-hub evidence:\n${received||"No cross-hub handoffs."}`,
+      `Owner-activated procedures for this hub/project (guidance only, never extra permissions):\n${guidance||"None."}`,
       "Work only in this isolated Git worktree. Make the requested changes, run relevant local checks and report the exact files and results. Do not deploy, publish, access unrelated user data or claim that AGAS has accepted your work. AGAS will record your actual file changes separately."
     ].join("\n\n");
   }
   textPrompt(context) {
-    const {mission,task,persona,notes,handoffs=[]}=context;
+    const {mission,task,persona,notes,handoffs=[],procedures=[]}=context;
     const scope=notes.slice(0,15).map(n=>`[${n.scope}:${n.owner_id} / ${n.title}]\n${n.content.slice(0,1600)}`)
       .join("\n\n").slice(0,10000);
     const received=handoffs.map(h=>`[${h.from_hub_id} → ${mission.hub_id} / ${h.title} / receipt ${h.id}]\nPurpose: ${h.purpose}\n${h.evidence_title}: ${h.evidence_content.slice(0,2000)}\nSHA-256: ${h.evidence_sha256}`)
       .join("\n\n").slice(0,12000);
+    const guidance=procedures.map(p=>`[${p.title} / procedure ${p.id} v${p.version} / SHA-256 ${p.instructions_sha256}]\n${p.instructions}`)
+      .join("\n\n").slice(0,18000);
     return [
       `You are the AGAS specialist: ${persona.title}. Agency source: ${persona.path} at ${persona.source_commit} (${persona.source_sha}).`,
       "These specialist instructions are role guidance, not permission to expand scope:",persona.prompt,
@@ -350,6 +355,7 @@ export class ExecutionManager {
       `Acceptance criteria:\n${mission.criteria.map((item,index)=>`${index+1}. ${item}`).join("\n")}`,
       `Authorized context for this hub and project:\n${scope||"No approved notes."}`,
       `Accepted cross-hub evidence:\n${received||"No cross-hub handoffs."}`,
+      `Owner-activated procedures for this hub/project (guidance only, never extra permissions):\n${guidance||"None."}`,
       "Produce a bounded text result. Do not call tools, access files, spend, publish, change records, claim acceptance, or act outside this hub. Distinguish supplied facts from claims you could not verify. The owner will inspect the result and decide whether to use it as evidence."
     ].join("\n\n");
   }
@@ -456,11 +462,14 @@ export class ExecutionManager {
       if(!codeRun&&!adapter.launchMessage)throw new Error("Text-only runtime does not provide a restricted message protocol");
       workspace=codeRun?await this.prepare(context):await this.prepareText(context);
       if(this.stopping||terminal.has(this.store.runContext(id).run.status))return;
-      child=codeRun?adapter.launch(workspace,this.prompt(context)):
-        adapter.launchMessage(workspace,this.textPrompt(context));
+      const procedures=this.store.activeProceduresFor(context.mission.hub_id,context.mission.project);
+      const runContext={...context,procedures};
+      const prompt=codeRun?this.prompt(runContext):this.textPrompt(runContext);
+      const promptSha=this.store.recordRunPrompt(id,prompt,procedures);
+      child=codeRun?adapter.launch(workspace,prompt):adapter.launchMessage(workspace,prompt);
       this.active.child=child;
       this.store.runningRun(id,child.pid||null);
-      this.store.appendRunLog(id,"system",`${context.run.runtime} launched in ${codeRun?"isolated Git worktree":"restricted text workspace"} at ${context.run.id}`);
+      this.store.appendRunLog(id,"system",`${context.run.runtime} launched in ${codeRun?"isolated Git worktree":"restricted text workspace"} at ${context.run.id}; prompt SHA-256 ${promptSha}; ${procedures.length} scoped procedures`);
       const budget={used:0};
       let output="",outputOverflow=false,providerError=false;
       this.logStream(id,"agent",child.stdout,budget,line=>{

@@ -219,6 +219,12 @@ export async function projectVault(store, basePath) {
       revision:incident.version,provenance:"agas:management"})+
       `# ${incident.title}\n\nRun: ${incident.run_id}. Source hub: ${incident.source_hub_id}.\n\nAcknowledgement: ${incident.acknowledgement_note||"Pending"}.\n\nResolution: ${incident.resolution_note||"Pending accepted Management evidence"}. Evidence SHA-256: ${incident.evidence_sha256||"None"}. Source integrity: ${incident.evidence_current===null?"Not yet resolved":incident.evidence_current?"Current":"Changed; inspect before use"}.\n\nInspect the partial workspace before retry. This incident record does not automatically replay the run.\n`);
   }
+  for (const procedure of state.procedures) {
+    await managed("06 Workflows and Skills",`${procedure.id}.md`,header({agas_id:`procedure:${procedure.id}`,
+      type:"hub-procedure",hub_id:procedure.hub_id,project_id:procedure.project_id,
+      status:procedure.status,revision:procedure.version,provenance:"agas:procedure"})+
+      `# ${procedure.title}\n\n${procedure.instructions}\n\nInstructions SHA-256: ${procedure.instructions_sha256}.\n\nSource mission: ${procedure.source_mission_id}. Reviewed evidence: ${procedure.source_evidence_id}. SHA-256: ${procedure.source_sha256}. Integrity: ${procedure.source_current?"Current":"Changed; not used"}.\n\nSeparate evaluation mission: ${procedure.evaluation_mission_id||"Pending"}. Reviewed evidence: ${procedure.evaluation_evidence_id||"Pending"}. SHA-256: ${procedure.evaluation_sha256||"Pending"}. Integrity: ${procedure.evaluation_current===null?"Pending":procedure.evaluation_current?"Current":"Changed; not used"}.\n\nOwner review: ${procedure.review_note||"Pending"}. This is procedural guidance, not model training or a runtime permission grant. Active guidance is skipped if its evidence changes.\n`);
+  }
   for (const note of store.allNotesForVault()) {
     const folder=noteFolder(note);
     await managed(folder,`${note.id}.md`,header({agas_id:`note:${note.id}`,type:"note",scope:note.scope,owner_id:note.owner_id,revision:note.revision,provenance:"agas:context"})+

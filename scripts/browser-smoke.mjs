@@ -151,8 +151,48 @@ try {
     const layout=await execute(`return {viewport:innerWidth,width:document.documentElement.scrollWidth}`);
     assert.ok(layout.width<=layout.viewport+1,`${hubId} hub overflows 390px: ${JSON.stringify(layout)}`);
   }
+  function acceptedFixture(title) {
+    const store=app.store;
+    const mission=store.createMission({hubId:"management",title,objective:"Check a local procedure",
+      criteria:["Record the observed result"]});
+    let detail=store.createTask(mission.id,{title:"Inspect outcome",objective:"Record a local fixture",expectedVersion:1});
+    detail=store.submitEvidence(mission.id,{taskId:detail.tasks[0].id,criterionIndex:0,kind:"observation",
+      title:"Observed outcome",content:`Owner fixture for ${title}`,expectedVersion:detail.mission.version});
+    detail=store.reviewEvidence(mission.id,detail.evidence[0].id,{decision:"reviewed",
+      reviewNote:"Inspected local fixture",expectedVersion:detail.mission.version});
+    detail=store.acceptTask(mission.id,detail.tasks[0].id,{expectedVersion:detail.mission.version});
+    return store.acceptMission(mission.id,{expectedVersion:detail.mission.version});
+  }
+  acceptedFixture("Procedure source fixture");
+  await command("POST",`/session/${session}/refresh`,{});
+  await waitFor("return document.querySelector('#login-overlay')?.classList.contains('hidden') && document.querySelector('#content')?.innerText.includes('Procedure source fixture')","fixture reload");
+  await click('#nav button[data-view="hubs"]');
+  await click('.hub-grid [data-action="hub"][data-id="management"]');
+  await click('[data-action="new-procedure"]');
+  await waitFor("return !!document.querySelector('#modal[open] [name=instructions]')","procedure proposal form");
+  await fillAndSubmit({source:"0",title:"Check local source provenance",instructions:"State the observed source before suggesting an improvement."});
+  await waitFor("return document.querySelector('#content').innerText.includes('Check local source provenance')","procedure proposed");
+  const procedureId=app.store.overview().procedures[0].id;
+  acceptedFixture("Procedure evaluation fixture");
+  await command("POST",`/session/${session}/refresh`,{});
+  await waitFor("return document.querySelector('#login-overlay')?.classList.contains('hidden') && document.querySelector('#content')?.innerText.includes('Procedure evaluation fixture')","evaluation reload");
+  await click('#nav button[data-view="hubs"]');
+  await click('.hub-grid [data-action="hub"][data-id="management"]');
+  await click(`[data-action="review-procedure"][data-id="${procedureId}"]`);
+  await waitFor("return !!document.querySelector('#modal[open] [name=source]')","procedure evaluation form");
+  await fillAndSubmit({source:"0",reviewNote:"Checked the separate local example"});
+  await waitFor("return document.querySelector('#content').innerText.includes('evaluated')","procedure evaluated");
+  await click(`[data-action="review-procedure"][data-id="${procedureId}"]`);
+  await waitFor("return !!document.querySelector('#modal[open] [name=reviewNote]')","procedure activation form");
+  await fillAndSubmit({reviewNote:"Activate scoped guidance after review"});
+  await waitFor("return document.querySelector('#content').innerText.includes('active · revision 3')","procedure active");
+  await screenshot("agas-mobile-procedures.png");
+  await click(`[data-action="review-procedure"][data-id="${procedureId}"]`);
+  await waitFor("return !!document.querySelector('#modal[open] [name=reviewNote]')","procedure rollback form");
+  await fillAndSubmit({reviewNote:"End the fixture trial"});
+  assert.equal(app.store.overview().procedures[0].status,"rolled-back");
   assert.deepEqual(await execute("return window.__agasBrowserErrors"),[],"mobile views reported page errors");
-  console.log("Chrome UI pass: login, Security, Health, five agent windows, mobile navigation and seven hub views; no page errors");
+  console.log("Chrome UI pass: login, Security, Health, five agent windows, mobile navigation, seven hubs and procedure lifecycle; no page errors");
 } finally {
   if(session)await command("DELETE",`/session/${session}`).catch(()=>{});
   driver.kill();

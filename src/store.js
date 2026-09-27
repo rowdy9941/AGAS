@@ -166,6 +166,17 @@ export class Store {
         evidence_sha256 TEXT, resolution_note TEXT NOT NULL DEFAULT '', resolved_at TEXT,
         opened_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS hub_procedures (
+        id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), project_id TEXT REFERENCES projects(id),
+        title TEXT NOT NULL, instructions TEXT NOT NULL, instructions_sha256 TEXT NOT NULL,
+        source_mission_id TEXT NOT NULL REFERENCES missions(id), source_evidence_id TEXT NOT NULL REFERENCES mission_evidence(id),
+        source_sha256 TEXT NOT NULL, evaluation_mission_id TEXT REFERENCES missions(id),
+        evaluation_evidence_id TEXT REFERENCES mission_evidence(id), evaluation_sha256 TEXT,
+        status TEXT NOT NULL DEFAULT 'proposed' CHECK(status IN ('proposed','evaluated','active','rolled-back')),
+        version INTEGER NOT NULL DEFAULT 1, review_note TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS hub_procedures_scope ON hub_procedures(hub_id,project_id,status);
       CREATE TABLE IF NOT EXISTS missions (
         id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), project TEXT NOT NULL DEFAULT '',
         title TEXT NOT NULL, objective TEXT NOT NULL, criteria TEXT NOT NULL,
@@ -268,6 +279,8 @@ export class Store {
     const runColumns=this.db.prepare("PRAGMA table_info(mission_runs)").all().map(column=>column.name);
     if(!runColumns.includes("output_text"))this.db.exec("ALTER TABLE mission_runs ADD COLUMN output_text TEXT");
     if(!runColumns.includes("output_sha256"))this.db.exec("ALTER TABLE mission_runs ADD COLUMN output_sha256 TEXT");
+    if(!runColumns.includes("prompt_sha256"))this.db.exec("ALTER TABLE mission_runs ADD COLUMN prompt_sha256 TEXT");
+    if(!runColumns.includes("procedure_receipts"))this.db.exec("ALTER TABLE mission_runs ADD COLUMN procedure_receipts TEXT NOT NULL DEFAULT '[]'");
     const packetColumns=this.db.prepare("PRAGMA table_info(media_publication_packets)").all().map(column=>column.name);
     if(!packetColumns.includes("approval_note"))this.db.exec("ALTER TABLE media_publication_packets ADD COLUMN approval_note TEXT NOT NULL DEFAULT ''");
     if(!packetColumns.includes("approved_at"))this.db.exec("ALTER TABLE media_publication_packets ADD COLUMN approved_at TEXT");
@@ -325,6 +338,9 @@ export class Store {
         .map(item=>({...item,evidence_current:this.healthEvidenceCurrent(item)})),
       incidents: all("SELECT * FROM management_incidents ORDER BY opened_at DESC LIMIT 120")
         .map(item=>({...item,evidence_current:this.incidentEvidenceCurrent(item)})),
+      procedures: all("SELECT * FROM hub_procedures ORDER BY created_at DESC LIMIT 120")
+        .map(item=>({...item,source_current:this.procedureEvidenceCurrent(item,"source"),
+          evaluation_current:this.procedureEvidenceCurrent(item,"evaluation")})),
       paperAccounts: all("SELECT * FROM paper_accounts ORDER BY created_at DESC"),
       missions: all("SELECT * FROM missions ORDER BY created_at DESC").map(m => ({ ...m,criteria:JSON.parse(m.criteria) })),
       runs: all("SELECT * FROM mission_runs ORDER BY created_at DESC LIMIT 80"),
@@ -851,6 +867,109 @@ export class Store {
       incident=this.db.prepare("SELECT * FROM management_incidents WHERE id=?").get(id);
     });
     return incident;
+  }
+  procedureEvidence(hubId,projectId,missionId,evidenceId) {
+    const detail=this.missionDetail(missionId),evidence=detail.evidence.find(item=>item.id===evidenceId);
+    if(detail.mission.hub_id!==hubId||(detail.mission.project||null)!==projectId||
+      detail.mission.status!=="accepted"||evidence?.status!=="reviewed"||
+      !detail.tasks.some(task=>task.id===evidence.task_id&&task.status==="accepted")||
+      createHash("sha256").update(evidence.content).digest("hex")!==evidence.sha256||
+      !this.verifyEvidenceReceipt(evidence))
+      throw new InputError("Use unchanged, reviewed evidence from an accepted mission in this hub and project",409);
+    return {mission:detail.mission,evidence};
+  }
+  procedureEvidenceCurrent(procedure,kind) {
+    const missionId=kind==="source"?procedure.source_mission_id:procedure.evaluation_mission_id;
+    const evidenceId=kind==="source"?procedure.source_evidence_id:procedure.evaluation_evidence_id;
+    if(!evidenceId)return null;
+    try {
+      const record=this.procedureEvidence(procedure.hub_id,procedure.project_id,missionId,evidenceId);
+      return record.evidence.sha256===(kind==="source"?procedure.source_sha256:procedure.evaluation_sha256)&&
+        createHash("sha256").update(procedure.instructions).digest("hex")===procedure.instructions_sha256;
+    } catch {return false}
+  }
+  createProcedure(input) {
+    const hubId=nonempty(input.hubId,"hubId",30),missionId=nonempty(input.missionId,"missionId",120);
+    const evidenceId=nonempty(input.evidenceId,"evidenceId",120),title=nonempty(input.title,"title",140);
+    const instructions=nonempty(input.instructions,"instructions",3000),id=randomUUID(),time=now();
+    let record;
+    this.transaction(()=>{
+      this.requireHub(hubId);
+      const detail=this.missionDetail(missionId);
+      const projectId=detail.mission.project||null;
+      const {evidence}=this.procedureEvidence(hubId,projectId,missionId,evidenceId);
+      this.db.prepare(`INSERT INTO hub_procedures
+        (id,hub_id,project_id,title,instructions,instructions_sha256,source_mission_id,source_evidence_id,
+          source_sha256,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+        .run(id,hubId,projectId,title,instructions,createHash("sha256").update(instructions).digest("hex"),
+          missionId,evidenceId,evidence.sha256,time,time);
+      this.event("procedure.proposed",id,hubId,`Owner proposed a scoped procedure: ${title}; evaluation required`);
+      record=this.db.prepare("SELECT * FROM hub_procedures WHERE id=?").get(id);
+    });
+    return record;
+  }
+  reviewProcedure(id,input) {
+    const decision=nonempty(input.decision,"decision",20),note=nonempty(input.reviewNote,"reviewNote",2000);
+    if(!["evaluate","activate","rollback"].includes(decision))throw new InputError("Choose evaluate, activate or rollback");
+    let procedure;
+    this.transaction(()=>{
+      procedure=this.db.prepare("SELECT * FROM hub_procedures WHERE id=?").get(id);
+      if(!procedure)throw new InputError("Procedure not found",404);
+      const required={evaluate:"proposed",activate:"evaluated",rollback:"active"}[decision];
+      if(procedure.status!==required||procedure.version!==input.expectedVersion)
+        throw new InputError("Procedure changed; reload before review",409);
+      if(decision!=="rollback"&&!this.procedureEvidenceCurrent(procedure,"source"))
+        throw new InputError("Procedure source evidence or instructions changed",409);
+      if(decision==="evaluate"){
+        const missionId=nonempty(input.missionId,"missionId",120),evidenceId=nonempty(input.evidenceId,"evidenceId",120);
+        const {mission,evidence}=this.procedureEvidence(procedure.hub_id,procedure.project_id,missionId,evidenceId);
+        if(missionId===procedure.source_mission_id||mission.created_at<procedure.created_at||
+          evidence.created_at<procedure.created_at)
+          throw new InputError("Evaluate in a separate mission created after this proposal",409);
+        this.db.prepare(`UPDATE hub_procedures SET status='evaluated',version=version+1,
+          evaluation_mission_id=?,evaluation_evidence_id=?,evaluation_sha256=?,review_note=?,updated_at=? WHERE id=?`)
+          .run(missionId,evidenceId,evidence.sha256,note,now(),id);
+      } else if(decision==="activate"){
+        if(!this.procedureEvidenceCurrent(procedure,"evaluation"))
+          throw new InputError("Procedure evaluation evidence changed",409);
+        const active=this.db.prepare("SELECT COUNT(*) AS count FROM hub_procedures WHERE hub_id=? AND status='active'")
+          .get(procedure.hub_id).count;
+        if(active>=5)throw new InputError("This hub already has five active procedures; roll one back first",409);
+        this.db.prepare("UPDATE hub_procedures SET status='active',version=version+1,review_note=?,updated_at=? WHERE id=?")
+          .run(note,now(),id);
+      } else {
+        this.db.prepare("UPDATE hub_procedures SET status='rolled-back',version=version+1,review_note=?,updated_at=? WHERE id=?")
+          .run(note,now(),id);
+      }
+      this.event(`procedure.${decision}`,id,procedure.hub_id,`Owner ${decision} decision on ${procedure.title}; runtime permissions unchanged`);
+      procedure=this.db.prepare("SELECT * FROM hub_procedures WHERE id=?").get(id);
+    });
+    return procedure;
+  }
+  activeProceduresFor(hubId,projectId="") {
+    return this.db.prepare(`SELECT * FROM hub_procedures WHERE hub_id=? AND status='active'
+      AND (project_id IS NULL OR project_id=?) ORDER BY created_at,id`).all(hubId,projectId)
+      .filter(item=>this.procedureEvidenceCurrent(item,"source")&&this.procedureEvidenceCurrent(item,"evaluation"));
+  }
+  recordRunPrompt(id,prompt,procedures) {
+    if(typeof prompt!=="string"||!prompt||prompt.length>120000||!Array.isArray(procedures)||procedures.length>5)
+      throw new InputError("Invalid bounded run prompt",409);
+    const sha256=createHash("sha256").update(prompt).digest("hex");
+    this.transaction(()=>{
+      const run=this.db.prepare("SELECT * FROM mission_runs WHERE id=? AND status='starting'").get(id);
+      if(!run||run.prompt_sha256)throw new InputError("Run prompt cannot be recorded again",409);
+      const mission=this.missionDetail(run.mission_id).mission;
+      const current=this.activeProceduresFor(mission.hub_id,mission.project);
+      if(procedures.length!==current.length||procedures.some((item,index)=>
+        item.id!==current[index].id||item.version!==current[index].version||
+        item.instructions_sha256!==current[index].instructions_sha256))
+        throw new InputError("Active procedures changed before launch; retry with fresh context",409);
+      const receipts=JSON.stringify(current.map(item=>({id:item.id,version:item.version,sha256:item.instructions_sha256})));
+      this.db.prepare("UPDATE mission_runs SET prompt_sha256=?,procedure_receipts=? WHERE id=?")
+        .run(sha256,receipts,id);
+      this.event("run.prompt-recorded",id,mission.hub_id,`Prompt SHA-256 and ${current.length} scoped procedure receipts recorded`);
+    });
+    return sha256;
   }
   openRunIncident(id,mission,task) {
     const existing=this.db.prepare("SELECT id FROM management_incidents WHERE run_id=?").get(id);
