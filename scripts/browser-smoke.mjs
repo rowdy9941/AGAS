@@ -135,7 +135,23 @@ try {
   assert.equal(mobileLayout.document<=mobileLayout.viewport+1,true,
     `mobile workspace must not overflow the viewport horizontally: ${JSON.stringify(mobileLayout)}`);
   assert.deepEqual(await execute("return window.__agasBrowserErrors"),[],"mobile navigation reported page errors");
-  console.log("Chrome UI pass: login, Security, Health, five agent windows and mobile overview; no page errors");
+  for(const view of ["organization","goals","projects","missions","hubs","agents","windows","knowledge","activity"]){
+    await click(`#nav button[data-view="${view}"]`);
+    await waitFor(`return document.querySelector('#nav button[data-view="${view}"]').classList.contains('active')`,`${view} mobile view`);
+    const layout=await execute(`return {viewport:innerWidth,width:document.documentElement.scrollWidth}`);
+    assert.ok(layout.width<=layout.viewport+1,`${view} overflows 390px: ${JSON.stringify(layout)}`);
+  }
+  await click('#nav button[data-view="windows"]');
+  await screenshot("agas-mobile-windows.png");
+  for(const hubId of ["management","dev","content","finance","business","health","security"]){
+    await click('#nav button[data-view="hubs"]');
+    await click(`.hub-grid [data-action="hub"][data-id="${hubId}"]`);
+    await waitFor(`return document.querySelector('#crumb').textContent.trim()!=='Hubs'`,`${hubId} mobile hub`);
+    const layout=await execute(`return {viewport:innerWidth,width:document.documentElement.scrollWidth}`);
+    assert.ok(layout.width<=layout.viewport+1,`${hubId} hub overflows 390px: ${JSON.stringify(layout)}`);
+  }
+  assert.deepEqual(await execute("return window.__agasBrowserErrors"),[],"mobile views reported page errors");
+  console.log("Chrome UI pass: login, Security, Health, five agent windows, mobile navigation and seven hub views; no page errors");
 } finally {
   if(session)await command("DELETE",`/session/${session}`).catch(()=>{});
   driver.kill();
