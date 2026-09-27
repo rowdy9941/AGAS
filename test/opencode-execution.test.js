@@ -9,8 +9,7 @@ import { OpenCodeAdapter } from "../src/execution.js";
 
 async function fixture(root) {
   const script=join(root,"opencode-fixture.js");
-  const binary=process.platform==="win32"?process.execPath:script;
-  const commandArgs=process.platform==="win32"?[script]:[];
+  const binary=process.platform==="win32"?join(root,"opencode-fixture.cmd"):script;
   await writeFile(script,`#!/usr/bin/env node
 const fs=require('node:fs');
 if(process.argv.includes('--version')) {console.log('opencode 1.2.3');process.exit(0)}
@@ -34,7 +33,8 @@ if(process.argv.includes('run')) {
 process.exit(5);
 `);
   await chmod(script,0o700);
-  return {binary,commandArgs,script};
+  if(process.platform==="win32")await writeFile(binary,`@ECHO off\r\nGOTO start\r\n:find_dp0\r\nSET dp0=%~dp0\r\nEXIT /b\r\n:start\r\nSETLOCAL\r\nCALL :find_dp0\r\nIF EXIST "%dp0%\\node.exe" (\r\n  SET "_prog=%dp0%\\node.exe"\r\n) ELSE (\r\n  SET "_prog=node"\r\n)\r\nendLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\\opencode-fixture.js" %*\r\n`);
+  return {binary,script};
 }
 
 test("an assigned OpenCode process passes readiness, executes in a Git worktree and records a hashed artifact",async()=>{
@@ -61,7 +61,7 @@ test("an assigned OpenCode process passes readiness, executes in a Git worktree 
     assert.equal((await request(`/api/projects/${project.id}/repository`,"POST",{repositoryPath:repo})).status,200);
     const mission=(await request("/api/missions","POST",{hubId:"dev",project:project.id,title:"Deliver file",objective:"Edit in worktree",criteria:["File exists"]})).data.mission;
     const assignment=(await request("/api/assignments","POST",{hubId:"dev",path:"engineering/engineering-frontend-developer.md",runtime:"opencode"})).data.assignment;
-    const task=(await request(`/api/missions/${mission.id}/tasks`,"POST",{title:"Create",objective:"Write opencode-result.txt",assignmentId:assignment.id,expectedVersion:1})).data.tasks[0];
+    const task=(await request(`/api/missions/${mission.id}/tasks`,"POST",{title:"Create",objective:"Write opencode-result.txt && echo MUST_NOT_EXECUTE",assignmentId:assignment.id,expectedVersion:1})).data.tasks[0];
     const queued=await request(`/api/missions/${mission.id}/tasks/${task.id}/run`,"POST",{expectedVersion:2,timeoutSeconds:30});
     assert.equal(queued.status,202);
     assert.equal(queued.data.run.runtime,"opencode");

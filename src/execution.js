@@ -2,9 +2,9 @@ import { spawn, execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash } from "node:crypto";
 import { randomUUID } from "node:crypto";
-import { writeFileSync, unlinkSync } from "node:fs";
+import { readFileSync, realpathSync, statSync, writeFileSync, unlinkSync } from "node:fs";
 import { lstat, mkdir, mkdtemp, readFile, realpath, stat } from "node:fs/promises";
-import { isAbsolute, join, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { detectRuntimes } from "./runtimes.js";
 import { InputError } from "./store.js";
 
@@ -17,8 +17,28 @@ const terminal=new Set(["cancelled","failed","succeeded","interrupted"]);
 
 function childEnv(source=process.env) {
   // The API token and unrelated service credentials must never be inherited by agents.
-  const keys=["PATH","HOME","USERPROFILE","SYSTEMROOT","WINDIR","TMPDIR","TEMP","TMP","LANG","LC_ALL","TERM","CODEX_HOME"];
+  const keys=["PATH","HOME","USERPROFILE","SYSTEMROOT","WINDIR","APPDATA","LOCALAPPDATA",
+    "TMPDIR","TEMP","TMP","LANG","LC_ALL","TERM","CODEX_HOME","XDG_CONFIG_HOME"];
   return Object.fromEntries(keys.filter(key=>typeof source[key]==="string").map(key=>[key,source[key]]));
+}
+
+// npm's Windows CLI launcher is a batch file. Execute its verified Node entry
+// directly so mission text never passes through cmd.exe argument expansion.
+export function resolveAgentCommand(binary,commandArgs=[]) {
+  if(process.platform!=="win32"||!/\.(cmd|bat)$/i.test(binary))return {binary,args:commandArgs};
+  if(commandArgs.length||!/\.cmd$/i.test(binary))throw new InputError("This Windows CLI launcher is not supported",409);
+  try {
+    const shim=readFileSync(binary,"utf8");
+    if(shim.length>65536||!/^@ECHO off\r?\n/i.test(shim)||
+      !/IF EXIST "%dp0%\\node\.exe"/i.test(shim)||
+      !/SET "_prog=node"/i.test(shim))throw new Error("Not an npm Node shim");
+    const match=shim.match(/"%_prog%"\s+"%(?:dp0%|~dp0)\\([^"\r\n]+)"\s+%\*\s*$/im);
+    if(!match)throw new Error("Unknown npm Node shim format");
+    const script=realpathSync(resolve(dirname(binary),match[1].replaceAll("\\",sep)));
+    if(!statSync(script).isFile()||!/^#![^\r\n]*\bnode(?:\.exe)?\b/im.test(readFileSync(script,"utf8").slice(0,512)))
+      throw new Error("Shim target is not a Node CLI");
+    return {binary:process.execPath,args:[script]};
+  } catch {throw new InputError("Windows CLI needs an npm Node shim or native executable; inspect the installed runtime",409)}
 }
 
 async function git(cwd,...args) {
@@ -55,18 +75,20 @@ export class CodexAdapter {
     const binary=this.executable();
     if(!binary)return {id:"codex",ready:false,reason:"Codex CLI is not installed on this host"};
     try {
+      const command=resolveAgentCommand(binary);
       const env=childEnv(this.environment);
-      const version=await execFile(binary,["--version"],{env,timeout:5000,maxBuffer:4096});
-      await execFile(binary,["login","status"],{env,timeout:5000,maxBuffer:4096});
+      const version=await execFile(command.binary,[...command.args,"--version"],{env,timeout:5000,maxBuffer:4096});
+      await execFile(command.binary,[...command.args,"login","status"],{env,timeout:5000,maxBuffer:4096});
       return {id:"codex",ready:true,version:version.stdout.trim(),path:binary};
-    } catch {
-      return {id:"codex",ready:false,reason:"Codex CLI did not confirm authentication; run codex login status locally"};
+    } catch(error) {
+      return {id:"codex",ready:false,reason:error instanceof InputError?error.message:"Codex CLI did not confirm authentication; run codex login status locally"};
     }
   }
   launch(workspace,prompt) {
     const binary=this.executable();
     if(!binary)throw new InputError("Codex CLI is missing",409);
-    return spawn(binary,["exec","--json","--ephemeral","--sandbox","workspace-write",
+    const command=resolveAgentCommand(binary);
+    return spawn(command.binary,[...command.args,"exec","--json","--ephemeral","--sandbox","workspace-write",
       "--ask-for-approval","never","--cd",workspace,prompt],{
       cwd:workspace,env:childEnv(this.environment),stdio:["ignore","pipe","pipe"],shell:false,
       detached:process.platform!=="win32"
@@ -75,7 +97,8 @@ export class CodexAdapter {
   launchMessage(workspace,prompt) {
     const binary=this.executable();
     if(!binary)throw new InputError("Codex CLI is missing",409);
-    return spawn(binary,["exec","--json","--ephemeral","--sandbox","read-only",
+    const command=resolveAgentCommand(binary);
+    return spawn(command.binary,[...command.args,"exec","--json","--ephemeral","--sandbox","read-only",
       "--ask-for-approval","never","--cd",workspace,prompt],{
       cwd:workspace,env:childEnv(this.environment),stdio:["ignore","pipe","pipe"],shell:false,
       detached:process.platform!=="win32"
@@ -90,36 +113,39 @@ export class OpenCodeAdapter {
     const binary=this.executable();
     if(!binary)return {id:"opencode",ready:false,reason:"OpenCode CLI is not installed on this host"};
     try {
+      const command=resolveAgentCommand(binary,this.commandArgs);
       const env=childEnv(this.environment);
-      const version=(await execFile(binary,[...this.commandArgs,"--version"],{env,timeout:5000,maxBuffer:4096})).stdout.trim();
+      const version=(await execFile(command.binary,[...command.args,"--version"],{env,timeout:5000,maxBuffer:4096})).stdout.trim();
       const major=Number(version.match(/(?:^|\s)v?(\d+)\./)?.[1]);
       if(major!==1)return {id:"opencode",ready:false,reason:"AGAS currently supports the OpenCode 1.x CLI protocol",version};
-      const help=(await execFile(binary,[...this.commandArgs,"run","--help"],{env,timeout:5000,maxBuffer:16384})).stdout;
+      const help=(await execFile(command.binary,[...command.args,"run","--help"],{env,timeout:5000,maxBuffer:16384})).stdout;
       if(!help.includes("--format"))throw new Error("JSON run events unavailable");
-      const output=(await execFile(binary,[...this.commandArgs,"auth","list"],{env,timeout:5000,maxBuffer:8192})).stdout
+      const output=(await execFile(command.binary,[...command.args,"auth","list"],{env,timeout:5000,maxBuffer:8192})).stdout
         .replace(/\u001b\[[0-9;]*m/g,"");
       if(!/\b[1-9]\d*\s+credentials?\b/i.test(output))
         return {id:"opencode",ready:false,reason:"OpenCode has no confirmed stored provider credential; run opencode auth list locally",version};
       return {id:"opencode",ready:true,version,path:binary};
-    } catch {
-      return {id:"opencode",ready:false,reason:"OpenCode did not confirm its JSON run protocol and stored provider login"};
+    } catch(error) {
+      return {id:"opencode",ready:false,reason:error instanceof InputError?error.message:"OpenCode did not confirm its JSON run protocol and stored provider login"};
     }
   }
   launch(workspace,prompt) {
     const binary=this.executable();
     if(!binary)throw new InputError("OpenCode CLI is missing",409);
+    const command=resolveAgentCommand(binary,this.commandArgs);
     const env={...childEnv(this.environment),OPENCODE_PERMISSION:JSON.stringify({
       "*":"deny",read:"allow",edit:"allow",glob:"allow",grep:"allow",external_directory:"deny"
     }),OPENCODE_AUTO_SHARE:"false",OPENCODE_DISABLE_AUTOUPDATE:"true",
       OPENCODE_DISABLE_LSP_DOWNLOAD:"true",OPENCODE_DISABLE_DEFAULT_PLUGINS:"true"};
-    return spawn(binary,[...this.commandArgs,"--pure","run","--format","json",prompt+"\n\nAGAS permits only local file read, edit and search in this worktree. Shell tools and external directories are disabled. State honestly when checks could not be run."],{
+    return spawn(command.binary,[...command.args,"--pure","run","--format","json",prompt+"\n\nAGAS permits only local file read, edit and search in this worktree. Shell tools and external directories are disabled. State honestly when checks could not be run."],{
       cwd:workspace,env,stdio:["ignore","pipe","pipe"],shell:false,detached:process.platform!=="win32"
     });
   }
   launchMessage(workspace,prompt) {
     const binary=this.executable();
     if(!binary)throw new InputError("OpenCode CLI is missing",409);
-    return spawn(binary,[...this.commandArgs,"--pure","run","--format","json",prompt],{
+    const command=resolveAgentCommand(binary,this.commandArgs);
+    return spawn(command.binary,[...command.args,"--pure","run","--format","json",prompt],{
       cwd:workspace,env:{...childEnv(this.environment),OPENCODE_PERMISSION:JSON.stringify({"*":"deny"}),
         OPENCODE_AUTO_SHARE:"false",OPENCODE_DISABLE_AUTOUPDATE:"true",
         OPENCODE_DISABLE_DEFAULT_PLUGINS:"true",OPENCODE_DISABLE_LSP_DOWNLOAD:"true"},
@@ -138,14 +164,15 @@ export class OpenClawAdapter {
     const binary=this.executable();
     if(!binary)return {id:"openclaw",ready:false,reason:"OpenClaw CLI is not installed on this host"};
     try {
+      const command=resolveAgentCommand(binary,this.commandArgs);
       const env=childEnv(this.environment),options={env,timeout:10000,maxBuffer:512*1024};
-      const version=(await execFile(binary,[...this.commandArgs,"--version"],options)).stdout.trim();
-      const help=(await execFile(binary,[...this.commandArgs,"agent","--help"],options)).stdout;
+      const version=(await execFile(command.binary,[...command.args,"--version"],options)).stdout.trim();
+      const help=(await execFile(command.binary,[...command.args,"agent","--help"],options)).stdout;
       if(!["--agent","--message-file","--session-key","--json"].every(flag=>help.includes(flag)))
         throw new Error("OpenClaw agent JSON protocol is unavailable");
-      const status=JSON.parse((await execFile(binary,[...this.commandArgs,"gateway","status","--require-rpc","--json"],options)).stdout);
+      const status=JSON.parse((await execFile(command.binary,[...command.args,"gateway","status","--require-rpc","--json"],options)).stdout);
       if(status.ok!==true)throw new Error("Gateway read probe failed");
-      const snapshot=JSON.parse((await execFile(binary,[...this.commandArgs,"gateway","call","config.get","--params","{}","--json"],options)).stdout);
+      const snapshot=JSON.parse((await execFile(command.binary,[...command.args,"gateway","call","config.get","--params","{}","--json"],options)).stdout);
       const active=snapshot.result||snapshot;
       const agent=active.config?.agents?.entries?.agas;
       if(!active.configRevisionHash||active.configRevisionHash!==active.appliedConfigHash||
@@ -155,17 +182,18 @@ export class OpenClawAdapter {
         agent.sandbox?.mode!=="all"||agent.sandbox?.workspaceAccess!=="none")
         throw new Error("AGAS agent policy is not active");
       return {id:"openclaw",ready:true,version,path:binary,capability:"text-only"};
-    } catch {
-      return {id:"openclaw",ready:false,reason:"OpenClaw needs a reachable local Gateway with an applied, tool-denied agas agent profile; see README"};
+    } catch(error) {
+      return {id:"openclaw",ready:false,reason:error instanceof InputError?error.message:"OpenClaw needs a reachable local Gateway with an applied, tool-denied agas agent profile; see README"};
     }
   }
   launchMessage(workspace,prompt) {
     const binary=this.executable();
     if(!binary)throw new InputError("OpenClaw CLI is missing",409);
+    const command=resolveAgentCommand(binary,this.commandArgs);
     const file=join(workspace,`agas-request-${randomUUID()}.txt`);
     writeFileSync(file,prompt,{encoding:"utf8",mode:0o600,flag:"wx"});
     try {
-      const child=spawn(binary,[...this.commandArgs,"agent","--agent","agas","--session-key",`agas-${randomUUID()}`,
+      const child=spawn(command.binary,[...command.args,"agent","--agent","agas","--session-key",`agas-${randomUUID()}`,
         "--message-file",file,"--timeout","120","--json"],{
         cwd:workspace,env:childEnv(this.environment),stdio:["ignore","pipe","pipe"],shell:false,
         detached:process.platform!=="win32"

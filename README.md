@@ -6,6 +6,8 @@ An original, local-first organization for AI work. AGAS has seven permanent hubs
 
 Install Node.js 24 or newer on Windows, macOS or Linux.
 
+GitHub Actions runs the 30 automated checks on all three hosted operating systems. A clean user installation and live authenticated agent runs on each platform still need separate verification. On Windows, supported npm-generated Node `.cmd` shims are resolved to their Node entry file and launched without a command shell; unknown batch shims are reported as unavailable.
+
 ```sh
 npm ci
 npm run check

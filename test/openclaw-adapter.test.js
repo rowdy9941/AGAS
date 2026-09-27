@@ -11,8 +11,8 @@ const policy={gateway:{mode:"local"},agents:{entries:{agas:{skipBootstrap:true,s
 
 test("OpenClaw admits only an applied local Gateway policy and records bounded CEO and hub text",async()=>{
   const root=await mkdtemp(join(tmpdir(),"agas-claw-")),script=join(root,"openclaw-fixture.js"),
-    binary=process.platform==="win32"?process.execPath:script,
-    commandArgs=process.platform==="win32"?[script]:[],config=join(root,"agas-openclaw-fixture.json");
+    binary=process.platform==="win32"?join(root,"openclaw-fixture.cmd"):script,
+    config=join(root,"agas-openclaw-fixture.json");
   await writeFile(config,JSON.stringify({config:policy,configRevisionHash:"current",appliedConfigHash:"current"}));
   await writeFile(script,`#!/usr/bin/env node
 const { readFileSync } = require('node:fs');
@@ -29,7 +29,8 @@ else if(args[0]==='agent'){
 }else process.exit(2);
 `);
   await chmod(script,0o700);
-  const adapter=new OpenClawAdapter({binary,commandArgs,environment:{HOME:root,PATH:process.env.PATH}});
+  if(process.platform==="win32")await writeFile(binary,`@ECHO off\r\nGOTO start\r\n:find_dp0\r\nSET dp0=%~dp0\r\nEXIT /b\r\n:start\r\nSETLOCAL\r\nCALL :find_dp0\r\nIF EXIST "%dp0%\\node.exe" (\r\n  SET "_prog=%dp0%\\node.exe"\r\n) ELSE (\r\n  SET "_prog=node"\r\n)\r\nendLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\\openclaw-fixture.js" %*\r\n`);
+  const adapter=new OpenClawAdapter({binary,environment:{HOME:root,PATH:process.env.PATH}});
   assert.equal((await adapter.probe()).ready,true);
   await writeFile(config,JSON.stringify({config:policy,configRevisionHash:"current",appliedConfigHash:"older"}));
   assert.equal((await adapter.probe()).ready,false);
