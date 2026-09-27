@@ -190,7 +190,14 @@ try {
   await click(`[data-action="review-procedure"][data-id="${procedureId}"]`);
   await waitFor("return !!document.querySelector('#modal[open] [name=reviewNote]')","procedure activation form");
   await fillAndSubmit({reviewNote:"Activate scoped guidance after review"});
-  await waitFor("return document.querySelector('#content').innerText.includes('active · revision 3')","procedure active");
+  await waitFor(`return document.querySelector('.procedure-status .badge')?.textContent.trim()==='active' &&
+    document.querySelector('.procedure-status small')?.textContent.includes('revision 3')`,"procedure active");
+  assert.equal(await execute("return document.querySelector('.audit-details')?.open"),false);
+  await click(".audit-details summary");
+  assert.equal(await execute("return document.querySelector('.audit-details')?.open"),true);
+  assert.equal(await execute("return document.querySelector('.audit-details')?.innerText.includes(arguments[0])",
+    [app.store.overview().procedures[0].source_sha256]),true,"the audit hash remains available to inspect");
+  await click(".audit-details summary");
   assert.equal(await execute("return document.documentElement.scrollWidth<=window.innerWidth+1"),true,
     "procedure panel overflows the mobile viewport");
   await waitFor("return !document.querySelector('#notice').textContent","procedure notice dismissal");
