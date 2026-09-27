@@ -22,6 +22,12 @@ async function command(method,path,data) {
   return result.value;
 }
 async function execute(script,args=[]) {return command("POST",`/session/${session}/execute/sync`,{script,args})}
+async function captureBrowserErrors() {
+  await execute(`window.__agasBrowserErrors=[];
+    window.addEventListener('error',e=>window.__agasBrowserErrors.push(e.message));
+    window.addEventListener('unhandledrejection',e=>window.__agasBrowserErrors.push(String(e.reason)));
+    const original=console.error;console.error=(...args)=>{window.__agasBrowserErrors.push(args.map(String).join(' '));original(...args)};`);
+}
 async function element(selector) {
   const result=await command("POST",`/session/${session}/element`,{using:"css selector",value:selector});
   return result["element-6066-11e4-a52e-4f735466cecf"];
@@ -50,9 +56,9 @@ async function fillAndSubmit(fields) {
   assert.equal(await execute("return document.querySelector('#notice').style.background === 'rgb(84, 45, 50)'"),false,
     "the UI showed an error toast");
 }
-async function screenshot(name) {
+async function screenshot(name,keepScroll=false) {
   await waitFor("return !document.querySelector('#notice').textContent","notice dismissal before screenshot");
-  await execute("window.scrollTo(0,0);document.querySelector('#main').scrollTop=0");
+  if(!keepScroll)await execute("window.scrollTo(0,0);document.querySelector('#main').scrollTop=0");
   const bytes=await command("GET",`/session/${session}/screenshot`);
   await mkdir(resolve("data"),{recursive:true});
   await writeFile(resolve(`data/${name}`),Buffer.from(bytes,"base64"));
@@ -72,10 +78,7 @@ try {
   assert.ok(session,"Chrome did not return a WebDriver session");
   await command("POST",`/session/${session}/url`,{url:`http://127.0.0.1:${app.server.address().port}`});
   await waitFor("return !!document.querySelector('#login-form #token')","login screen");
-  await execute(`window.__agasBrowserErrors=[];
-    window.addEventListener('error',e=>window.__agasBrowserErrors.push(e.message));
-    window.addEventListener('unhandledrejection',e=>window.__agasBrowserErrors.push(String(e.reason)));
-    const original=console.error;console.error=(...args)=>{window.__agasBrowserErrors.push(args.map(String).join(' '));original(...args)};`);
+  await captureBrowserErrors();
   const token=await element("#token");
   await command("POST",`/session/${session}/element/${token}/value`,{text:"browser-smoke"});
   await click("#login-form button[type=submit]");
@@ -166,6 +169,7 @@ try {
   acceptedFixture("Procedure source fixture");
   await command("POST",`/session/${session}/refresh`,{});
   await waitFor("return document.querySelector('#login-overlay')?.classList.contains('hidden') && document.querySelector('#content')?.innerText.includes('Procedure source fixture')","fixture reload");
+  await captureBrowserErrors();
   await click('#nav button[data-view="hubs"]');
   await click('.hub-grid [data-action="hub"][data-id="management"]');
   await click('[data-action="new-procedure"]');
@@ -176,6 +180,7 @@ try {
   acceptedFixture("Procedure evaluation fixture");
   await command("POST",`/session/${session}/refresh`,{});
   await waitFor("return document.querySelector('#login-overlay')?.classList.contains('hidden') && document.querySelector('#content')?.innerText.includes('Procedure evaluation fixture')","evaluation reload");
+  await captureBrowserErrors();
   await click('#nav button[data-view="hubs"]');
   await click('.hub-grid [data-action="hub"][data-id="management"]');
   await click(`[data-action="review-procedure"][data-id="${procedureId}"]`);
@@ -186,7 +191,11 @@ try {
   await waitFor("return !!document.querySelector('#modal[open] [name=reviewNote]')","procedure activation form");
   await fillAndSubmit({reviewNote:"Activate scoped guidance after review"});
   await waitFor("return document.querySelector('#content').innerText.includes('active · revision 3')","procedure active");
-  await screenshot("agas-mobile-procedures.png");
+  assert.equal(await execute("return document.documentElement.scrollWidth<=window.innerWidth+1"),true,
+    "procedure panel overflows the mobile viewport");
+  await waitFor("return !document.querySelector('#notice').textContent","procedure notice dismissal");
+  await execute("Array.from(document.querySelectorAll('.section-head')).find(node=>node.innerText.includes('Reviewed procedures')).scrollIntoView({block:'start'})");
+  await screenshot("agas-mobile-procedures.png",true);
   await click(`[data-action="review-procedure"][data-id="${procedureId}"]`);
   await waitFor("return !!document.querySelector('#modal[open] [name=reviewNote]')","procedure rollback form");
   await fillAndSubmit({reviewNote:"End the fixture trial"});
