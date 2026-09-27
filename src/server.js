@@ -143,6 +143,18 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
         return json(res,201,{assessment:store.createSecurityAssessment(await body(req))});
       if(req.method==="POST"&&path==="/api/security/findings")
         return json(res,201,{finding:store.createSecurityFinding(await body(req))});
+      if(req.method==="POST"&&path==="/api/health/profiles")
+        return json(res,201,{profile:store.createHealthProfile(await body(req))});
+      if(req.method==="POST"&&path==="/api/health/care-items")
+        return json(res,201,{item:store.createHealthCareItem(await body(req))});
+      const healthProfileAction=path.match(/^\/api\/health\/profiles\/([\da-f-]{36})\/(revoke|renew)$/);
+      if(req.method==="POST"&&healthProfileAction)
+        return json(res,200,{profile:healthProfileAction[2]==="revoke"?
+          store.revokeHealthProfile(healthProfileAction[1],await body(req)):
+          store.renewHealthProfile(healthProfileAction[1],await body(req))});
+      const healthReview=path.match(/^\/api\/health\/care-items\/([\da-f-]{36})\/review$/);
+      if(req.method==="POST"&&healthReview)
+        return json(res,200,{item:store.reviewHealthCareItem(healthReview[1],await body(req))});
       const verifyFinding=path.match(/^\/api\/security\/findings\/([\da-f-]{36})\/verify$/);
       if(req.method==="POST"&&verifyFinding)
         return json(res,200,{finding:store.verifySecurityFinding(verifyFinding[1],await body(req))});

@@ -153,6 +153,16 @@ export async function projectVault(store, basePath) {
       valid_until:assessment.valid_until,provenance:"agas:security"})+
       `# ${assessment.asset_label}\n\nAllowed scope: ${assessment.scope_note}.\n\nAuthorizing person: ${assessment.authorized_by}. Authorization basis: ${assessment.authorization_note}. Valid through: ${assessment.valid_until} UTC.\n\nThis is an owner attestation, not a scan permit or independent proof of authorization.\n`);
   }
+  for (const profile of state.healthProfiles) {
+    const events=state.healthConsentEvents.filter(event=>event.profile_id===profile.id)
+      .map(event=>`- ${event.occurred_at} · ${event.action} · through ${event.valid_until} UTC`).join("\n");
+    const items=state.healthCareItems.filter(item=>item.profile_id===profile.id)
+      .map(item=>`- ${item.kind} · ${item.title} · ${item.status}${item.evidence_current===false?" · evidence changed":""}`).join("\n");
+    await managed("02 Projects",`${profile.id}.md`,header({agas_id:`health-profile:${profile.id}`,
+      type:"health-profile",project_id:profile.project_id,revision:profile.version,
+      status:profile.status,scope:"health",provenance:"agas:health"})+
+      `# ${profile.alias}\n\nLocal coordination consent: ${profile.consent_current?"current":"expired or revoked"}. Valid through ${profile.valid_until} UTC.\n\n## Consent history\n${events||"None"}\n\n## Administrative care items\n${items||"None"}\n\nFull owner review remains inside AGAS. Existing records and snapshots are retained after consent revocation. No clinical decision or external provider action is recorded here.\n`);
+  }
   for (const finding of state.securityFindings) {
     await managed("09 Decisions and Evidence",`${finding.id}.md`,header({agas_id:`security-finding:${finding.id}`,
       type:"security-finding",assessment_id:finding.assessment_id,revision:finding.version,

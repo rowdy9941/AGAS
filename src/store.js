@@ -35,6 +35,14 @@ const boundedInteger=(value,name,min,max)=>{
   if(!Number.isSafeInteger(value)||value<min||value>max)throw new InputError(`${name} must be an integer from ${min} to ${max}`);
   return value;
 };
+const futureUtcDate=(value,name)=>{
+  const day=nonempty(value,name,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Number.isFinite(Date.parse(`${day}T23:59:59.999Z`))||
+    new Date(`${day}T23:59:59.999Z`).toISOString().slice(0,10)!==day||
+    Date.parse(`${day}T23:59:59.999Z`)<Date.now())
+    throw new InputError(`${name} must be a current or future UTC date`);
+  return day;
+};
 export class InputError extends Error { constructor(message, status = 400) { super(message); this.status = status; } }
 
 export class Store {
@@ -130,6 +138,24 @@ export class Store {
         remediation_mission_id TEXT REFERENCES missions(id), remediation_evidence_id TEXT REFERENCES mission_evidence(id),
         remediation_sha256 TEXT, review_note TEXT NOT NULL DEFAULT '', verified_at TEXT,
         created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS health_profiles (
+        id TEXT PRIMARY KEY, project_id TEXT NOT NULL UNIQUE REFERENCES projects(id), alias TEXT NOT NULL,
+        consent_by TEXT NOT NULL, consent_purpose TEXT NOT NULL, valid_until TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active', version INTEGER NOT NULL DEFAULT 1,
+        revocation_note TEXT NOT NULL DEFAULT '', revoked_at TEXT, created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS health_consent_events (
+        id TEXT PRIMARY KEY, profile_id TEXT NOT NULL REFERENCES health_profiles(id), action TEXT NOT NULL,
+        consent_by TEXT NOT NULL, consent_purpose TEXT NOT NULL, valid_until TEXT NOT NULL,
+        note TEXT NOT NULL DEFAULT '', occurred_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS health_care_items (
+        id TEXT PRIMARY KEY, profile_id TEXT NOT NULL REFERENCES health_profiles(id),
+        kind TEXT NOT NULL, title TEXT NOT NULL, next_step TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'planned',
+        version INTEGER NOT NULL DEFAULT 1, mission_id TEXT REFERENCES missions(id),
+        evidence_id TEXT REFERENCES mission_evidence(id), evidence_sha256 TEXT,
+        review_note TEXT NOT NULL DEFAULT '', reviewed_at TEXT, created_at TEXT NOT NULL
       );
       CREATE TABLE IF NOT EXISTS management_incidents (
         id TEXT PRIMARY KEY, run_id TEXT NOT NULL UNIQUE REFERENCES mission_runs(id),
@@ -292,6 +318,11 @@ export class Store {
       securityFindings: all("SELECT * FROM security_findings ORDER BY created_at DESC LIMIT 120")
         .map(item=>({...item,source_current:this.securityFindingEvidenceCurrent(item,"source"),
           remediation_current:this.securityFindingEvidenceCurrent(item,"remediation")})),
+      healthProfiles: all("SELECT * FROM health_profiles ORDER BY created_at DESC LIMIT 120")
+        .map(item=>({...item,consent_current:item.status==="active"&&Date.parse(`${item.valid_until}T23:59:59.999Z`)>=Date.now()})),
+      healthConsentEvents: all("SELECT * FROM health_consent_events ORDER BY occurred_at DESC"),
+      healthCareItems: all("SELECT * FROM health_care_items ORDER BY created_at DESC LIMIT 120")
+        .map(item=>({...item,evidence_current:this.healthEvidenceCurrent(item)})),
       incidents: all("SELECT * FROM management_incidents ORDER BY opened_at DESC LIMIT 120")
         .map(item=>({...item,evidence_current:this.incidentEvidenceCurrent(item)})),
       paperAccounts: all("SELECT * FROM paper_accounts ORDER BY created_at DESC"),
@@ -584,10 +615,7 @@ export class Store {
       throw new InputError("Choose an Authorized Security project",409);
     const asset=nonempty(input.assetLabel,"assetLabel",200),scope=nonempty(input.scopeNote,"scopeNote",2000);
     const by=nonempty(input.authorizedBy,"authorizedBy",200),note=nonempty(input.authorizationNote,"authorizationNote",2000);
-    const until=nonempty(input.validUntil,"validUntil",10);
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(until)||!Number.isFinite(Date.parse(`${until}T23:59:59.999Z`))||
-      new Date(`${until}T23:59:59.999Z`).toISOString().slice(0,10)!==until||
-      Date.parse(`${until}T23:59:59.999Z`)<Date.now())throw new InputError("Authorization expiry must be a current or future UTC date");
+    const until=futureUtcDate(input.validUntil,"validUntil");
     const id=randomUUID();
     this.transaction(()=>{
       this.db.prepare(`INSERT INTO security_assessments
@@ -654,6 +682,115 @@ export class Store {
       finding=this.db.prepare("SELECT * FROM security_findings WHERE id=?").get(id);
     });
     return finding;
+  }
+  healthConsentCurrent(profile) {
+    return profile.status==="active"&&Date.parse(`${profile.valid_until}T23:59:59.999Z`)>=Date.now();
+  }
+  createHealthProfile(input) {
+    const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(nonempty(input.projectId,"projectId",120));
+    if(!project||project.hub_id!=="health"||project.kind!=="health")
+      throw new InputError("Choose a Family Health project for one person",409);
+    const alias=nonempty(input.alias,"alias",140),by=nonempty(input.consentBy,"consentBy",200);
+    const purpose=nonempty(input.consentPurpose,"consentPurpose",2000),until=futureUtcDate(input.validUntil,"validUntil");
+    const id=randomUUID();
+    this.transaction(()=>{
+      if(this.db.prepare("SELECT 1 FROM health_profiles WHERE project_id=?").get(project.id))
+        throw new InputError("This Health project already has a profile; use a separate project for each person",409);
+      this.db.prepare(`INSERT INTO health_profiles(id,project_id,alias,consent_by,consent_purpose,valid_until,created_at)
+        VALUES (?,?,?,?,?,?,?)`).run(id,project.id,alias,by,purpose,until,now());
+      this.db.prepare(`INSERT INTO health_consent_events(id,profile_id,action,consent_by,consent_purpose,valid_until,occurred_at)
+        VALUES (?,?,'granted',?,?,?,?)`).run(randomUUID(),id,by,purpose,until,now());
+      this.event("health.profile.created",id,"health",`Owner recorded local coordination consent for a profile`);
+    });
+    return this.db.prepare("SELECT * FROM health_profiles WHERE id=?").get(id);
+  }
+  revokeHealthProfile(id,input) {
+    const note=nonempty(input.reviewNote,"reviewNote",2000);
+    let profile;
+    this.transaction(()=>{
+      profile=this.db.prepare("SELECT * FROM health_profiles WHERE id=?").get(id);
+      if(!profile)throw new InputError("Health profile not found",404);
+      if(profile.version!==input.expectedVersion||profile.status!=="active")
+        throw new InputError("Health profile changed; reload before revocation",409);
+      this.db.prepare(`UPDATE health_profiles SET status='revoked',version=version+1,revocation_note=?,revoked_at=? WHERE id=?`)
+        .run(note,now(),id);
+      this.db.prepare(`INSERT INTO health_consent_events(id,profile_id,action,consent_by,consent_purpose,valid_until,note,occurred_at)
+        VALUES (?,?,'revoked',?,?,?,?,?)`).run(randomUUID(),id,profile.consent_by,profile.consent_purpose,profile.valid_until,note,now());
+      this.event("health.consent.revoked",id,"health","Owner revoked new coordination work for this profile");
+      profile=this.db.prepare("SELECT * FROM health_profiles WHERE id=?").get(id);
+    });
+    return profile;
+  }
+  renewHealthProfile(id,input) {
+    const by=nonempty(input.consentBy,"consentBy",200),purpose=nonempty(input.consentPurpose,"consentPurpose",2000);
+    const until=futureUtcDate(input.validUntil,"validUntil");
+    let profile;
+    this.transaction(()=>{
+      profile=this.db.prepare("SELECT * FROM health_profiles WHERE id=?").get(id);
+      if(!profile)throw new InputError("Health profile not found",404);
+      if(profile.version!==input.expectedVersion)throw new InputError("Health profile changed; reload before consent renewal",409);
+      this.db.prepare(`UPDATE health_profiles SET status='active',version=version+1,consent_by=?,consent_purpose=?,
+        valid_until=?,revocation_note='',revoked_at=NULL WHERE id=?`).run(by,purpose,until,id);
+      this.db.prepare(`INSERT INTO health_consent_events(id,profile_id,action,consent_by,consent_purpose,valid_until,occurred_at)
+        VALUES (?,?,'renewed',?,?,?,?)`).run(randomUUID(),id,by,purpose,until,now());
+      this.event("health.consent.renewed",id,"health","Owner recorded renewed local coordination consent");
+      profile=this.db.prepare("SELECT * FROM health_profiles WHERE id=?").get(id);
+    });
+    return profile;
+  }
+  createHealthCareItem(input) {
+    const profileId=nonempty(input.profileId,"profileId",120),kind=input.kind;
+    if(!["appointment","document","clinician-question"].includes(kind))
+      throw new InputError("Choose appointment, document or clinician question");
+    const title=nonempty(input.title,"title",140),step=nonempty(input.nextStep,"nextStep",2000);
+    let item;
+    this.transaction(()=>{
+      const profile=this.db.prepare("SELECT * FROM health_profiles WHERE id=?").get(profileId);
+      if(!profile)throw new InputError("Health profile not found",404);
+      if(!this.healthConsentCurrent(profile))throw new InputError("Consent expired or revoked; record new consent before adding work",409);
+      const id=randomUUID();
+      this.db.prepare(`INSERT INTO health_care_items(id,profile_id,kind,title,next_step,created_at)
+        VALUES (?,?,?,?,?,?)`).run(id,profileId,kind,title,step,now());
+      this.event("health.care-item.created",id,"health",`Local ${kind} coordination item recorded`);
+      item=this.db.prepare("SELECT * FROM health_care_items WHERE id=?").get(id);
+    });
+    return item;
+  }
+  healthEvidence(profile,missionId,evidenceId) {
+    const detail=this.missionDetail(missionId),evidence=detail.evidence.find(item=>item.id===evidenceId);
+    if(detail.mission.hub_id!=="health"||detail.mission.project!==profile.project_id||detail.mission.status!=="accepted"||
+      evidence?.status!=="reviewed"||!detail.tasks.some(task=>task.id===evidence?.task_id&&task.status==="accepted")||
+      createHash("sha256").update(evidence.content).digest("hex")!==evidence.sha256||!this.verifyEvidenceReceipt(evidence))
+      throw new InputError("Use unchanged, reviewed evidence from an accepted mission for this person's project",409);
+    return evidence;
+  }
+  healthEvidenceCurrent(item) {
+    if(!item.evidence_id)return null;
+    try {
+      const profile=this.db.prepare("SELECT * FROM health_profiles WHERE id=?").get(item.profile_id);
+      return this.healthEvidence(profile,item.mission_id,item.evidence_id).sha256===item.evidence_sha256;
+    } catch {return false}
+  }
+  reviewHealthCareItem(id,input) {
+    const missionId=nonempty(input.missionId,"missionId",120),evidenceId=nonempty(input.evidenceId,"evidenceId",120);
+    const note=nonempty(input.reviewNote,"reviewNote",2000);
+    let item;
+    this.transaction(()=>{
+      item=this.db.prepare("SELECT * FROM health_care_items WHERE id=?").get(id);
+      if(!item)throw new InputError("Care item not found",404);
+      if(item.status!=="planned"||item.version!==input.expectedVersion)
+        throw new InputError("Care item changed; reload before review",409);
+      const profile=this.db.prepare("SELECT * FROM health_profiles WHERE id=?").get(item.profile_id);
+      if(!this.healthConsentCurrent(profile))throw new InputError("Consent expired or revoked; review is blocked",409);
+      const evidence=this.healthEvidence(profile,missionId,evidenceId);
+      if(evidence.created_at<item.created_at)throw new InputError("Evidence predates this care item",409);
+      this.db.prepare(`UPDATE health_care_items SET status='owner-reviewed',version=version+1,
+        mission_id=?,evidence_id=?,evidence_sha256=?,review_note=?,reviewed_at=? WHERE id=?`)
+        .run(missionId,evidenceId,evidence.sha256,note,now(),id);
+      this.event("health.care-item.reviewed",id,"health",`Owner reviewed a local ${item.kind} coordination item; no clinical act or outside contact`);
+      item=this.db.prepare("SELECT * FROM health_care_items WHERE id=?").get(id);
+    });
+    return item;
   }
   incidentEvidenceCurrent(incident) {
     if(!incident.resolution_evidence_id)return null;

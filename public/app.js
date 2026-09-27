@@ -122,6 +122,10 @@ function securityPanels() {
   const d=state.data,projects=d.projects.filter(p=>p.hub_id==="security"&&p.kind==="security");
   return `<div class="section-head"><h2>Authorized Security · findings</h2><span>${d.securityFindings.filter(f=>f.status==="open").length} open findings</span></div><div class="panel"><p class="helper">Record the system owner, exact asset and authorized scope before collecting findings. This record is an owner attestation; it does not grant an agent scanning access. A finding needs accepted Security mission evidence in the same project. Closure needs a separate accepted remediation mission and owner review.</p><div class="mission-table">${d.securityAssessments.map(a=>`<article class="card work-card"><div><strong>${esc(a.asset_label)}</strong><p>${esc(a.scope_note)}</p><small>${esc(d.projects.find(p=>p.id===a.project_id)?.title)} · authorized by ${esc(a.authorized_by)} · through ${esc(a.valid_until)} UTC · ${esc(a.id)}</small></div><div class="work-actions"><button class="secondary" data-action="record-finding" data-id="${esc(a.id)}">+ Finding</button></div></article>`).join("")||'<div class="empty">Create an Authorized Security project and record the first assessed asset.</div>'}</div><button class="secondary" data-action="new-assessment" ${projects.length?"":"disabled"}>+ Record scope</button></div><div class="section-head"><h2>Finding review</h2><span>${d.securityFindings.length} recorded</span></div><div class="panel"><div class="mission-table">${d.securityFindings.map(f=>`<article class="card work-card"><div><strong>${esc(f.title)}</strong><p>${esc(f.severity)} · ${esc(f.status)} · revision ${f.version}</p><small>Source SHA-256 ${esc(f.source_sha256)}${f.source_current===false?" · SOURCE CHANGED":""}${f.remediation_current===false?" · REMEDIATION SOURCE CHANGED":""}</small>${f.review_note?`<small>Owner review: ${esc(f.review_note)} · remediation SHA-256 ${esc(f.remediation_sha256)}</small>`:""}</div><div class="work-actions"><button class="ghost" data-action="open-mission" data-id="${esc(f.source_mission_id)}">Finding mission →</button>${f.status==="open"?`<button class="secondary" data-action="verify-finding" data-id="${esc(f.id)}">Review fix</button>`:f.remediation_mission_id?`<button class="ghost" data-action="open-mission" data-id="${esc(f.remediation_mission_id)}">Fix mission →</button>`:""}</div></article>`).join("")||'<div class="empty">No findings recorded.</div>'}</div></div>`;
 }
+function healthPanels() {
+  const d=state.data,projects=d.projects.filter(p=>p.hub_id==="health"&&p.kind==="health");
+  return `<div class="section-head"><h2>Family Health · care coordination</h2><span>${d.healthProfiles.length} private project profiles</span></div><div class="panel"><p class="helper">Use one Health project per person. Record consent for local administrative coordination, then track appointments, documents or questions for a clinician. No diagnosis, treatment, outside contact or provider sharing is performed. Revocation blocks new items and review; existing records remain in the local workspace and its snapshots.</p><div class="mission-table">${d.healthProfiles.map(p=>`<article class="card work-card"><div><strong>${esc(p.alias)}</strong><p>${esc(d.projects.find(row=>row.id===p.project_id)?.title)} · ${p.consent_current?"consent current":"consent expired or revoked"} · through ${esc(p.valid_until)} UTC</p><small>Purpose: ${esc(p.consent_purpose)} · revision ${p.version} · ${d.healthConsentEvents.filter(e=>e.profile_id===p.id).length} consent events</small></div><div class="work-actions">${p.consent_current?`<button class="secondary" data-action="new-care-item" data-id="${esc(p.id)}">+ Care item</button><button class="ghost" data-action="revoke-health" data-id="${esc(p.id)}">Revoke</button>`:`<button class="secondary" data-action="renew-health" data-id="${esc(p.id)}">Record new consent</button>`}</div></article>`).join("")||'<div class="empty">Create a Family Health project, then record consent for its one profile.</div>'}</div><button class="secondary" data-action="new-health-profile" ${projects.length?"":"disabled"}>+ Health profile</button></div><div class="section-head"><h2>Care items</h2><span>${d.healthCareItems.length} records</span></div><div class="panel"><div class="mission-table">${d.healthCareItems.map(i=>{const p=d.healthProfiles.find(row=>row.id===i.profile_id);return `<article class="card work-card"><div><strong>${esc(i.title)}</strong><p>${esc(p?.alias)} · ${esc(i.kind)} · ${esc(i.status)}</p><small>Next step: ${esc(i.next_step)} · revision ${i.version}${i.evidence_current===false?" · SOURCE CHANGED":""}</small>${i.review_note?`<small>Owner review: ${esc(i.review_note)} · SHA-256 ${esc(i.evidence_sha256)}</small>`:""}</div><div class="work-actions">${i.status==="planned"&&p?.consent_current?`<button class="secondary" data-action="review-care-item" data-id="${esc(i.id)}">Review evidence</button>`:i.mission_id?`<button class="ghost" data-action="open-mission" data-id="${esc(i.mission_id)}">Source mission →</button>`:""}</div></article>`}).join("")||'<div class="empty">No coordination items yet.</div>'}</div></div>`;
+}
 function incidentPanels() {
   const d=state.data;
   return `<div class="section-head"><h2>Management · run incidents</h2><span>${d.incidents.filter(i=>i.status!=="resolved").length} open or acknowledged</span></div><div class="panel"><p class="helper">Failed, interrupted and stopped active runs open one incident and one dedicated Management mission. Inspect partial work before retrying; an accepted response mission with reviewed evidence is required to resolve it.</p><div class="mission-table">${d.incidents.map(i=>{const run=d.runs.find(r=>r.id===i.run_id);return `<article class="card work-card"><div><strong>${esc(i.title)}</strong><p>${esc(i.source_hub_id)} · ${esc(i.status)} · run ${esc(i.run_id)}</p><small>Revision ${i.version}${i.evidence_current===false?" · RESOLUTION SOURCE CHANGED":""}</small>${i.acknowledgement_note?`<small>Initial review: ${esc(i.acknowledgement_note)}</small>`:""}${i.resolution_note?`<small>Resolution: ${esc(i.resolution_note)} · SHA-256 ${esc(i.evidence_sha256)}</small>`:""}</div><div class="work-actions">${run?`<button class="ghost" data-action="inspect-run" data-id="${esc(i.run_id)}" data-mission="${esc(run.mission_id)}">Source run</button>`:""}<button class="ghost" data-action="open-mission" data-id="${esc(i.resolution_mission_id)}">Response mission</button>${i.status==="open"?`<button class="secondary" data-action="review-incident" data-id="${esc(i.id)}">Acknowledge</button>`:i.status==="acknowledged"?`<button class="secondary" data-action="review-incident" data-id="${esc(i.id)}">Resolve</button>`:""}</div></article>`}).join("")||'<div class="empty">No recorded run incidents.</div>'}</div></div>`;
@@ -222,6 +226,7 @@ function render() {
   if(state.view==="hubs"&&state.hub==="finance")$("#content").insertAdjacentHTML("beforeend",financePanels());
   if(state.view==="hubs"&&state.hub==="business")$("#content").insertAdjacentHTML("beforeend",businessPanels());
   if(state.view==="hubs"&&state.hub==="security")$("#content").insertAdjacentHTML("beforeend",securityPanels());
+  if(state.view==="hubs"&&state.hub==="health")$("#content").insertAdjacentHTML("beforeend",healthPanels());
   if(state.view==="hubs"&&state.hub==="management")$("#content").insertAdjacentHTML("beforeend",incidentPanels());
   renderInspector();
 }
@@ -432,6 +437,47 @@ async function verifySecurityFinding(id) {
     `<p class="helper">${esc(finding.title)} · source SHA-256 ${esc(finding.source_sha256)}</p><label class="field">Remediation evidence<select name="source">${choices.map((row,index)=>`<option value="${index}">${esc(row.mission.title)} · ${esc(row.evidence.title)} · ${esc(row.evidence.sha256)}</option>`).join("")}</select></label><label class="field">Review note<textarea name="reviewNote" required maxlength="2000" placeholder="Describe the fix and how you checked it"></textarea></label>`,
     data=>{const choice=choices[Number(data.get("source"))];return api(`/api/security/findings/${id}/verify`,{method:"POST",body:JSON.stringify({missionId:choice.mission.id,evidenceId:choice.evidence.id,reviewNote:data.get("reviewNote"),expectedVersion:finding.version})})});
 }
+function healthConsentFields(projects) {
+  return `${projects?`<label class="field">One-person Health project<select name="projectId">${projects.map(p=>`<option value="${esc(p.id)}">${esc(p.title)}</option>`).join("")}</select></label><label class="field">Alias<input name="alias" required maxlength="140" placeholder="A private label you recognize"></label>`:""}<label class="field">Consenting person or representative<input name="consentBy" required maxlength="200"></label><label class="field">Purpose of local coordination<textarea name="consentPurpose" required maxlength="2000" placeholder="Appointments, document tracking or questions for a clinician"></textarea></label><label class="field">Valid through (UTC)<input type="date" name="validUntil" required></label>`;
+}
+function newHealthProfile() {
+  const projects=state.data.projects.filter(p=>p.hub_id==="health"&&p.kind==="health"&&!state.data.healthProfiles.some(h=>h.project_id===p.id));
+  if(!projects.length)return notify("Create an unused Family Health project for this person first.",true);
+  openModal("Record Health coordination consent","Record an owner's attestation for local coordination. Keep one project per person; AGAS does not verify legal consent or contact a provider.",
+    healthConsentFields(projects),data=>api("/api/health/profiles",{method:"POST",body:JSON.stringify(Object.fromEntries(data))}));
+}
+function renewHealthProfile(id) {
+  const profile=state.data.healthProfiles.find(p=>p.id===id);
+  if(!profile)return notify("Refresh this Health profile first.",true);
+  openModal("Record new Health consent","Enter the newly agreed scope and expiry. The previous grant and any revocation remain in the event history.",
+    healthConsentFields(null),data=>api(`/api/health/profiles/${id}/renew`,{method:"POST",body:JSON.stringify({...Object.fromEntries(data),expectedVersion:profile.version})}));
+}
+function revokeHealthProfile(id) {
+  const profile=state.data.healthProfiles.find(p=>p.id===id);
+  if(!profile||!profile.consent_current)return notify("Refresh current consent before revocation.",true);
+  openModal("Revoke Health coordination consent","New care items and owner review for this profile will stop. Existing local records and backups are retained.",
+    `<label class="field">Reason<textarea name="reviewNote" required maxlength="2000"></textarea></label>`,
+    data=>api(`/api/health/profiles/${id}/revoke`,{method:"POST",body:JSON.stringify({reviewNote:data.get("reviewNote"),expectedVersion:profile.version})}));
+}
+function newHealthCareItem(id) {
+  const profile=state.data.healthProfiles.find(p=>p.id===id);
+  if(!profile?.consent_current)return notify("Record current consent before adding care items.",true);
+  openModal("Add a care coordination item","Record an administrative step. Ask a clinician about medical decisions; no outside message is sent.",
+    `<p class="helper">Profile: ${esc(profile.alias)}</p><label class="field">Kind<select name="kind"><option value="appointment">Appointment</option><option value="document">Document</option><option value="clinician-question">Question for clinician</option></select></label><label class="field">Title<input name="title" required maxlength="140"></label><label class="field">Next step<textarea name="nextStep" required maxlength="2000" placeholder="What should the owner organize or check?"></textarea></label>`,
+    data=>api("/api/health/care-items",{method:"POST",body:JSON.stringify({...Object.fromEntries(data),profileId:id})}));
+}
+async function reviewHealthCareItem(id) {
+  const item=state.data.healthCareItems.find(i=>i.id===id),profile=state.data.healthProfiles.find(p=>p.id===item?.profile_id);
+  if(!item||!profile?.consent_current||item.status!=="planned")return notify("Refresh this item and its consent before reviewing.",true);
+  const missions=state.data.missions.filter(m=>m.hub_id==="health"&&m.project===profile.project_id&&m.status==="accepted").slice(0,50);
+  const records=await Promise.all(missions.map(m=>api(`/api/missions/${m.id}`)));
+  const choices=records.flatMap(detail=>detail.evidence.filter(e=>e.status==="reviewed"&&detail.tasks.some(t=>t.id===e.task_id&&t.status==="accepted"))
+    .map(e=>({mission:detail.mission,evidence:e})));
+  if(!choices.length)return notify("Accept a Health mission with reviewed evidence in this person's project first.",true);
+  openModal("Review care coordination","Choose a reviewed record from this person's project. This is an owner review, not a clinical decision or outside contact.",
+    `<p class="helper">${esc(item.title)} · ${esc(profile.alias)}</p><label class="field">Reviewed source<select name="source">${choices.map((row,index)=>`<option value="${index}">${esc(row.mission.title)} · ${esc(row.evidence.title)} · ${esc(row.evidence.sha256)}</option>`).join("")}</select></label><label class="field">What did you check?<textarea name="reviewNote" required maxlength="2000"></textarea></label>`,
+    data=>{const choice=choices[Number(data.get("source"))];return api(`/api/health/care-items/${id}/review`,{method:"POST",body:JSON.stringify({missionId:choice.mission.id,evidenceId:choice.evidence.id,reviewNote:data.get("reviewNote"),expectedVersion:item.version})})});
+}
 async function reviewIncident(id) {
   const incident=state.data.incidents.find(item=>item.id===id);
   if(!incident)return notify("Refresh Management incidents before reviewing.",true);
@@ -541,6 +587,11 @@ document.addEventListener("click",async event=>{
   else if(type==="new-assessment")newSecurityAssessment();
   else if(type==="record-finding")recordSecurityFinding(id).catch(error=>notify(error.message,true));
   else if(type==="verify-finding")verifySecurityFinding(id).catch(error=>notify(error.message,true));
+  else if(type==="new-health-profile")newHealthProfile();
+  else if(type==="renew-health")renewHealthProfile(id);
+  else if(type==="revoke-health")revokeHealthProfile(id);
+  else if(type==="new-care-item")newHealthCareItem(id);
+  else if(type==="review-care-item")reviewHealthCareItem(id).catch(error=>notify(error.message,true));
   else if(type==="review-incident")reviewIncident(id).catch(error=>notify(error.message,true));
   else if(type==="inspect-media")inspectMediaCampaign(id);
   else if(type==="new-paper-account")newPaperAccount();
