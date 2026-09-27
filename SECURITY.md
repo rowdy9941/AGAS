@@ -1,21 +1,9 @@
-# Security policy
+# AGAS local security boundary
 
-## Supported version
+AGAS binds to loopback by default and requires a configured `AGAS_BOOTSTRAP_TOKEN` before binding to a non-loopback interface. The development token is for local testing. Browser sessions keep the token in session storage and every data API requires a bearer token. Network exposure still needs TLS, real user authentication and an installation review.
 
-Security fixes are provided for the latest `1.x` release. Report suspected
-vulnerabilities privately through GitHub Security Advisories for this repository.
-Do not include credentials, customer data, or exploit details in a public issue.
+Agency prompt files are imported as **data**, never executed as source code. Reviewed procedures are also untrusted prompt guidance: they are limited to the same hub and project, require separate evidence and owner activation, and cannot grant tools or credentials. The source/evaluation hashes are checked before new task runs and the applied procedure revisions are recorded with the prompt hash. Runtime discovery searches fixed executable names on PATH; a detected executable is not a ready runtime. Codex/OpenCode Dev tasks run in isolated Git worktrees and are recorded as untrusted until owner review. OpenCode, OpenClaw and Claude non-Dev work use documented tool restrictions and process timeouts; those runtime policies are not an operating-system sandbox. Live provider behavior has not been authenticated on this host. No adapter publishes to external Media accounts, sends broker orders or contacts a Health provider.
 
-## Security defaults
+AGAS filters private and cross-hub notes before constructing agent prompts. The owner API, SQLite database, run logs, backups and projected vault remain local files without application-level encryption or separate person-specific logins. The vault is a readable projection, not a secret store. Revoking Health coordination consent stops new records and reviews, but retains past local records and snapshots. Back up and share these files according to the sensitivity of the content you enter.
 
-- The service binds to loopback unless an explicit administrator token is set.
-- API tokens are SHA-256 hashed at rest and authorized by role and workspace.
-- Runtime execution defaults to the offline simulator; local CLI execution is
-  opt-in, shell-free, time/output bounded, and workspace constrained.
-- MCP records accept only `env:` or `vault:` secret references.
-- Mission implementation tasks require explicit administrator approval.
-- The Docker service runs as a non-root user with a read-only filesystem and
-  `no-new-privileges`.
-
-See [docs/threat-model.md](docs/threat-model.md) for boundaries and residual
-risks.
+Report security vulnerabilities privately through the repository owner's GitHub security reporting channel.

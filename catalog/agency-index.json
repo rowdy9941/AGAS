@@ -1,0 +1,1484 @@
+{
+  "schema": "agas.agency-index/v1",
+  "source": "https://github.com/msitarzewski/agency-agents",
+  "commit": "053ddbbf392a1688fc7043d81529f47ef2cf86c8",
+  "license": "MIT",
+  "count": 295,
+  "agents": [
+    {
+      "path": "academic/academic-anthropologist.md",
+      "sha": "f9c811f2ff7802f05e9450423c4b98ae6a08be31",
+      "size": 7878
+    },
+    {
+      "path": "academic/academic-geographer.md",
+      "sha": "c02b43b609c2cceb8ee057bcda9fd104fca353af",
+      "size": 7740
+    },
+    {
+      "path": "academic/academic-historian.md",
+      "sha": "b67f5a5fcd6fb1b439a3044fcbc21e39fca2247a",
+      "size": 7272
+    },
+    {
+      "path": "academic/academic-narratologist.md",
+      "sha": "3976b6f63ac643fc8606cae701bf8e002056703b",
+      "size": 6797
+    },
+    {
+      "path": "academic/academic-psychologist.md",
+      "sha": "e20a812c93a94b62b5c0aec96692d3ce5c6449cc",
+      "size": 7833
+    },
+    {
+      "path": "academic/academic-statistician.md",
+      "sha": "f06e3a98781339b15daa525f43fa9e28f983e621",
+      "size": 11508
+    },
+    {
+      "path": "design/design-brand-guardian.md",
+      "sha": "c6c6feda374146d84c46087e6707994d1f17ef5c",
+      "size": 11641
+    },
+    {
+      "path": "design/design-image-prompt-engineer.md",
+      "sha": "8f4a8dd241a8f16e75d02fbaba055a14b3e34512",
+      "size": 11160
+    },
+    {
+      "path": "design/design-inclusive-visuals-specialist.md",
+      "sha": "fe354f90ea4692becbe1fd7abbfe55be6778fe23",
+      "size": 6799
+    },
+    {
+      "path": "design/design-persona-walkthrough.md",
+      "sha": "1cc677e6220ffb4c5179b28eccfed51c8777f80a",
+      "size": 16759
+    },
+    {
+      "path": "design/design-ui-designer.md",
+      "sha": "ca8886161000d62dd4429d1462b3fd473c031312",
+      "size": 13339
+    },
+    {
+      "path": "design/design-ui-finish-gate-reviewer.md",
+      "sha": "cefcf1a9787c6d5735b740f348b2b73a282cc439",
+      "size": 8988
+    },
+    {
+      "path": "design/design-ux-architect.md",
+      "sha": "36e324342ca889151417439c2802445a24f471f0",
+      "size": 15758
+    },
+    {
+      "path": "design/design-ux-researcher.md",
+      "sha": "0e8a2480dc9bb11a47c19621a9013bdc3466865a",
+      "size": 13030
+    },
+    {
+      "path": "design/design-visual-storyteller.md",
+      "sha": "e48fde299d7e7ecc259e05819be64212dcf2bc25",
+      "size": 7416
+    },
+    {
+      "path": "design/design-whimsy-injector.md",
+      "sha": "834ed54657ae7c6dfbe351ef4cc65c4c53420ca1",
+      "size": 15851
+    },
+    {
+      "path": "engineering/engineering-ai-data-remediation-engineer.md",
+      "sha": "aad8795adc7bf08c46776731b31c6cd3f41c3e6c",
+      "size": 10691
+    },
+    {
+      "path": "engineering/engineering-ai-engineer.md",
+      "sha": "a4a8f6d548894bafaf1dfe651f44f3e7179bf569",
+      "size": 7383
+    },
+    {
+      "path": "engineering/engineering-api-platform-engineer.md",
+      "sha": "127339a35491c63c35f7537aa7c318697efc0c16",
+      "size": 13584
+    },
+    {
+      "path": "engineering/engineering-ats-validator-architect.md",
+      "sha": "fe5668337ccc31aeeda723d966ffcf215430dbfe",
+      "size": 28170
+    },
+    {
+      "path": "engineering/engineering-autonomous-optimization-architect.md",
+      "sha": "28a5fc6470fe089f7c69b7040dbf5870597c6e7d",
+      "size": 7953
+    },
+    {
+      "path": "engineering/engineering-backend-architect.md",
+      "sha": "7c3125d61e53694ef1bb876e81040ffb84d57956",
+      "size": 10928
+    },
+    {
+      "path": "engineering/engineering-china-network-engineer.md",
+      "sha": "da4091deb4e9cd427f4f742be02067f05adbe009",
+      "size": 17646
+    },
+    {
+      "path": "engineering/engineering-cms-developer.md",
+      "sha": "79bd2b553626af61c4a352b1e2eab94da3fb871b",
+      "size": 19520
+    },
+    {
+      "path": "engineering/engineering-code-reviewer.md",
+      "sha": "fb93291f4b94a8d5687aa1cc0d05741c3352dd22",
+      "size": 3076
+    },
+    {
+      "path": "engineering/engineering-codebase-onboarding-engineer.md",
+      "sha": "cc36ec153ebe38ebf51515d8591a44e1213e5aa1",
+      "size": 9569
+    },
+    {
+      "path": "engineering/engineering-data-engineer.md",
+      "sha": "cfa7c5c12ee6494c8f58e58697e4add4c1f88c77",
+      "size": 14687
+    },
+    {
+      "path": "engineering/engineering-data-visualization-engineer.md",
+      "sha": "2cc24e7c0a91c7b132a9ce568983ebabda8a1e3d",
+      "size": 13797
+    },
+    {
+      "path": "engineering/engineering-database-optimizer.md",
+      "sha": "3af7da68e6d37c66894d123791a29ddbfa7965e2",
+      "size": 5533
+    },
+    {
+      "path": "engineering/engineering-database-reliability-engineer.md",
+      "sha": "970f502a96314d9d0d609b149abaaa8ef7a689f6",
+      "size": 14392
+    },
+    {
+      "path": "engineering/engineering-desktop-app-engineer.md",
+      "sha": "b5d37ccf6fad357393268ec102284203cad74e4d",
+      "size": 14557
+    },
+    {
+      "path": "engineering/engineering-developer-tooling-engineer.md",
+      "sha": "f737e1c6347463a542240b4273a47d64d60ef16a",
+      "size": 13041
+    },
+    {
+      "path": "engineering/engineering-devops-automator.md",
+      "sha": "a9e7cac04c8e78e812d230aae9f9f676b20413ac",
+      "size": 12879
+    },
+    {
+      "path": "engineering/engineering-drupal-performance.md",
+      "sha": "889d72dca34306442aa9c4d282aea9bcab02d4e6",
+      "size": 23523
+    },
+    {
+      "path": "engineering/engineering-drupal-shopping-cart.md",
+      "sha": "60d478e038c4a689a7390e0389e0ff0886e8739f",
+      "size": 21461
+    },
+    {
+      "path": "engineering/engineering-email-intelligence-engineer.md",
+      "sha": "46b27c7f8cb0fcb28d5c7cc10b23295788c0dcc0",
+      "size": 16550
+    },
+    {
+      "path": "engineering/engineering-embedded-firmware-engineer.md",
+      "sha": "8bb971c5b21a4bda62550b322dc3485df8ea4b09",
+      "size": 6562
+    },
+    {
+      "path": "engineering/engineering-feishu-integration-developer.md",
+      "sha": "74d208680c9000cca864404b75a47ca782811e21",
+      "size": 21127
+    },
+    {
+      "path": "engineering/engineering-filament-optimization-specialist.md",
+      "sha": "9dfc49b30a121a6844a9ba15f3e9d7a69581ea1e",
+      "size": 14269
+    },
+    {
+      "path": "engineering/engineering-finops-engineer.md",
+      "sha": "65a747c10a118fffbb4cce1fce668548707b116f",
+      "size": 12918
+    },
+    {
+      "path": "engineering/engineering-frontend-developer.md",
+      "sha": "68cf7fe861d8af600b619d62c9cde1625e6e4578",
+      "size": 9283
+    },
+    {
+      "path": "engineering/engineering-gaussdb-expert.md",
+      "sha": "ccab7e5c6752cfba8981bfe71aac01d2ab66e1ec",
+      "size": 15613
+    },
+    {
+      "path": "engineering/engineering-git-workflow-master.md",
+      "sha": "d00b608bc827ad9f60b65b15f941256c73f44c66",
+      "size": 3342
+    },
+    {
+      "path": "engineering/engineering-i18n-engineer.md",
+      "sha": "e913932356bb19cfdabd910cd9be22570dfe7ffe",
+      "size": 12728
+    },
+    {
+      "path": "engineering/engineering-identity-access-engineer.md",
+      "sha": "f1ac2a23794299627dcdd4841a0353fba3a26103",
+      "size": 14866
+    },
+    {
+      "path": "engineering/engineering-incident-response-commander.md",
+      "sha": "24819836fe0046eb4e38efe9f249ae28c023fc3c",
+      "size": 21121
+    },
+    {
+      "path": "engineering/engineering-iot-fleet-engineer.md",
+      "sha": "537b22dadabd4ecfd8d936a9699c147fe187354c",
+      "size": 13587
+    },
+    {
+      "path": "engineering/engineering-it-service-manager.md",
+      "sha": "78272c20ea0caf5f52b688c1dd0f13174f08b052",
+      "size": 27663
+    },
+    {
+      "path": "engineering/engineering-knowledge-graph-engineer.md",
+      "sha": "116d71fb5dd1e479334b4bd498eed2c878b09770",
+      "size": 23440
+    },
+    {
+      "path": "engineering/engineering-llm-post-training-engineer.md",
+      "sha": "53a558ee6a3bad94df7c9645f5df298834670630",
+      "size": 10947
+    },
+    {
+      "path": "engineering/engineering-minimal-change-engineer.md",
+      "sha": "11d7660010fb70c5fcd4c36e2239afe357ecd335",
+      "size": 11231
+    },
+    {
+      "path": "engineering/engineering-mobile-app-builder.md",
+      "sha": "71cc10024f07a0c6a19aed9f7e495284f7ce5e6a",
+      "size": 17035
+    },
+    {
+      "path": "engineering/engineering-mobile-release-engineer.md",
+      "sha": "fa8b29253f0c5341c08f92e7e9a853232ed4b30a",
+      "size": 13642
+    },
+    {
+      "path": "engineering/engineering-multi-agent-systems-architect.md",
+      "sha": "4ca4ebef41d7ec024158d8ed2a9221c2037a72cc",
+      "size": 29301
+    },
+    {
+      "path": "engineering/engineering-network-engineer.md",
+      "sha": "aa9088eeb17944242d44b965b7aeab61b979062b",
+      "size": 13365
+    },
+    {
+      "path": "engineering/engineering-orgscript-engineer.md",
+      "sha": "c3ff0fd452bef0c79b5399371cb7ae9ae9780815",
+      "size": 5611
+    },
+    {
+      "path": "engineering/engineering-payments-billing-engineer.md",
+      "sha": "e9d3b1c30ce12480e4f9e466f342c06a79569786",
+      "size": 12574
+    },
+    {
+      "path": "engineering/engineering-pdf-engine-architect.md",
+      "sha": "5afbd8c6e34de24932af39ed29759d69fa37a57d",
+      "size": 31446
+    },
+    {
+      "path": "engineering/engineering-platform-engineer.md",
+      "sha": "234fec449f0dd67d08aac51f6dcec13975cb9ebc",
+      "size": 11688
+    },
+    {
+      "path": "engineering/engineering-privacy-engineer.md",
+      "sha": "67779ba76585e31e187f6f17ae1e8ab96ac8b531",
+      "size": 14229
+    },
+    {
+      "path": "engineering/engineering-prompt-engineer.md",
+      "sha": "b6ca07e34d8a8e4a7aa01b1df35a37ad53f863db",
+      "size": 9477
+    },
+    {
+      "path": "engineering/engineering-rag-pipeline-engineer.md",
+      "sha": "ff5b854c3774bf338b975d9660352bd483fbb95c",
+      "size": 18250
+    },
+    {
+      "path": "engineering/engineering-rapid-prototyper.md",
+      "sha": "76f66c39758a3a525e16bce49d9ea9d5c9e25fc7",
+      "size": 15492
+    },
+    {
+      "path": "engineering/engineering-realtime-collaboration-engineer.md",
+      "sha": "e2ca05c4e0bcdf9d354b31c8556bd4985bc328cb",
+      "size": 14247
+    },
+    {
+      "path": "engineering/engineering-rust-refactoring-specialist.md",
+      "sha": "54d80c1b23628306e8a4ea476ec52875dbb3d7f8",
+      "size": 14863
+    },
+    {
+      "path": "engineering/engineering-search-relevance-engineer.md",
+      "sha": "2839722ce723da0ef4dfca882603fcaad4fd13e6",
+      "size": 15023
+    },
+    {
+      "path": "engineering/engineering-section-508-specialist.md",
+      "sha": "b1b1ba2c828e7a488cc282bb557c439abc23ae0a",
+      "size": 26617
+    },
+    {
+      "path": "engineering/engineering-senior-developer.md",
+      "sha": "5e31edee0f69fb0a47c008d43997b5dc895e610b",
+      "size": 6252
+    },
+    {
+      "path": "engineering/engineering-software-architect.md",
+      "sha": "1a69148c99b2c170e36e035a0c7a341e98e634e9",
+      "size": 6485
+    },
+    {
+      "path": "engineering/engineering-solidity-smart-contract-engineer.md",
+      "sha": "3c83935bed50eabed723f82ab91e2d4e6f6023df",
+      "size": 21719
+    },
+    {
+      "path": "engineering/engineering-sre.md",
+      "sha": "592c7ab92f0fa5f56da735e65eba4c7c40231568",
+      "size": 3882
+    },
+    {
+      "path": "engineering/engineering-technical-writer.md",
+      "sha": "447c306c31458634d686ec040697808cd931a772",
+      "size": 14210
+    },
+    {
+      "path": "engineering/engineering-universal-document-compiler.md",
+      "sha": "c1ee32d9592ef39895b326d26d139efcaf23f9cb",
+      "size": 18717
+    },
+    {
+      "path": "engineering/engineering-uswds-developer.md",
+      "sha": "5e886c24054bbb954050647754bc3b41ecb573f4",
+      "size": 24213
+    },
+    {
+      "path": "engineering/engineering-video-streaming-engineer.md",
+      "sha": "963fda4a2a6676861a6dc7e6147ae3a9f25b9932",
+      "size": 12863
+    },
+    {
+      "path": "engineering/engineering-voice-ai-integration-engineer.md",
+      "sha": "07745fb3bc753e813f68650a9eae494e5c91efd9",
+      "size": 27288
+    },
+    {
+      "path": "engineering/engineering-webassembly-engineer.md",
+      "sha": "584fe7102f0260fa6e9b85bd3e65f7b292d2c25b",
+      "size": 13110
+    },
+    {
+      "path": "engineering/engineering-wechat-mini-program-developer.md",
+      "sha": "e4e804638c70416aa070642639ff9fddd983509d",
+      "size": 15566
+    },
+    {
+      "path": "engineering/engineering-wordpress-performance.md",
+      "sha": "2fc8c388d5cbd4ad634a8d76f0a1043abfc1679f",
+      "size": 24292
+    },
+    {
+      "path": "engineering/engineering-wordpress-shopping-cart.md",
+      "sha": "40bfbea344156910ecdf1abf58f8028e0260df31",
+      "size": 22177
+    },
+    {
+      "path": "finance/finance-bookkeeper-controller.md",
+      "sha": "ed28a7488aa98e5e70e71392368d5a010da7882a",
+      "size": 15247
+    },
+    {
+      "path": "finance/finance-financial-analyst.md",
+      "sha": "8ec0dbcbcc77eda73e6ed680dc88762aad02b609",
+      "size": 13448
+    },
+    {
+      "path": "finance/finance-fpa-analyst.md",
+      "sha": "a398f97d4ea11b80f1282cd041c5e0c015c75cdb",
+      "size": 16614
+    },
+    {
+      "path": "finance/finance-investment-researcher.md",
+      "sha": "50ff87cf7f4571d7796c7a4c31352c0887cb3420",
+      "size": 15678
+    },
+    {
+      "path": "finance/finance-tax-strategist.md",
+      "sha": "bcaac1dc70092e1235d933044157ea72a39d4f83",
+      "size": 13731
+    },
+    {
+      "path": "game-development/blender/blender-addon-engineer.md",
+      "sha": "3174d46e14415d67deb32ef8e41f811d8f5bb158",
+      "size": 10954
+    },
+    {
+      "path": "game-development/economy-designer.md",
+      "sha": "f965052a867bd93dfb4996b779add5787d175aa2",
+      "size": 8844
+    },
+    {
+      "path": "game-development/game-audio-engineer.md",
+      "sha": "5dcf286a81d4f9bf80cb6ef94dc439ed17c44c4a",
+      "size": 12298
+    },
+    {
+      "path": "game-development/game-designer.md",
+      "sha": "64f719fac09531dfeea308c258ade32d1d74db3c",
+      "size": 8433
+    },
+    {
+      "path": "game-development/godot/godot-gameplay-scripter.md",
+      "sha": "42e8d2e96a6ba18b90ce43a5ca5481b5c3f8e8ed",
+      "size": 15538
+    },
+    {
+      "path": "game-development/godot/godot-multiplayer-engineer.md",
+      "sha": "45bbeddf93580a041e924514b1e3b68ec158ac6f",
+      "size": 13918
+    },
+    {
+      "path": "game-development/godot/godot-shader-developer.md",
+      "sha": "069a7e2c5a9ef9a19a14cb76658f0771cf618547",
+      "size": 13392
+    },
+    {
+      "path": "game-development/level-designer.md",
+      "sha": "4997edd6c2696e2754a44e96bc349e90f1c434a0",
+      "size": 10340
+    },
+    {
+      "path": "game-development/narrative-designer.md",
+      "sha": "261a5d792c14ad46af144d06e01e21fe5a41db89",
+      "size": 13160
+    },
+    {
+      "path": "game-development/roblox-studio/roblox-avatar-creator.md",
+      "sha": "752e0ed0e30764d85eb064b90568555709608b56",
+      "size": 14116
+    },
+    {
+      "path": "game-development/roblox-studio/roblox-experience-designer.md",
+      "sha": "ab7b7d46b225dbd2e57fba363723f97ebd9945f5",
+      "size": 14863
+    },
+    {
+      "path": "game-development/roblox-studio/roblox-systems-scripter.md",
+      "sha": "fc7ca448adfd390cd322a599b593953da3aa882c",
+      "size": 15204
+    },
+    {
+      "path": "game-development/technical-artist.md",
+      "sha": "293e3fcb55f73d026a6463958180e722a2a3465a",
+      "size": 11220
+    },
+    {
+      "path": "game-development/unity/unity-architect.md",
+      "sha": "ccae7118f8afdad4f4e272fb6ffb9b0de97e13d4",
+      "size": 12244
+    },
+    {
+      "path": "game-development/unity/unity-editor-tool-developer.md",
+      "sha": "62feebc4d80e9d89b1ac2c40d9ebd42e153f74c5",
+      "size": 14889
+    },
+    {
+      "path": "game-development/unity/unity-multiplayer-engineer.md",
+      "sha": "fa9886cd01f451cb6340b4729054ade9579273c7",
+      "size": 14947
+    },
+    {
+      "path": "game-development/unity/unity-shader-graph-artist.md",
+      "sha": "1c7a0aed1ac76a5207a35c87c6a63adbca493b1c",
+      "size": 13080
+    },
+    {
+      "path": "game-development/unreal-engine/unreal-multiplayer-architect.md",
+      "sha": "d78ad5f5a49f1930a4794b4382471e6f53656a1d",
+      "size": 14039
+    },
+    {
+      "path": "game-development/unreal-engine/unreal-systems-engineer.md",
+      "sha": "7cb8a8271bab11a273395c7dc74c6fe07ff3cfed",
+      "size": 15507
+    },
+    {
+      "path": "game-development/unreal-engine/unreal-technical-artist.md",
+      "sha": "772b39f0914705ff13b2ec93a6cbdec889d1ec8c",
+      "size": 11854
+    },
+    {
+      "path": "game-development/unreal-engine/unreal-world-builder.md",
+      "sha": "867d4e7dce87f8ff10dadce22515ba2afee309da",
+      "size": 14011
+    },
+    {
+      "path": "gis/gis-3d-scene-developer.md",
+      "sha": "7350a782b4a0e14c89eac2fa39faba9de7230e67",
+      "size": 5628
+    },
+    {
+      "path": "gis/gis-analyst.md",
+      "sha": "9b767f21d39a1e74c442105e6a35655ebc85b97a",
+      "size": 4487
+    },
+    {
+      "path": "gis/gis-bim-specialist.md",
+      "sha": "d1093aa391923a21cea5bb8eb2bd757eccef917d",
+      "size": 5594
+    },
+    {
+      "path": "gis/gis-cartography-designer.md",
+      "sha": "eb26a215a1e5fb06b7143a7aa0c02790396bdb18",
+      "size": 6968
+    },
+    {
+      "path": "gis/gis-drone-reality-mapping.md",
+      "sha": "3798608259d4ee5ac855961bea575720df077d88",
+      "size": 6007
+    },
+    {
+      "path": "gis/gis-geoai-ml-engineer.md",
+      "sha": "5f1a02813434c352e3f3e565d34e5f7079bb3236",
+      "size": 4947
+    },
+    {
+      "path": "gis/gis-geoprocessing-specialist.md",
+      "sha": "d77c976dd9270af61094264d7cc572f2ff3a8ee8",
+      "size": 4817
+    },
+    {
+      "path": "gis/gis-qa-engineer.md",
+      "sha": "888139f2c4f3c9e596f2bf8086d8c4c5f93658c4",
+      "size": 5400
+    },
+    {
+      "path": "gis/gis-solution-engineer.md",
+      "sha": "aa220f1887075e12263744c0fb8f4074e258801b",
+      "size": 4591
+    },
+    {
+      "path": "gis/gis-spatial-data-engineer.md",
+      "sha": "4b36b8322447454c44f55b445b040a81a6ee9a92",
+      "size": 4949
+    },
+    {
+      "path": "gis/gis-spatial-data-scientist.md",
+      "sha": "aebba260541a49e74ddb32b049b474e38b4fc0e2",
+      "size": 5840
+    },
+    {
+      "path": "gis/gis-technical-consultant.md",
+      "sha": "22d15085ab56fdfaaa6da2723f2f99eebc012b45",
+      "size": 4525
+    },
+    {
+      "path": "gis/gis-web-gis-developer.md",
+      "sha": "7b05be4287d62490d7322b211eb4dfe0cfbcfa11",
+      "size": 5324
+    },
+    {
+      "path": "healthcare/healthcare-clinical-evidence-agent.md",
+      "sha": "bedd73f3b88a25899025494e4d8c54870eaf1877",
+      "size": 10273
+    },
+    {
+      "path": "healthcare/healthcare-innovation-strategist.md",
+      "sha": "8674e138f04b40d22c7922385025a9ed7a91a3a5",
+      "size": 20366
+    },
+    {
+      "path": "healthcare/healthcare-sovereign-health-systems-agent.md",
+      "sha": "b0efcf89cc98acc8427ef52bffd533a8f1eaf5d8",
+      "size": 14891
+    },
+    {
+      "path": "marketing/marketing-aeo-foundations.md",
+      "sha": "5f4fcb7df38037f57be0204825f6701a95218b6d",
+      "size": 15548
+    },
+    {
+      "path": "marketing/marketing-agentic-search-optimizer.md",
+      "sha": "949aa496a1846162a46767ddfd5b91b6ea192682",
+      "size": 15702
+    },
+    {
+      "path": "marketing/marketing-ai-citation-strategist.md",
+      "sha": "f4cc136a1c1a9b4479cd01520a8c088b887eca16",
+      "size": 9414
+    },
+    {
+      "path": "marketing/marketing-app-store-optimizer.md",
+      "sha": "031b6898d4c4f53fe0f87ba4076bf72d160de63d",
+      "size": 13087
+    },
+    {
+      "path": "marketing/marketing-baidu-seo-specialist.md",
+      "sha": "98658b2165be91e71baf768d214271ee302ca776",
+      "size": 12968
+    },
+    {
+      "path": "marketing/marketing-bilibili-content-strategist.md",
+      "sha": "532441cc3bc3cb800797874ee14f586056690c6c",
+      "size": 11647
+    },
+    {
+      "path": "marketing/marketing-book-co-author.md",
+      "sha": "a8ec749f5c27f273dfcf6f7b12958cf7f98f8deb",
+      "size": 5083
+    },
+    {
+      "path": "marketing/marketing-carousel-growth-engine.md",
+      "sha": "c2bd030c45d3b0ab16d29b1edaee8d094ec97e24",
+      "size": 14840
+    },
+    {
+      "path": "marketing/marketing-china-ecommerce-operator.md",
+      "sha": "544a566313175ca5c5f23d520cf086e4adbd073e",
+      "size": 16791
+    },
+    {
+      "path": "marketing/marketing-china-market-localization-strategist.md",
+      "sha": "e9723ece0955f275916fac8b8c40cfcdf814f283",
+      "size": 16913
+    },
+    {
+      "path": "marketing/marketing-content-creator.md",
+      "sha": "4beedb05f5e4f8754c63125649ac8a9763609330",
+      "size": 3140
+    },
+    {
+      "path": "marketing/marketing-cross-border-ecommerce.md",
+      "sha": "7054b8f705b6287b7604e45ef75a8b52c304c611",
+      "size": 17415
+    },
+    {
+      "path": "marketing/marketing-douyin-strategist.md",
+      "sha": "e1b321f41263be00e967398f91cc2c978989d129",
+      "size": 6954
+    },
+    {
+      "path": "marketing/marketing-email-strategist.md",
+      "sha": "89f2a81502deeed160986be6faee80b01661298a",
+      "size": 16198
+    },
+    {
+      "path": "marketing/marketing-global-podcast-strategist.md",
+      "sha": "0745fa762d38a3c88b662e1d6b6e2be6fbe40f27",
+      "size": 21857
+    },
+    {
+      "path": "marketing/marketing-growth-hacker.md",
+      "sha": "b5c20e59d361b19f277ee1410ce4ec985edde4c7",
+      "size": 3055
+    },
+    {
+      "path": "marketing/marketing-instagram-curator.md",
+      "sha": "85b373a5743f20ba27e042c65b771da047d9ac06",
+      "size": 6563
+    },
+    {
+      "path": "marketing/marketing-kuaishou-strategist.md",
+      "sha": "983afa67d96764a46b485a46217886198b63670a",
+      "size": 13889
+    },
+    {
+      "path": "marketing/marketing-linkedin-content-creator.md",
+      "sha": "13edc8b02f2ac651810b123767886ffbae4b4878",
+      "size": 13361
+    },
+    {
+      "path": "marketing/marketing-livestream-commerce-coach.md",
+      "sha": "66c02c60f6f8e2e692488812cbf1ef35fb170b48",
+      "size": 17166
+    },
+    {
+      "path": "marketing/marketing-multi-platform-publisher.md",
+      "sha": "5e56049823679fa654f264757b4b7b4f239b63d5",
+      "size": 14660
+    },
+    {
+      "path": "marketing/marketing-podcast-strategist.md",
+      "sha": "d8db7e2fb90b1fae4b3461991bf65e4e4ff14821",
+      "size": 18038
+    },
+    {
+      "path": "marketing/marketing-pr-communications-manager.md",
+      "sha": "e2bc725c01dfbf2d6a4214793f70bd2d88791b51",
+      "size": 24692
+    },
+    {
+      "path": "marketing/marketing-private-domain-operator.md",
+      "sha": "fe12f9a1f18be62065da807e05d0b53fbd2c0043",
+      "size": 16176
+    },
+    {
+      "path": "marketing/marketing-reddit-community-builder.md",
+      "sha": "10166a042723f432f1080e6656c54066d47f3d06",
+      "size": 7498
+    },
+    {
+      "path": "marketing/marketing-seo-specialist.md",
+      "sha": "35cb5e3c0a7f285d2669176ad03a2ed11252e176",
+      "size": 21310
+    },
+    {
+      "path": "marketing/marketing-short-video-editing-coach.md",
+      "sha": "8ddde08d79d5032ba224dce5261829f7bd83bdac",
+      "size": 30779
+    },
+    {
+      "path": "marketing/marketing-social-media-strategist.md",
+      "sha": "fd39bfa5782fa36b862472e8a2b1cd3d517609e1",
+      "size": 7414
+    },
+    {
+      "path": "marketing/marketing-tiktok-strategist.md",
+      "sha": "d04641cadf4aab60ba5bf1144ee1036fa539c578",
+      "size": 7559
+    },
+    {
+      "path": "marketing/marketing-twitter-engager.md",
+      "sha": "6651b2f76afe4cb5e404e338ba500032d7fc0164",
+      "size": 7760
+    },
+    {
+      "path": "marketing/marketing-video-optimization-specialist.md",
+      "sha": "3d5fbb416b05f297f8649a3ecf39279d150e2290",
+      "size": 6245
+    },
+    {
+      "path": "marketing/marketing-wechat-official-account.md",
+      "sha": "952ee3298191456c8b88e2af06a6de20062a9a16",
+      "size": 9832
+    },
+    {
+      "path": "marketing/marketing-weibo-strategist.md",
+      "sha": "64f24ac05c76f26dd11a146a1a4731f7eb5b65df",
+      "size": 15697
+    },
+    {
+      "path": "marketing/marketing-x-twitter-intelligence-analyst.md",
+      "sha": "3d3ca03f49e2503d719f9ba385b685de1e884828",
+      "size": 9730
+    },
+    {
+      "path": "marketing/marketing-xiaohongshu-specialist.md",
+      "sha": "e4dde95726abc734e0c15efcc6d1b39b5dd2ca76",
+      "size": 9609
+    },
+    {
+      "path": "marketing/marketing-zhihu-strategist.md",
+      "sha": "f5be4c4ebc1b5965be39e9b57a5bf60dcce4d5b5",
+      "size": 12006
+    },
+    {
+      "path": "paid-media/paid-media-auditor.md",
+      "sha": "de532679bb1aceade5a8f6056fc2e025a73968b1",
+      "size": 5557
+    },
+    {
+      "path": "paid-media/paid-media-creative-strategist.md",
+      "sha": "6dd3dc860327d79c599f26cac4074f8fe40f815d",
+      "size": 5162
+    },
+    {
+      "path": "paid-media/paid-media-paid-social-strategist.md",
+      "sha": "ba13efa57eadb794c7864d3ba35c047112826d6b",
+      "size": 5451
+    },
+    {
+      "path": "paid-media/paid-media-ppc-strategist.md",
+      "sha": "b767b0c2a8662a84c6f0420d8de6d2449063bb2c",
+      "size": 4995
+    },
+    {
+      "path": "paid-media/paid-media-programmatic-buyer.md",
+      "sha": "338a3ce3929824531d9986453c4d084fbae7e9dd",
+      "size": 5282
+    },
+    {
+      "path": "paid-media/paid-media-search-query-analyst.md",
+      "sha": "17a63b46adaccb2f4787b4d40e27f8d9838805b2",
+      "size": 4941
+    },
+    {
+      "path": "paid-media/paid-media-tracking-specialist.md",
+      "sha": "edbe1ffed0a4f400c6604c1cca3d4f1f7a8cf708",
+      "size": 5326
+    },
+    {
+      "path": "product/product-behavioral-nudge-engine.md",
+      "sha": "d120d5300996c8bd5f1aa07d74f3f11b9b617b31",
+      "size": 5335
+    },
+    {
+      "path": "product/product-feedback-synthesizer.md",
+      "sha": "c36d9a913dea536b9ab922ae3d0da427528b153c",
+      "size": 7271
+    },
+    {
+      "path": "product/product-manager.md",
+      "sha": "6a617be2dbf1a1321b23b0b40e693041a1178cbe",
+      "size": 22687
+    },
+    {
+      "path": "product/product-sprint-prioritizer.md",
+      "sha": "126aec497fb452ddaa211a993d1a9d9fd9b0c959",
+      "size": 9464
+    },
+    {
+      "path": "product/product-trend-researcher.md",
+      "sha": "3f33f9406a60fd38e10d1075ba0bb82d36822e80",
+      "size": 10493
+    },
+    {
+      "path": "project-management/project-management-experiment-tracker.md",
+      "sha": "e3e4792246a43d6bbf30c4a567e09ed81e3bbd3c",
+      "size": 9455
+    },
+    {
+      "path": "project-management/project-management-jira-workflow-steward.md",
+      "sha": "5185f9e128cc9a6387fc98c693a39967e0107c6d",
+      "size": 13498
+    },
+    {
+      "path": "project-management/project-management-meeting-notes-specialist.md",
+      "sha": "a02904f92594986147691e5aa69191b49d1e0060",
+      "size": 5616
+    },
+    {
+      "path": "project-management/project-management-project-shepherd.md",
+      "sha": "e2b625a8905b90bd1c4a05aa23014a08621d1370",
+      "size": 9825
+    },
+    {
+      "path": "project-management/project-management-studio-operations.md",
+      "sha": "d3f8335e348de080d5a782476756f738aca011f1",
+      "size": 9926
+    },
+    {
+      "path": "project-management/project-management-studio-producer.md",
+      "sha": "78c481019a0ab3ccf269d7518759b11f1677218c",
+      "size": 10905
+    },
+    {
+      "path": "project-management/project-manager-senior.md",
+      "sha": "52bb3a7012fb249e30a2d2f6ae3ed3287e6024d1",
+      "size": 5308
+    },
+    {
+      "path": "research/research-synthesist.md",
+      "sha": "ff5741421e8cdbc953a930f9b54aff78f3715677",
+      "size": 10739
+    },
+    {
+      "path": "sales/sales-account-strategist.md",
+      "sha": "9ccea292f982d70c105edd0b99e646d4676110fe",
+      "size": 14844
+    },
+    {
+      "path": "sales/sales-coach.md",
+      "sha": "d9e5fd19114108a55e4551769e61f4262dc1fa4f",
+      "size": 21009
+    },
+    {
+      "path": "sales/sales-deal-strategist.md",
+      "sha": "01b220ce103cbb1f816140b1039ced1838ee4e89",
+      "size": 13698
+    },
+    {
+      "path": "sales/sales-discovery-coach.md",
+      "sha": "76b82c89c7a3f90d784d8ae2e893d914b1d6dc7b",
+      "size": 13591
+    },
+    {
+      "path": "sales/sales-engineer.md",
+      "sha": "3093e53a6eccca46d18fbd1f5d225b4b87454eb7",
+      "size": 13948
+    },
+    {
+      "path": "sales/sales-offer-lead-gen-strategist.md",
+      "sha": "deb1e7e18cb65de2903011dc31c366b82129c298",
+      "size": 16126
+    },
+    {
+      "path": "sales/sales-outbound-strategist.md",
+      "sha": "f2bf4f77133386b481073f5c209f31d4b7cedb62",
+      "size": 10744
+    },
+    {
+      "path": "sales/sales-pipeline-analyst.md",
+      "sha": "75182c76e1a17498b10295733ff75befd7d908e4",
+      "size": 18765
+    },
+    {
+      "path": "sales/sales-proposal-strategist.md",
+      "sha": "cca0a66ddb053f487e243c8a12fc030f6b8f7f27",
+      "size": 14295
+    },
+    {
+      "path": "security/security-ai-generated-code-auditor.md",
+      "sha": "a09c474ef6a722cd75d0c064aca187155edbe206",
+      "size": 17126
+    },
+    {
+      "path": "security/security-appsec-engineer.md",
+      "sha": "e5f82dc0ad7c164d03e156cf4696f5570273453e",
+      "size": 25789
+    },
+    {
+      "path": "security/security-architect.md",
+      "sha": "0dbc227249d53ff75e282a32d982e8de5e666f0c",
+      "size": 18029
+    },
+    {
+      "path": "security/security-blockchain-security-auditor.md",
+      "sha": "e4e4430d25a16b3453516a56086ab41ba0b622db",
+      "size": 21130
+    },
+    {
+      "path": "security/security-cloud-security-architect.md",
+      "sha": "91d01ca4ccd55472b5df1b196011f1edce95651c",
+      "size": 23042
+    },
+    {
+      "path": "security/security-compliance-auditor.md",
+      "sha": "d6c07687324fda4e15270dc4184fd228a48b0b12",
+      "size": 7213
+    },
+    {
+      "path": "security/security-incident-responder.md",
+      "sha": "7198b4fb727c6193eb74bd4fdc44b1f71aa9acd5",
+      "size": 24298
+    },
+    {
+      "path": "security/security-penetration-tester.md",
+      "sha": "8b415cc9573fe490d6b2b623dd08ea61f87a2807",
+      "size": 21436
+    },
+    {
+      "path": "security/security-secrets-credential-engineer.md",
+      "sha": "63a0a6fe7b551e501f09a3283b8b87680b01a9b0",
+      "size": 13267
+    },
+    {
+      "path": "security/security-senior-secops.md",
+      "sha": "cd66610e133d71795f8832f0d379f505471a1f0a",
+      "size": 31340
+    },
+    {
+      "path": "security/security-threat-detection-engineer.md",
+      "sha": "b162a71d47354397609ab486c8531179d8d79e5a",
+      "size": 24873
+    },
+    {
+      "path": "security/security-threat-intelligence-analyst.md",
+      "sha": "7dc0479c518e7c076adcb0627fbc497b63db3198",
+      "size": 28365
+    },
+    {
+      "path": "spatial-computing/macos-spatial-metal-engineer.md",
+      "sha": "98ddc701740ea7472713f0f3a99f952733cb2c53",
+      "size": 12141
+    },
+    {
+      "path": "spatial-computing/terminal-integration-specialist.md",
+      "sha": "e3e998110cf0fae08b2270b6221c6d359e71dd6b",
+      "size": 4121
+    },
+    {
+      "path": "spatial-computing/visionos-spatial-engineer.md",
+      "sha": "800140ca5d90405e5911fb77017f6125c15b6cdd",
+      "size": 3411
+    },
+    {
+      "path": "spatial-computing/xr-cockpit-interaction-specialist.md",
+      "sha": "b2ee725761dc9ef207e2ed3baa2bae80cd59c8c4",
+      "size": 1795
+    },
+    {
+      "path": "spatial-computing/xr-immersive-developer.md",
+      "sha": "5452a8f530d8c55c8c3994d8c9be2ba20f619d80",
+      "size": 1847
+    },
+    {
+      "path": "spatial-computing/xr-interface-architect.md",
+      "sha": "3c9d16e6750cd13c4889dff5447d668fc021e0e5",
+      "size": 1700
+    },
+    {
+      "path": "specialized/accounts-payable-agent.md",
+      "sha": "2e3431890778224ec00a5c00104598ac6ecfe445",
+      "size": 6795
+    },
+    {
+      "path": "specialized/agentic-identity-trust.md",
+      "sha": "a63defa69df4f5e82fe59c7c36856903a18994f0",
+      "size": 18398
+    },
+    {
+      "path": "specialized/agents-orchestrator.md",
+      "sha": "9d62d814d3c5153ef7b403bb4ecba2e9dc21f8ae",
+      "size": 15725
+    },
+    {
+      "path": "specialized/automation-governance-architect.md",
+      "sha": "e0fa2004b1ef2132aa2ce257020d3e1295bdb1e2",
+      "size": 5831
+    },
+    {
+      "path": "specialized/business-strategist.md",
+      "sha": "21b0f276c29f19ecdf0d803f5141019a2d681381",
+      "size": 25296
+    },
+    {
+      "path": "specialized/change-management-consultant.md",
+      "sha": "b38f981bcad3733fee93399a94356c198567b66a",
+      "size": 27377
+    },
+    {
+      "path": "specialized/chief-financial-officer.md",
+      "sha": "7b13199e6d7f69cfc3eae2180b38368b9232445f",
+      "size": 18628
+    },
+    {
+      "path": "specialized/corporate-training-designer.md",
+      "sha": "d8191adbdaab0e671fc14c884879092147261e5a",
+      "size": 15673
+    },
+    {
+      "path": "specialized/customer-service.md",
+      "sha": "f6d8b1bdd778f89879b39921d95f3042b319aee6",
+      "size": 19184
+    },
+    {
+      "path": "specialized/customer-success-manager.md",
+      "sha": "a7e7fa4e44c26bd169e2c6f7fc1aef8b895049a8",
+      "size": 23313
+    },
+    {
+      "path": "specialized/data-consolidation-agent.md",
+      "sha": "ac60571965067bf6d65d3c5e9a7cc16c935ad182",
+      "size": 2393
+    },
+    {
+      "path": "specialized/data-privacy-officer.md",
+      "sha": "955deeb093eeecb3dd2899d2cb070f334eb507bb",
+      "size": 22433
+    },
+    {
+      "path": "specialized/esg-sustainability-officer.md",
+      "sha": "555c6873574d84ca49e54327b45f62388dfb7fcf",
+      "size": 20839
+    },
+    {
+      "path": "specialized/government-digital-presales-consultant.md",
+      "sha": "c2c0ebacca2cb6f417e06a7de0689d166ae5df33",
+      "size": 22759
+    },
+    {
+      "path": "specialized/grant-writer.md",
+      "sha": "69a7ae54ccf2c05346b3542710c141a759fb7f6e",
+      "size": 27051
+    },
+    {
+      "path": "specialized/healthcare-aging-parent-care-companion.md",
+      "sha": "926892f25a051cd642fdf9717e1c4ff1491fa826",
+      "size": 25248
+    },
+    {
+      "path": "specialized/healthcare-customer-service.md",
+      "sha": "388054fb7b47f82a1fea4921535c3adc369b2d16",
+      "size": 22100
+    },
+    {
+      "path": "specialized/healthcare-marketing-compliance.md",
+      "sha": "8e958ecce049771a1ea800736cf76c1159c520a6",
+      "size": 35322
+    },
+    {
+      "path": "specialized/hospitality-guest-services.md",
+      "sha": "3b5bb06f8153057526fbf46b51d27200ecb118a8",
+      "size": 27773
+    },
+    {
+      "path": "specialized/hr-onboarding.md",
+      "sha": "15aa1ac614f31c1dd1c11256ce92f3191e04abfe",
+      "size": 23923
+    },
+    {
+      "path": "specialized/identity-graph-operator.md",
+      "sha": "50a126ab19244e6ea77d3cf65d3ac0078d680b38",
+      "size": 14122
+    },
+    {
+      "path": "specialized/language-translator.md",
+      "sha": "a2bea23c4495bf17740e1e1613bc673cea550dd6",
+      "size": 16086
+    },
+    {
+      "path": "specialized/legal-billing-time-tracking.md",
+      "sha": "2a88efad414c564a63f37ab85faa9bab1324f33f",
+      "size": 27280
+    },
+    {
+      "path": "specialized/legal-client-intake.md",
+      "sha": "5da0a03e680614a9dfbab49a50afac9d9a04e026",
+      "size": 25630
+    },
+    {
+      "path": "specialized/legal-document-review.md",
+      "sha": "7d3a1ffd8d88553d760ddaae27fadc4abd49af5a",
+      "size": 24728
+    },
+    {
+      "path": "specialized/loan-officer-assistant.md",
+      "sha": "fc45f86ff5d916964617efcc673b846f16ff07a7",
+      "size": 28515
+    },
+    {
+      "path": "specialized/lsp-index-engineer.md",
+      "sha": "29c2a88fad8ab6e340c7ee6b97d71ee1736920e0",
+      "size": 11197
+    },
+    {
+      "path": "specialized/ma-integration-manager.md",
+      "sha": "08c258fcec7a7e0907b2e930366b3e89eb5bc00a",
+      "size": 21438
+    },
+    {
+      "path": "specialized/medical-billing-coding-specialist.md",
+      "sha": "e4bd4450185472439f3a04f40194aa90eb0fe7b8",
+      "size": 24636
+    },
+    {
+      "path": "specialized/operations-manager.md",
+      "sha": "c4ff42a209ca1e5ef4717bc1183a7e6fd3128fb7",
+      "size": 19209
+    },
+    {
+      "path": "specialized/organizational-psychologist.md",
+      "sha": "859b960780299b2fdda8917bce7b5c4bae1eca01",
+      "size": 22579
+    },
+    {
+      "path": "specialized/personal-growth-mentor.md",
+      "sha": "6bc5d5cfc5623ce5f6b2e6ad1975f7fec488806a",
+      "size": 7833
+    },
+    {
+      "path": "specialized/real-estate-buyer-seller.md",
+      "sha": "57aaf3ab55610aa250b956ec7f984a5dda94b672",
+      "size": 31124
+    },
+    {
+      "path": "specialized/recruitment-specialist.md",
+      "sha": "0601765db432e9dafb5bb21b95ac858da4c2529e",
+      "size": 29401
+    },
+    {
+      "path": "specialized/report-distribution-agent.md",
+      "sha": "c94540ba988a7a64df6724d301b6a6ddebd483bd",
+      "size": 2653
+    },
+    {
+      "path": "specialized/resume-tailor.md",
+      "sha": "5428a52180dda748b40ea787ac11cfb03fa3912b",
+      "size": 11214
+    },
+    {
+      "path": "specialized/retail-customer-returns.md",
+      "sha": "998a9d8c16b7f2931db34a5b8dff14e819b3c46e",
+      "size": 27700
+    },
+    {
+      "path": "specialized/sales-data-extraction-agent.md",
+      "sha": "2d1d6124ce6ea974d8972eb5660e90c2b39fa2fa",
+      "size": 2697
+    },
+    {
+      "path": "specialized/sales-outreach.md",
+      "sha": "842dbc2665cc8d7ed7ff096b0559f3710ac31169",
+      "size": 20656
+    },
+    {
+      "path": "specialized/specialized-chief-of-staff.md",
+      "sha": "0ea4026aa8a187abd6f177c37591bef58286c35f",
+      "size": 18190
+    },
+    {
+      "path": "specialized/specialized-civil-engineer.md",
+      "sha": "9f6048ebfa99dd25ebbb419362284e29ca55d404",
+      "size": 17068
+    },
+    {
+      "path": "specialized/specialized-codebase-archaeologist.md",
+      "sha": "2e60756a4c905d1bd8233733b0ba67cd4bc7c8c8",
+      "size": 26159
+    },
+    {
+      "path": "specialized/specialized-cultural-intelligence-strategist.md",
+      "sha": "c534589093a3bfe57f3a88af35d6bdc0bcaa53a2",
+      "size": 6643
+    },
+    {
+      "path": "specialized/specialized-developer-advocate.md",
+      "sha": "e38d30a9d4fbed9ead3db6c73693f876fca7f25f",
+      "size": 14829
+    },
+    {
+      "path": "specialized/specialized-document-generator.md",
+      "sha": "1817b2a881152af9c482f6d30cdb2567e531cb35",
+      "size": 2437
+    },
+    {
+      "path": "specialized/specialized-fedramp-rmf-compliance.md",
+      "sha": "2d70c8ba4e1b12b26babaa1eddc4fb29e3820268",
+      "size": 32568
+    },
+    {
+      "path": "specialized/specialized-focus-music-architect.md",
+      "sha": "d6aa0efd1a484b8437668f369feb8250a96eee2e",
+      "size": 10361
+    },
+    {
+      "path": "specialized/specialized-french-consulting-market.md",
+      "sha": "688d265f805d803cb1c65346a5f1f20e71c3de64",
+      "size": 11209
+    },
+    {
+      "path": "specialized/specialized-korean-business-navigator.md",
+      "sha": "6d4145728fea1a5d077b03ef46c836a2298b1cd9",
+      "size": 14071
+    },
+    {
+      "path": "specialized/specialized-master-plan-architect.md",
+      "sha": "28f4b03a29582b6fdcc80f9d94f1cf6a6c205b09",
+      "size": 10622
+    },
+    {
+      "path": "specialized/specialized-mcp-builder.md",
+      "sha": "e12b89c5e04e2ef483120a672845a9d024318314",
+      "size": 12062
+    },
+    {
+      "path": "specialized/specialized-model-qa.md",
+      "sha": "0b362aa545dc92242fd898c0775423801acec01c",
+      "size": 20143
+    },
+    {
+      "path": "specialized/specialized-pricing-analyst.md",
+      "sha": "f16471e3ff010105d10066bb48c0fb90ba460df1",
+      "size": 12770
+    },
+    {
+      "path": "specialized/specialized-salesforce-architect.md",
+      "sha": "6ffd539c17948ab8db0bbe11dcefb2a0d3779cab",
+      "size": 9943
+    },
+    {
+      "path": "specialized/specialized-strategy-duel-agent.md",
+      "sha": "17e2ac99b0e59c79a5d59148874214dfc79c0003",
+      "size": 5946
+    },
+    {
+      "path": "specialized/specialized-workflow-architect.md",
+      "sha": "a478aef1f5d2eb4ee8493683e0dc3f022f375937",
+      "size": 26479
+    },
+    {
+      "path": "specialized/study-abroad-advisor.md",
+      "sha": "3dac06871207503d6e3c04bf15ddaf89f7d429db",
+      "size": 16984
+    },
+    {
+      "path": "specialized/supply-chain-strategist.md",
+      "sha": "f3b520861fe3edefd45adaf64fcb6303f9bf945d",
+      "size": 32397
+    },
+    {
+      "path": "specialized/zk-steward.md",
+      "sha": "c3bc8972dbbc60b6c1e036dd9248606a560f34eb",
+      "size": 10892
+    },
+    {
+      "path": "strategy/EXECUTIVE-BRIEF.md",
+      "sha": "cdf4cf9b4c4f0f06541264bc4f0c94a6120b00e0",
+      "size": 5754
+    },
+    {
+      "path": "strategy/QUICKSTART.md",
+      "sha": "01a6a37d17e3399c3a2ae38260d0baee94a759bd",
+      "size": 8388
+    },
+    {
+      "path": "strategy/coordination/agent-activation-prompts.md",
+      "sha": "473517613089c98295a65d5cde91558c9cddd77d",
+      "size": 13158
+    },
+    {
+      "path": "strategy/coordination/handoff-templates.md",
+      "sha": "71bff4dbe71d533d992aa7734093bd95cfb0968d",
+      "size": 10073
+    },
+    {
+      "path": "strategy/nexus-strategy.md",
+      "sha": "b80a9b27e03c72c6f9205d8099e1432f07415118",
+      "size": 55289
+    },
+    {
+      "path": "strategy/playbooks/phase-0-discovery.md",
+      "sha": "19d8f84b70671e3da468db96b543487c1d6ab8a0",
+      "size": 6150
+    },
+    {
+      "path": "strategy/playbooks/phase-1-strategy.md",
+      "sha": "afbf7623922d90391c9282918a6e3a6e9388472c",
+      "size": 8094
+    },
+    {
+      "path": "strategy/playbooks/phase-2-foundation.md",
+      "sha": "4c977ae224ee9565e087a4c470f428129053c281",
+      "size": 8916
+    },
+    {
+      "path": "strategy/playbooks/phase-3-build.md",
+      "sha": "94023c1d44a19d1967d3135a70afe684f5490945",
+      "size": 9641
+    },
+    {
+      "path": "strategy/playbooks/phase-4-hardening.md",
+      "sha": "db6cb4738b6fff843306acc8e0531afc13ee9311",
+      "size": 10546
+    },
+    {
+      "path": "strategy/playbooks/phase-5-launch.md",
+      "sha": "2faf0a6a6839d5767309d8234cce59e4e0f4adc6",
+      "size": 8280
+    },
+    {
+      "path": "strategy/playbooks/phase-6-operate.md",
+      "sha": "dad0b03dd686a431c30f67f00dd6ce02e9adcd85",
+      "size": 9802
+    },
+    {
+      "path": "strategy/runbooks/scenario-enterprise-feature.md",
+      "sha": "ed37680287b7c1b060c179922c00488a6540a8e2",
+      "size": 6256
+    },
+    {
+      "path": "strategy/runbooks/scenario-incident-response.md",
+      "sha": "fb519f53bb13d96d61047858381a7b1130720852",
+      "size": 6789
+    },
+    {
+      "path": "strategy/runbooks/scenario-marketing-campaign.md",
+      "sha": "280263c7f917273b58e5f9ea28db79127a651908",
+      "size": 7072
+    },
+    {
+      "path": "strategy/runbooks/scenario-startup-mvp.md",
+      "sha": "0c2afbc330fecbf8f852a19477bf3e48bcced137",
+      "size": 5631
+    },
+    {
+      "path": "support/support-analytics-reporter.md",
+      "sha": "9cd2441f0415778bf1af3f8d51256017464e701b",
+      "size": 15796
+    },
+    {
+      "path": "support/support-executive-summary-generator.md",
+      "sha": "c8338a5eac9d8351d98687518d4471c25fa67f19",
+      "size": 8992
+    },
+    {
+      "path": "support/support-finance-tracker.md",
+      "sha": "5fc4476cfe179e194a59b5b1d0a2b4d521a8cbf0",
+      "size": 19249
+    },
+    {
+      "path": "support/support-infrastructure-maintainer.md",
+      "sha": "5e38a198351f22a977cd01bc2605ed431e8f2f8b",
+      "size": 22365
+    },
+    {
+      "path": "support/support-legal-compliance-checker.md",
+      "sha": "9afc088ff2a7c788781097d14ce3c3af89dd67cd",
+      "size": 26545
+    },
+    {
+      "path": "support/support-support-responder.md",
+      "sha": "3ea84672ac4906b7a50ee64573e1becd1aeb1ace",
+      "size": 24683
+    },
+    {
+      "path": "testing/testing-accessibility-auditor.md",
+      "sha": "c474b3a6c2ce84d9ecfc0221879e90347c4380a1",
+      "size": 15300
+    },
+    {
+      "path": "testing/testing-api-tester.md",
+      "sha": "1ea5e50cba0bc36a9a8ec8bfd9ca997d9e450a5c",
+      "size": 12539
+    },
+    {
+      "path": "testing/testing-evidence-collector.md",
+      "sha": "187a2d010abb3439d91ea59aa75de8c5ee860560",
+      "size": 8354
+    },
+    {
+      "path": "testing/testing-performance-benchmarker.md",
+      "sha": "1845fb5f30af4063440dbae22a67cd8554c4c9bf",
+      "size": 12224
+    },
+    {
+      "path": "testing/testing-reality-checker.md",
+      "sha": "e534cfbd20d3115d5265387f19db7d3b25649421",
+      "size": 10854
+    },
+    {
+      "path": "testing/testing-test-automation-engineer.md",
+      "sha": "571f8e3ab9d678e56edcfb6d9d95f31c65ef98ca",
+      "size": 12254
+    },
+    {
+      "path": "testing/testing-test-results-analyzer.md",
+      "sha": "a478a21673fa4fe79db4b0941610915afe54f8e9",
+      "size": 14602
+    },
+    {
+      "path": "testing/testing-tool-evaluator.md",
+      "sha": "3f8a9ff68fab761aa5a8f85528de01d7762c1cd4",
+      "size": 17542
+    },
+    {
+      "path": "testing/testing-workflow-optimizer.md",
+      "sha": "eecb0a47c0f295648f454687f9666bb6affe7a34",
+      "size": 22050
+    }
+  ]
+}
