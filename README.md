@@ -11,10 +11,13 @@ GitHub Actions runs the automated checks on all three hosted operating systems a
 ```sh
 npm ci
 npm run check
+npm run doctor
 npm start
 ```
 
 Open `http://127.0.0.1:4310`. For a private local development session, enter `agas-dev-token`. Set `AGAS_BOOTSTRAP_TOKEN` to a secret token for real use; it is required before binding beyond loopback. Optional: `AGAS_DB_PATH`, `AGAS_VAULT_PATH`, `AGAS_WORKSPACES_PATH`, `AGAS_HOST`, `AGAS_PORT`. State and vault are stored under `data/` by default and are excluded from Git.
+
+`npm run doctor` performs read-only CLI version/login/policy probes and prints a redacted JSON readiness report. It does not start an agent task or prove a live provider response. Run it again after installing and signing in to your chosen local runtimes.
 
 ## What works now
 

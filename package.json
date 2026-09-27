@@ -12,6 +12,7 @@
     "start": "node src/server.js",
     "check": "node --test",
     "test": "node --test",
+    "doctor": "node scripts/doctor.mjs",
     "import:agency": "node scripts/import-agency.mjs",
     "snapshot": "node scripts/backup.mjs"
   }
