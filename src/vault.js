@@ -147,6 +147,18 @@ export async function projectVault(store, basePath) {
       status:opportunity.status,scope:"business",provenance:"agas:business"})+
       `# ${opportunity.title}\n\nCustomer segment: ${opportunity.segment}\n\nHypothesis: ${opportunity.hypothesis}\n\nOwner review: ${opportunity.decision_note||"Pending an accepted Business mission"}.\n\nSource mission: ${opportunity.mission_id||"None"}. Reviewed evidence: ${opportunity.evidence_id||"None"}. SHA-256: ${opportunity.evidence_sha256||"None"}. Source integrity: ${opportunity.evidence_current===null?"Not yet reviewed":opportunity.evidence_current?"Current":"Changed; inspect before use"}.\n\nNo customer contact or commercial commitment is recorded by this decision. MBAs stays separate.\n`);
   }
+  for (const assessment of state.securityAssessments) {
+    await managed("02 Projects",`${assessment.id}.md`,header({agas_id:`security-assessment:${assessment.id}`,
+      type:"security-assessment",project_id:assessment.project_id,scope:"security",
+      valid_until:assessment.valid_until,provenance:"agas:security"})+
+      `# ${assessment.asset_label}\n\nAllowed scope: ${assessment.scope_note}.\n\nAuthorizing person: ${assessment.authorized_by}. Authorization basis: ${assessment.authorization_note}. Valid through: ${assessment.valid_until} UTC.\n\nThis is an owner attestation, not a scan permit or independent proof of authorization.\n`);
+  }
+  for (const finding of state.securityFindings) {
+    await managed("09 Decisions and Evidence",`${finding.id}.md`,header({agas_id:`security-finding:${finding.id}`,
+      type:"security-finding",assessment_id:finding.assessment_id,revision:finding.version,
+      status:finding.status,scope:"security",provenance:"agas:security"})+
+      `# ${finding.title}\n\nSeverity: ${finding.severity}. Source mission: ${finding.source_mission_id}. Source evidence: ${finding.source_evidence_id}. SHA-256: ${finding.source_sha256}. Source integrity: ${finding.source_current?"Current":"Changed; inspect before use"}.\n\nRemediation mission: ${finding.remediation_mission_id||"None"}. Evidence: ${finding.remediation_evidence_id||"None"}. SHA-256: ${finding.remediation_sha256||"None"}. Source integrity: ${finding.remediation_current===null?"Pending owner review":finding.remediation_current?"Current":"Changed; inspect before use"}.\n\nOwner review: ${finding.review_note||"Pending"}. No independent retest or active scan is claimed.\n`);
+  }
   for (const campaign of state.mediaCampaigns) {
     const detail=store.mediaCampaignDetail(campaign.id);
     const trail=detail.artifacts.map(item=>`- ${item.stage} · ${item.status} · ${item.title} · SHA-256 ${item.sha256}`).join("\n");

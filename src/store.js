@@ -117,6 +117,20 @@ export class Store {
         evidence_sha256 TEXT, decision_note TEXT NOT NULL DEFAULT '', reviewed_at TEXT,
         created_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS security_assessments (
+        id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), asset_label TEXT NOT NULL,
+        scope_note TEXT NOT NULL, authorized_by TEXT NOT NULL, authorization_note TEXT NOT NULL,
+        valid_until TEXT NOT NULL, created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS security_findings (
+        id TEXT PRIMARY KEY, assessment_id TEXT NOT NULL REFERENCES security_assessments(id),
+        title TEXT NOT NULL, severity TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open',
+        version INTEGER NOT NULL DEFAULT 1, source_mission_id TEXT NOT NULL REFERENCES missions(id),
+        source_evidence_id TEXT NOT NULL REFERENCES mission_evidence(id), source_sha256 TEXT NOT NULL,
+        remediation_mission_id TEXT REFERENCES missions(id), remediation_evidence_id TEXT REFERENCES mission_evidence(id),
+        remediation_sha256 TEXT, review_note TEXT NOT NULL DEFAULT '', verified_at TEXT,
+        created_at TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS management_incidents (
         id TEXT PRIMARY KEY, run_id TEXT NOT NULL UNIQUE REFERENCES mission_runs(id),
         source_hub_id TEXT NOT NULL REFERENCES hubs(id), title TEXT NOT NULL,
@@ -274,6 +288,10 @@ export class Store {
       mediaPackets: all("SELECT id,campaign_id,account_id,sha256,status,created_at FROM media_publication_packets ORDER BY created_at DESC LIMIT 120"),
       businessOpportunities: all("SELECT * FROM business_opportunities ORDER BY created_at DESC LIMIT 120")
         .map(item=>({...item,evidence_current:this.businessEvidenceCurrent(item)})),
+      securityAssessments: all("SELECT * FROM security_assessments ORDER BY created_at DESC LIMIT 120"),
+      securityFindings: all("SELECT * FROM security_findings ORDER BY created_at DESC LIMIT 120")
+        .map(item=>({...item,source_current:this.securityFindingEvidenceCurrent(item,"source"),
+          remediation_current:this.securityFindingEvidenceCurrent(item,"remediation")})),
       incidents: all("SELECT * FROM management_incidents ORDER BY opened_at DESC LIMIT 120")
         .map(item=>({...item,evidence_current:this.incidentEvidenceCurrent(item)})),
       paperAccounts: all("SELECT * FROM paper_accounts ORDER BY created_at DESC"),
@@ -551,6 +569,91 @@ export class Store {
         createHash("sha256").update(evidence.content).digest("hex")===evidence.sha256&&
         this.verifyEvidenceReceipt(evidence);
     } catch {return false}
+  }
+  securityEvidence(projectId,missionId,evidenceId) {
+    const detail=this.missionDetail(missionId),evidence=detail.evidence.find(item=>item.id===evidenceId);
+    if(detail.mission.hub_id!=="security"||detail.mission.project!==projectId||detail.mission.status!=="accepted"||
+      evidence?.status!=="reviewed"||!detail.tasks.some(task=>task.id===evidence?.task_id&&task.status==="accepted")||
+      createHash("sha256").update(evidence.content).digest("hex")!==evidence.sha256||!this.verifyEvidenceReceipt(evidence))
+      throw new InputError("Use unchanged, reviewed evidence from an accepted Security mission in this project",409);
+    return evidence;
+  }
+  createSecurityAssessment(input) {
+    const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(nonempty(input.projectId,"projectId",120));
+    if(!project||project.hub_id!=="security"||project.kind!=="security")
+      throw new InputError("Choose an Authorized Security project",409);
+    const asset=nonempty(input.assetLabel,"assetLabel",200),scope=nonempty(input.scopeNote,"scopeNote",2000);
+    const by=nonempty(input.authorizedBy,"authorizedBy",200),note=nonempty(input.authorizationNote,"authorizationNote",2000);
+    const until=nonempty(input.validUntil,"validUntil",10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(until)||!Number.isFinite(Date.parse(`${until}T23:59:59.999Z`))||
+      new Date(`${until}T23:59:59.999Z`).toISOString().slice(0,10)!==until||
+      Date.parse(`${until}T23:59:59.999Z`)<Date.now())throw new InputError("Authorization expiry must be a current or future UTC date");
+    const id=randomUUID();
+    this.transaction(()=>{
+      this.db.prepare(`INSERT INTO security_assessments
+        (id,project_id,asset_label,scope_note,authorized_by,authorization_note,valid_until,created_at)
+        VALUES (?,?,?,?,?,?,?,?)`).run(id,project.id,asset,scope,by,note,until,now());
+      this.event("security.assessment.scope-recorded",id,"security",`Owner recorded scope for ${asset}; no active scan authorized by this record`);
+    });
+    return this.db.prepare("SELECT * FROM security_assessments WHERE id=?").get(id);
+  }
+  createSecurityFinding(input) {
+    const assessmentId=nonempty(input.assessmentId,"assessmentId",120);
+    const missionId=nonempty(input.missionId,"missionId",120),evidenceId=nonempty(input.evidenceId,"evidenceId",120);
+    const title=nonempty(input.title,"title",140),severity=input.severity;
+    if(!["low","medium","high","critical"].includes(severity))throw new InputError("Choose a finding severity");
+    let finding;
+    this.transaction(()=>{
+      const assessment=this.db.prepare("SELECT * FROM security_assessments WHERE id=?").get(assessmentId);
+      if(!assessment)throw new InputError("Assessment not found",404);
+      if(Date.parse(`${assessment.valid_until}T23:59:59.999Z`)<Date.now())
+        throw new InputError("This recorded authorization expired; record a new assessment",409);
+      const evidence=this.securityEvidence(assessment.project_id,missionId,evidenceId);
+      if(evidence.created_at<assessment.created_at)
+        throw new InputError("Finding evidence predates the recorded assessment",409);
+      const id=randomUUID();
+      this.db.prepare(`INSERT INTO security_findings
+        (id,assessment_id,title,severity,source_mission_id,source_evidence_id,source_sha256,created_at)
+        VALUES (?,?,?,?,?,?,?,?)`).run(id,assessmentId,title,severity,missionId,evidenceId,evidence.sha256,now());
+      this.event("security.finding.recorded",id,"security",`Owner recorded ${severity} finding for ${assessment.asset_label}`);
+      finding=this.db.prepare("SELECT * FROM security_findings WHERE id=?").get(id);
+    });
+    return finding;
+  }
+  securityFindingEvidenceCurrent(finding,kind) {
+    const missionId=kind==="source"?finding.source_mission_id:finding.remediation_mission_id;
+    const evidenceId=kind==="source"?finding.source_evidence_id:finding.remediation_evidence_id;
+    if(!evidenceId)return null;
+    try {
+      const assessment=this.db.prepare("SELECT project_id FROM security_assessments WHERE id=?").get(finding.assessment_id);
+      return this.securityEvidence(assessment.project_id,missionId,evidenceId).sha256===
+        (kind==="source"?finding.source_sha256:finding.remediation_sha256);
+    } catch {return false}
+  }
+  verifySecurityFinding(id,input) {
+    const missionId=nonempty(input.missionId,"missionId",120),evidenceId=nonempty(input.evidenceId,"evidenceId",120);
+    const note=nonempty(input.reviewNote,"reviewNote",2000);
+    let finding;
+    this.transaction(()=>{
+      finding=this.db.prepare("SELECT * FROM security_findings WHERE id=?").get(id);
+      if(!finding)throw new InputError("Security finding not found",404);
+      if(finding.status!=="open"||finding.version!==input.expectedVersion)
+        throw new InputError("Finding changed; reload before verification",409);
+      const assessment=this.db.prepare("SELECT * FROM security_assessments WHERE id=?").get(finding.assessment_id);
+      if(!this.securityFindingEvidenceCurrent(finding,"source"))
+        throw new InputError("Finding source changed; review it before closing",409);
+      if(missionId===finding.source_mission_id||evidenceId===finding.source_evidence_id)
+        throw new InputError("Use a separate Security mission to verify remediation",409);
+      const evidence=this.securityEvidence(assessment.project_id,missionId,evidenceId);
+      if(evidence.created_at<finding.created_at)
+        throw new InputError("Remediation evidence predates this finding",409);
+      this.db.prepare(`UPDATE security_findings SET status='owner-verified',version=version+1,
+        remediation_mission_id=?,remediation_evidence_id=?,remediation_sha256=?,review_note=?,verified_at=? WHERE id=?`)
+        .run(missionId,evidenceId,evidence.sha256,note,now(),id);
+      this.event("security.finding.owner-verified",id,"security",`Owner reviewed remediation for ${finding.title}; no independent retest claimed`);
+      finding=this.db.prepare("SELECT * FROM security_findings WHERE id=?").get(id);
+    });
+    return finding;
   }
   incidentEvidenceCurrent(incident) {
     if(!incident.resolution_evidence_id)return null;

@@ -118,6 +118,10 @@ function businessPanels() {
   const d=state.data,projects=d.projects.filter(p=>p.hub_id==="business"&&p.kind==="business");
   return `<div class="section-head"><h2>Business · opportunity review</h2><span>${d.businessOpportunities.length} ideas</span></div><div class="panel"><p class="helper">Record a venture hypothesis, run a scoped Business mission, then decide whether to continue using accepted, owner-reviewed evidence. A decision does not contact customers, copy MBAs data or make a commercial commitment.</p><div class="mission-table">${d.businessOpportunities.map(o=>`<article class="card work-card"><div><strong>${esc(o.title)}</strong><p>${esc(o.hypothesis)}</p><small>${esc(d.projects.find(p=>p.id===o.project_id)?.title)} · ${esc(o.segment)} · ${esc(o.status)} · revision ${o.version}${o.evidence_current===false?" · SOURCE CHANGED":""}</small>${o.decision_note?`<small>Owner review: ${esc(o.decision_note)} · evidence SHA-256 ${esc(o.evidence_sha256)}</small>`:""}</div><div class="work-actions">${o.status==="idea"?`<button class="secondary" data-action="decide-business" data-id="${esc(o.id)}">Review evidence</button>`:o.mission_id?`<button class="ghost" data-action="open-mission" data-id="${esc(o.mission_id)}">Source mission →</button>`:""}</div></article>`).join("")||'<div class="empty">Create a Business project, then record its first opportunity.</div>'}</div><button class="secondary" data-action="new-business-opportunity" ${projects.length?"":"disabled"}>+ Opportunity</button></div>`;
 }
+function securityPanels() {
+  const d=state.data,projects=d.projects.filter(p=>p.hub_id==="security"&&p.kind==="security");
+  return `<div class="section-head"><h2>Authorized Security · findings</h2><span>${d.securityFindings.filter(f=>f.status==="open").length} open findings</span></div><div class="panel"><p class="helper">Record the system owner, exact asset and authorized scope before collecting findings. This record is an owner attestation; it does not grant an agent scanning access. A finding needs accepted Security mission evidence in the same project. Closure needs a separate accepted remediation mission and owner review.</p><div class="mission-table">${d.securityAssessments.map(a=>`<article class="card work-card"><div><strong>${esc(a.asset_label)}</strong><p>${esc(a.scope_note)}</p><small>${esc(d.projects.find(p=>p.id===a.project_id)?.title)} · authorized by ${esc(a.authorized_by)} · through ${esc(a.valid_until)} UTC · ${esc(a.id)}</small></div><div class="work-actions"><button class="secondary" data-action="record-finding" data-id="${esc(a.id)}">+ Finding</button></div></article>`).join("")||'<div class="empty">Create an Authorized Security project and record the first assessed asset.</div>'}</div><button class="secondary" data-action="new-assessment" ${projects.length?"":"disabled"}>+ Record scope</button></div><div class="section-head"><h2>Finding review</h2><span>${d.securityFindings.length} recorded</span></div><div class="panel"><div class="mission-table">${d.securityFindings.map(f=>`<article class="card work-card"><div><strong>${esc(f.title)}</strong><p>${esc(f.severity)} · ${esc(f.status)} · revision ${f.version}</p><small>Source SHA-256 ${esc(f.source_sha256)}${f.source_current===false?" · SOURCE CHANGED":""}${f.remediation_current===false?" · REMEDIATION SOURCE CHANGED":""}</small>${f.review_note?`<small>Owner review: ${esc(f.review_note)} · remediation SHA-256 ${esc(f.remediation_sha256)}</small>`:""}</div><div class="work-actions"><button class="ghost" data-action="open-mission" data-id="${esc(f.source_mission_id)}">Finding mission →</button>${f.status==="open"?`<button class="secondary" data-action="verify-finding" data-id="${esc(f.id)}">Review fix</button>`:f.remediation_mission_id?`<button class="ghost" data-action="open-mission" data-id="${esc(f.remediation_mission_id)}">Fix mission →</button>`:""}</div></article>`).join("")||'<div class="empty">No findings recorded.</div>'}</div></div>`;
+}
 function incidentPanels() {
   const d=state.data;
   return `<div class="section-head"><h2>Management · run incidents</h2><span>${d.incidents.filter(i=>i.status!=="resolved").length} open or acknowledged</span></div><div class="panel"><p class="helper">Failed, interrupted and stopped active runs open one incident and one dedicated Management mission. Inspect partial work before retrying; an accepted response mission with reviewed evidence is required to resolve it.</p><div class="mission-table">${d.incidents.map(i=>{const run=d.runs.find(r=>r.id===i.run_id);return `<article class="card work-card"><div><strong>${esc(i.title)}</strong><p>${esc(i.source_hub_id)} · ${esc(i.status)} · run ${esc(i.run_id)}</p><small>Revision ${i.version}${i.evidence_current===false?" · RESOLUTION SOURCE CHANGED":""}</small>${i.acknowledgement_note?`<small>Initial review: ${esc(i.acknowledgement_note)}</small>`:""}${i.resolution_note?`<small>Resolution: ${esc(i.resolution_note)} · SHA-256 ${esc(i.evidence_sha256)}</small>`:""}</div><div class="work-actions">${run?`<button class="ghost" data-action="inspect-run" data-id="${esc(i.run_id)}" data-mission="${esc(run.mission_id)}">Source run</button>`:""}<button class="ghost" data-action="open-mission" data-id="${esc(i.resolution_mission_id)}">Response mission</button>${i.status==="open"?`<button class="secondary" data-action="review-incident" data-id="${esc(i.id)}">Acknowledge</button>`:i.status==="acknowledged"?`<button class="secondary" data-action="review-incident" data-id="${esc(i.id)}">Resolve</button>`:""}</div></article>`}).join("")||'<div class="empty">No recorded run incidents.</div>'}</div></div>`;
@@ -217,6 +221,7 @@ function render() {
   if(state.view==="hubs"&&state.hub==="content")$("#content").insertAdjacentHTML("beforeend",mediaPanels());
   if(state.view==="hubs"&&state.hub==="finance")$("#content").insertAdjacentHTML("beforeend",financePanels());
   if(state.view==="hubs"&&state.hub==="business")$("#content").insertAdjacentHTML("beforeend",businessPanels());
+  if(state.view==="hubs"&&state.hub==="security")$("#content").insertAdjacentHTML("beforeend",securityPanels());
   if(state.view==="hubs"&&state.hub==="management")$("#content").insertAdjacentHTML("beforeend",incidentPanels());
   renderInspector();
 }
@@ -395,6 +400,38 @@ async function decideBusinessOpportunity(id) {
     `<label class="field">Reviewed source<select name="source">${choices.map((row,index)=>`<option value="${index}">${esc(row.mission.title)} · ${esc(row.evidence.title)} · SHA-256 ${esc(row.evidence.sha256)}</option>`).join("")}</select></label><label class="field">Decision<select name="decision"><option value="continue">Continue planning</option><option value="discard">Discard this idea</option></select></label><label class="field">Reason<textarea name="reviewNote" required maxlength="2000" placeholder="What did you check in the source evidence?"></textarea></label>`,
     data=>{const selected=choices[Number(data.get("source"))];return api(`/api/business/opportunities/${id}/decide`,{method:"POST",body:JSON.stringify({missionId:selected.mission.id,evidenceId:selected.evidence.id,decision:data.get("decision"),reviewNote:data.get("reviewNote"),expectedVersion:opportunity.version})})});
 }
+function newSecurityAssessment() {
+  const projects=state.data.projects.filter(p=>p.hub_id==="security"&&p.kind==="security");
+  if(!projects.length)return notify("Create an Authorized Security project first.",true);
+  openModal("Record authorized assessment scope","Attest the asset, the limits of the owner's authorization and its expiry. This record does not initiate a scan or grant an agent new tools.",
+    `<label class="field">Project<select name="projectId">${projects.map(p=>`<option value="${esc(p.id)}">${esc(p.title)}</option>`).join("")}</select></label><label class="field">Exact asset label<input name="assetLabel" required maxlength="200" placeholder="Owned domain or internal system"></label><label class="field">Allowed scope<textarea name="scopeNote" required maxlength="2000" placeholder="State permitted systems and boundaries"></textarea></label><label class="field">Authorizing person<input name="authorizedBy" required maxlength="200"></label><label class="field">Authorization basis<textarea name="authorizationNote" required maxlength="2000" placeholder="State the owner's authorization"></textarea></label><label class="field">Valid through (UTC)<input name="validUntil" type="date" required></label>`,
+    data=>api("/api/security/assessments",{method:"POST",body:JSON.stringify(Object.fromEntries(data))}));
+}
+async function securityEvidenceChoices(projectId,excludeMissionId="") {
+  const missions=state.data.missions.filter(m=>m.hub_id==="security"&&m.project===projectId&&m.status==="accepted"&&m.id!==excludeMissionId).slice(0,50);
+  const records=await Promise.all(missions.map(m=>api(`/api/missions/${m.id}`)));
+  return records.flatMap(detail=>detail.evidence.filter(e=>e.status==="reviewed"&&detail.tasks.some(t=>t.id===e.task_id&&t.status==="accepted"))
+    .map(e=>({mission:detail.mission,evidence:e})));
+}
+async function recordSecurityFinding(id) {
+  const assessment=state.data.securityAssessments.find(a=>a.id===id);
+  if(!assessment)return notify("Refresh the assessment before recording a finding.",true);
+  const choices=await securityEvidenceChoices(assessment.project_id);
+  if(!choices.length)return notify("Accept a Security mission with reviewed evidence in this project first.",true);
+  openModal("Record a security finding","Choose evidence gathered for this assessed asset within the recorded scope. No test or scan is launched here.",
+    `<p class="helper">${esc(assessment.asset_label)} · scope: ${esc(assessment.scope_note)} · valid through ${esc(assessment.valid_until)}</p><label class="field">Title<input name="title" required maxlength="140"></label><label class="field">Severity<select name="severity"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label><label class="field">Reviewed source<select name="source">${choices.map((row,index)=>`<option value="${index}">${esc(row.mission.title)} · ${esc(row.evidence.title)} · ${esc(row.evidence.sha256)}</option>`).join("")}</select></label>`,
+    data=>{const choice=choices[Number(data.get("source"))];return api("/api/security/findings",{method:"POST",body:JSON.stringify({assessmentId:id,missionId:choice.mission.id,evidenceId:choice.evidence.id,title:data.get("title"),severity:data.get("severity")})})});
+}
+async function verifySecurityFinding(id) {
+  const finding=state.data.securityFindings.find(f=>f.id===id);
+  if(!finding||finding.status!=="open")return notify("Refresh this finding before reviewing.",true);
+  const assessment=state.data.securityAssessments.find(a=>a.id===finding.assessment_id);
+  const choices=await securityEvidenceChoices(assessment.project_id,finding.source_mission_id);
+  if(!choices.length)return notify("Accept a separate remediation mission with reviewed evidence in this Security project first.",true);
+  openModal("Review security remediation","Choose a separate Security mission and record what you verified. This is an owner review, not an independent retest.",
+    `<p class="helper">${esc(finding.title)} · source SHA-256 ${esc(finding.source_sha256)}</p><label class="field">Remediation evidence<select name="source">${choices.map((row,index)=>`<option value="${index}">${esc(row.mission.title)} · ${esc(row.evidence.title)} · ${esc(row.evidence.sha256)}</option>`).join("")}</select></label><label class="field">Review note<textarea name="reviewNote" required maxlength="2000" placeholder="Describe the fix and how you checked it"></textarea></label>`,
+    data=>{const choice=choices[Number(data.get("source"))];return api(`/api/security/findings/${id}/verify`,{method:"POST",body:JSON.stringify({missionId:choice.mission.id,evidenceId:choice.evidence.id,reviewNote:data.get("reviewNote"),expectedVersion:finding.version})})});
+}
 async function reviewIncident(id) {
   const incident=state.data.incidents.find(item=>item.id===id);
   if(!incident)return notify("Refresh Management incidents before reviewing.",true);
@@ -501,6 +538,9 @@ document.addEventListener("click",async event=>{
   else if(type==="approve-media-packet")approveMediaPacket(id,action.dataset.packet);
   else if(type==="new-business-opportunity")newBusinessOpportunity();
   else if(type==="decide-business")decideBusinessOpportunity(id).catch(error=>notify(error.message,true));
+  else if(type==="new-assessment")newSecurityAssessment();
+  else if(type==="record-finding")recordSecurityFinding(id).catch(error=>notify(error.message,true));
+  else if(type==="verify-finding")verifySecurityFinding(id).catch(error=>notify(error.message,true));
   else if(type==="review-incident")reviewIncident(id).catch(error=>notify(error.message,true));
   else if(type==="inspect-media")inspectMediaCampaign(id);
   else if(type==="new-paper-account")newPaperAccount();
