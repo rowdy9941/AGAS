@@ -121,6 +121,10 @@ try {
   await waitFor("return document.querySelector('#content').innerText.includes('Mission control')","mobile overview");
   const mobileLayout=await execute(`return {
     viewport:window.innerWidth,document:document.documentElement.scrollWidth,
+    rowChain:(()=>{let node=Array.from(document.querySelectorAll('.row')).find(item=>item.getBoundingClientRect().right>window.innerWidth+1);
+      const chain=[];while(node&&chain.length<6){const rect=node.getBoundingClientRect();chain.push({tag:node.tagName,
+        className:String(node.className).slice(0,70),width:Math.round(rect.width),right:Math.round(rect.right),
+        columns:getComputedStyle(node).gridTemplateColumns});node=node.parentElement}return chain})(),
     offenders:Array.from(document.querySelectorAll('body *')).filter(node=>{
       const rect=node.getBoundingClientRect(),style=getComputedStyle(node);
       return style.display!=='none'&&rect.width>0&&rect.right>window.innerWidth+1;
