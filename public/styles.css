@@ -27,3 +27,4 @@ dialog{border:1px solid #45605a;background:#152129;color:#e9f4f1;border-radius:1
 .window-ledger{margin-bottom:18px}.window-ledger p{font-size:11px;line-height:1.5;color:#b1c6c3;overflow-wrap:anywhere}
 @media(max-width:760px){.window-header{grid-template-columns:1fr}.window-frame{height:65vh}}
 .procedure-status{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:12px 0 7px}.procedure-status small{margin:0}.audit-details{margin-top:13px;border-top:1px solid #2b3d43;padding-top:9px;color:#a3b9b5;font-size:11px}.audit-details summary{cursor:pointer;width:max-content;max-width:100%;color:#8cdec1}.audit-details small{display:block;margin-top:9px;line-height:1.6}.audit-details code{overflow-wrap:anywhere;white-space:normal;color:#c4d4d1}
+.procedure-status~small{display:block;margin-top:7px;line-height:1.5}
