@@ -117,6 +117,15 @@ export class Store {
         evidence_sha256 TEXT, decision_note TEXT NOT NULL DEFAULT '', reviewed_at TEXT,
         created_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS management_incidents (
+        id TEXT PRIMARY KEY, run_id TEXT NOT NULL UNIQUE REFERENCES mission_runs(id),
+        source_hub_id TEXT NOT NULL REFERENCES hubs(id), title TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'open', version INTEGER NOT NULL DEFAULT 1,
+        acknowledgement_note TEXT NOT NULL DEFAULT '', acknowledged_at TEXT,
+        resolution_mission_id TEXT REFERENCES missions(id), resolution_evidence_id TEXT REFERENCES mission_evidence(id),
+        evidence_sha256 TEXT, resolution_note TEXT NOT NULL DEFAULT '', resolved_at TEXT,
+        opened_at TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS missions (
         id TEXT PRIMARY KEY, hub_id TEXT NOT NULL REFERENCES hubs(id), project TEXT NOT NULL DEFAULT '',
         title TEXT NOT NULL, objective TEXT NOT NULL, criteria TEXT NOT NULL,
@@ -265,6 +274,8 @@ export class Store {
       mediaPackets: all("SELECT id,campaign_id,account_id,sha256,status,created_at FROM media_publication_packets ORDER BY created_at DESC LIMIT 120"),
       businessOpportunities: all("SELECT * FROM business_opportunities ORDER BY created_at DESC LIMIT 120")
         .map(item=>({...item,evidence_current:this.businessEvidenceCurrent(item)})),
+      incidents: all("SELECT * FROM management_incidents ORDER BY opened_at DESC LIMIT 120")
+        .map(item=>({...item,evidence_current:this.incidentEvidenceCurrent(item)})),
       paperAccounts: all("SELECT * FROM paper_accounts ORDER BY created_at DESC"),
       missions: all("SELECT * FROM missions ORDER BY created_at DESC").map(m => ({ ...m,criteria:JSON.parse(m.criteria) })),
       runs: all("SELECT * FROM mission_runs ORDER BY created_at DESC LIMIT 80"),
@@ -540,6 +551,61 @@ export class Store {
         createHash("sha256").update(evidence.content).digest("hex")===evidence.sha256&&
         this.verifyEvidenceReceipt(evidence);
     } catch {return false}
+  }
+  incidentEvidenceCurrent(incident) {
+    if(!incident.resolution_evidence_id)return null;
+    try {
+      const detail=this.missionDetail(incident.resolution_mission_id);
+      const evidence=detail.evidence.find(item=>item.id===incident.resolution_evidence_id);
+      return detail.mission.hub_id==="management"&&detail.mission.status==="accepted"&&
+        evidence?.status==="reviewed"&&detail.tasks.some(task=>task.id===evidence.task_id&&task.status==="accepted")&&
+        evidence.sha256===incident.evidence_sha256&&
+        createHash("sha256").update(evidence.content).digest("hex")===evidence.sha256&&
+        this.verifyEvidenceReceipt(evidence);
+    } catch {return false}
+  }
+  reviewIncident(id,input) {
+    const decision=input.decision,note=nonempty(input.reviewNote,"reviewNote",2000);
+    if(!["acknowledge","resolve"].includes(decision))throw new InputError("Choose acknowledge or resolve");
+    let incident;
+    this.transaction(()=>{
+      incident=this.db.prepare("SELECT * FROM management_incidents WHERE id=?").get(id);
+      if(!incident)throw new InputError("Management incident not found",404);
+      if(incident.version!==input.expectedVersion||incident.status!==(decision==="acknowledge"?"open":"acknowledged"))
+        throw new InputError("Incident changed; reload before review",409);
+      if(decision==="acknowledge") {
+        this.db.prepare("UPDATE management_incidents SET status='acknowledged',version=version+1,acknowledgement_note=?,acknowledged_at=? WHERE id=?")
+          .run(note,now(),id);
+      } else {
+        const missionId=nonempty(input.missionId,"missionId",120),evidenceId=nonempty(input.evidenceId,"evidenceId",120);
+        const detail=this.missionDetail(missionId),evidence=detail.evidence.find(item=>item.id===evidenceId);
+        if(missionId!==incident.resolution_mission_id||detail.mission.hub_id!=="management"||
+          detail.mission.status!=="accepted"||
+          evidence?.status!=="reviewed"||!detail.tasks.some(task=>task.id===evidence.task_id&&task.status==="accepted")||
+          createHash("sha256").update(evidence.content).digest("hex")!==evidence.sha256||
+          !this.verifyEvidenceReceipt(evidence))
+          throw new InputError("Resolve with unchanged, reviewed evidence from an accepted Management mission",409);
+        this.db.prepare(`UPDATE management_incidents SET status='resolved',version=version+1,
+          resolution_evidence_id=?,evidence_sha256=?,resolution_note=?,resolved_at=? WHERE id=?`)
+          .run(evidenceId,evidence.sha256,note,now(),id);
+      }
+      this.event(`incident.${decision}`,id,"management",`Owner ${decision}d run incident ${id} for ${incident.source_hub_id}`);
+      incident=this.db.prepare("SELECT * FROM management_incidents WHERE id=?").get(id);
+    });
+    return incident;
+  }
+  openRunIncident(id,mission,task) {
+    const existing=this.db.prepare("SELECT id FROM management_incidents WHERE run_id=?").get(id);
+    if(existing)return;
+    const incidentId=randomUUID(),responseMissionId=randomUUID(),time=now();
+    this.db.prepare(`INSERT INTO missions(id,hub_id,title,objective,criteria,created_at,updated_at) VALUES (?, 'management', ?, ?, ?, ?, ?)`)
+      .run(responseMissionId,`Reconcile ${mission.hub_id} run ${id.slice(0,8)}`,
+        `Inspect run ${id} from mission ${mission.id}. Identify the failure or interruption, inspect any partial workspace or effects and document a safe resolution before retry.`,
+        JSON.stringify(["Identify the failed or interrupted run and inspect its recorded outcome",
+          "Account for partial work or effects before a retry", "Record and check the resolution or reason to avoid retry"]),time,time);
+    this.db.prepare("INSERT INTO management_incidents(id,run_id,source_hub_id,title,resolution_mission_id,opened_at) VALUES (?,?,?,?,?,?)")
+      .run(incidentId,id,mission.hub_id,`Inspect ${task.title} run`,responseMissionId,time);
+    this.event("incident.opened",incidentId,"management",`Inspect ${mission.hub_id} run ${id}; reconcile partial work before retry`);
   }
   createPaperAccount(input) {
     const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(nonempty(input.projectId,"projectId",120));
@@ -1011,6 +1077,7 @@ export class Store {
         .run(status==="succeeded"?"awaiting-review":"blocked",now(),task.id);
       this.advanceMission(mission.id,status==="succeeded"?"in-review":"blocked");
       this.event(`run.${status}`,id,mission.hub_id,`${run.runtime} run ${status} for task ${task.title}; outcome needs review`);
+      if(status!=="succeeded")this.openRunIncident(id,mission,task);
     });
   }
   stopRun(missionId,runId,input) {
@@ -1023,6 +1090,10 @@ export class Store {
       this.db.prepare("UPDATE mission_tasks SET status='blocked',updated_at=? WHERE id=?").run(now(),run.task_id);
       this.advanceMission(missionId,"blocked");
       this.event("run.cancelled",runId,mission.hub_id,"Owner stopped run; partial effects remain to be inspected");
+      if(run.status!=="queued") {
+        const task=this.db.prepare("SELECT * FROM mission_tasks WHERE id=?").get(run.task_id);
+        this.openRunIncident(runId,mission,task);
+      }
     });
     return this.missionDetail(missionId);
   }

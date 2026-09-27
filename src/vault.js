@@ -164,6 +164,13 @@ export async function projectVault(store, basePath) {
       evidence_sha256:handoff.evidence_sha256,status:handoff.status,revision:handoff.version,provenance:"agas:handoff"})+
       `# ${handoff.title}\n\n${handoff.purpose}\n\nResponse: ${handoff.response_note||"Pending recipient review"}.\n\nThe source evidence body is readable in its authorized AGAS mission.\n`);
   }
+  for (const incident of state.incidents) {
+    await managed("09 Decisions and Evidence",`${incident.id}.md`,header({agas_id:`incident:${incident.id}`,
+      type:"run-incident",run_id:incident.run_id,source_hub_id:incident.source_hub_id,
+      response_mission_id:incident.resolution_mission_id,status:incident.status,
+      revision:incident.version,provenance:"agas:management"})+
+      `# ${incident.title}\n\nRun: ${incident.run_id}. Source hub: ${incident.source_hub_id}.\n\nAcknowledgement: ${incident.acknowledgement_note||"Pending"}.\n\nResolution: ${incident.resolution_note||"Pending accepted Management evidence"}. Evidence SHA-256: ${incident.evidence_sha256||"None"}. Source integrity: ${incident.evidence_current===null?"Not yet resolved":incident.evidence_current?"Current":"Changed; inspect before use"}.\n\nInspect the partial workspace before retry. This incident record does not automatically replay the run.\n`);
+  }
   for (const note of store.allNotesForVault()) {
     const folder=noteFolder(note);
     await managed(folder,`${note.id}.md`,header({agas_id:`note:${note.id}`,type:"note",scope:note.scope,owner_id:note.owner_id,revision:note.revision,provenance:"agas:context"})+

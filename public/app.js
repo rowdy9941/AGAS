@@ -118,6 +118,10 @@ function businessPanels() {
   const d=state.data,projects=d.projects.filter(p=>p.hub_id==="business"&&p.kind==="business");
   return `<div class="section-head"><h2>Business · opportunity review</h2><span>${d.businessOpportunities.length} ideas</span></div><div class="panel"><p class="helper">Record a venture hypothesis, run a scoped Business mission, then decide whether to continue using accepted, owner-reviewed evidence. A decision does not contact customers, copy MBAs data or make a commercial commitment.</p><div class="mission-table">${d.businessOpportunities.map(o=>`<article class="card work-card"><div><strong>${esc(o.title)}</strong><p>${esc(o.hypothesis)}</p><small>${esc(d.projects.find(p=>p.id===o.project_id)?.title)} · ${esc(o.segment)} · ${esc(o.status)} · revision ${o.version}${o.evidence_current===false?" · SOURCE CHANGED":""}</small>${o.decision_note?`<small>Owner review: ${esc(o.decision_note)} · evidence SHA-256 ${esc(o.evidence_sha256)}</small>`:""}</div><div class="work-actions">${o.status==="idea"?`<button class="secondary" data-action="decide-business" data-id="${esc(o.id)}">Review evidence</button>`:o.mission_id?`<button class="ghost" data-action="open-mission" data-id="${esc(o.mission_id)}">Source mission →</button>`:""}</div></article>`).join("")||'<div class="empty">Create a Business project, then record its first opportunity.</div>'}</div><button class="secondary" data-action="new-business-opportunity" ${projects.length?"":"disabled"}>+ Opportunity</button></div>`;
 }
+function incidentPanels() {
+  const d=state.data;
+  return `<div class="section-head"><h2>Management · run incidents</h2><span>${d.incidents.filter(i=>i.status!=="resolved").length} open or acknowledged</span></div><div class="panel"><p class="helper">Failed, interrupted and stopped active runs open one incident and one dedicated Management mission. Inspect partial work before retrying; an accepted response mission with reviewed evidence is required to resolve it.</p><div class="mission-table">${d.incidents.map(i=>{const run=d.runs.find(r=>r.id===i.run_id);return `<article class="card work-card"><div><strong>${esc(i.title)}</strong><p>${esc(i.source_hub_id)} · ${esc(i.status)} · run ${esc(i.run_id)}</p><small>Revision ${i.version}${i.evidence_current===false?" · RESOLUTION SOURCE CHANGED":""}</small>${i.acknowledgement_note?`<small>Initial review: ${esc(i.acknowledgement_note)}</small>`:""}${i.resolution_note?`<small>Resolution: ${esc(i.resolution_note)} · SHA-256 ${esc(i.evidence_sha256)}</small>`:""}</div><div class="work-actions">${run?`<button class="ghost" data-action="inspect-run" data-id="${esc(i.run_id)}" data-mission="${esc(run.mission_id)}">Source run</button>`:""}<button class="ghost" data-action="open-mission" data-id="${esc(i.resolution_mission_id)}">Response mission</button>${i.status==="open"?`<button class="secondary" data-action="review-incident" data-id="${esc(i.id)}">Acknowledge</button>`:i.status==="acknowledged"?`<button class="secondary" data-action="review-incident" data-id="${esc(i.id)}">Resolve</button>`:""}</div></article>`}).join("")||'<div class="empty">No recorded run incidents.</div>'}</div></div>`;
+}
 function agentsPage() {
   const d=state.data,imported=new Map(d.personas.map(p=>[p.path,p]));
   const terms=state.search.toLowerCase();
@@ -213,6 +217,7 @@ function render() {
   if(state.view==="hubs"&&state.hub==="content")$("#content").insertAdjacentHTML("beforeend",mediaPanels());
   if(state.view==="hubs"&&state.hub==="finance")$("#content").insertAdjacentHTML("beforeend",financePanels());
   if(state.view==="hubs"&&state.hub==="business")$("#content").insertAdjacentHTML("beforeend",businessPanels());
+  if(state.view==="hubs"&&state.hub==="management")$("#content").insertAdjacentHTML("beforeend",incidentPanels());
   renderInspector();
 }
 function openModal(title,description,fields,submit) {
@@ -390,6 +395,22 @@ async function decideBusinessOpportunity(id) {
     `<label class="field">Reviewed source<select name="source">${choices.map((row,index)=>`<option value="${index}">${esc(row.mission.title)} · ${esc(row.evidence.title)} · SHA-256 ${esc(row.evidence.sha256)}</option>`).join("")}</select></label><label class="field">Decision<select name="decision"><option value="continue">Continue planning</option><option value="discard">Discard this idea</option></select></label><label class="field">Reason<textarea name="reviewNote" required maxlength="2000" placeholder="What did you check in the source evidence?"></textarea></label>`,
     data=>{const selected=choices[Number(data.get("source"))];return api(`/api/business/opportunities/${id}/decide`,{method:"POST",body:JSON.stringify({missionId:selected.mission.id,evidenceId:selected.evidence.id,decision:data.get("decision"),reviewNote:data.get("reviewNote"),expectedVersion:opportunity.version})})});
 }
+async function reviewIncident(id) {
+  const incident=state.data.incidents.find(item=>item.id===id);
+  if(!incident)return notify("Refresh Management incidents before reviewing.",true);
+  if(incident.status==="open")return openModal("Acknowledge run incident",
+    "Inspect the failed run and its partial workspace. A dedicated Management response mission is ready for root cause and reconciliation evidence.",
+    `<p class="helper">Run ${esc(incident.run_id)} · response mission ${esc(incident.resolution_mission_id)}</p><label class="field">What did you inspect?<textarea name="reviewNote" required maxlength="2000"></textarea></label>`,
+    data=>api(`/api/incidents/${id}/review`,{method:"POST",body:JSON.stringify({decision:"acknowledge",reviewNote:data.get("reviewNote"),expectedVersion:incident.version})}));
+  if(incident.status!=="acknowledged")return notify("This incident was already resolved.",true);
+  const detail=await api(`/api/missions/${incident.resolution_mission_id}`);
+  const choices=detail.mission.status==="accepted"?detail.evidence.filter(e=>e.status==="reviewed"&&
+    detail.tasks.some(t=>t.id===e.task_id&&t.status==="accepted")):[];
+  if(!choices.length)return notify("Complete and accept the linked Management response mission first.",true);
+  openModal("Resolve run incident","Use reviewed evidence from this incident's dedicated response mission. Confirm partial work and effects before a retry.",
+    `<label class="field">Resolution evidence<select name="evidenceId">${choices.map(e=>`<option value="${esc(e.id)}">${esc(e.title)} · SHA-256 ${esc(e.sha256)}</option>`).join("")}</select></label><label class="field">Resolution note<textarea name="reviewNote" required maxlength="2000" placeholder="State what was reconciled and why the incident can close."></textarea></label>`,
+    data=>api(`/api/incidents/${id}/review`,{method:"POST",body:JSON.stringify({decision:"resolve",missionId:incident.resolution_mission_id,evidenceId:data.get("evidenceId"),reviewNote:data.get("reviewNote"),expectedVersion:incident.version})}));
+}
 async function inspectMediaCampaign(id) {
   try {const detail=await api(`/api/media/campaigns/${id}`);state.inspected={type:"media",data:detail};renderInspector()}
   catch(error){notify(error.message,true)}
@@ -480,6 +501,7 @@ document.addEventListener("click",async event=>{
   else if(type==="approve-media-packet")approveMediaPacket(id,action.dataset.packet);
   else if(type==="new-business-opportunity")newBusinessOpportunity();
   else if(type==="decide-business")decideBusinessOpportunity(id).catch(error=>notify(error.message,true));
+  else if(type==="review-incident")reviewIncident(id).catch(error=>notify(error.message,true));
   else if(type==="inspect-media")inspectMediaCampaign(id);
   else if(type==="new-paper-account")newPaperAccount();
   else if(type==="inspect-paper")inspectPaperAccount(id);
