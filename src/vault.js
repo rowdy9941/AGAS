@@ -13,6 +13,10 @@ const noteFolder=note=>note.scope==="private"?"01 People and Organizations":
   note.scope==="project"?"02 Projects":note.scope==="hub"?"04 Hubs":"07 Knowledge";
 const missionMetadata=mission=>({agas_id:`mission:${mission.id}`,type:"mission",hub_id:mission.hub_id,
   project:mission.project,goal_id:mission.goal_id,revision:mission.version,status:mission.status,provenance:"agas:mission"});
+const goalMetadata=goal=>({agas_id:`goal:${goal.id}`,type:"goal",parent_id:goal.parent_id,
+  hub_id:goal.hub_id,project_id:goal.project_id,status:goal.status,revision:goal.version,provenance:"agas:goal"});
+const goalBody=(state,goal)=>header(goalMetadata(goal))+
+  `# ${goal.title}\n\n${goal.objective}\n\nMeasure: ${goal.measure}\n\nLinked missions: ${state.missions.filter(m=>m.goal_id===goal.id).map(m=>m.title).join(", ")||"None yet"}.\n`;
 function missionBody(store,state,mission) {
   const criteria=mission.criteria.map(c=>`- [ ] ${c}`).join("\n");
   const detail=store.missionDetail(mission.id);
@@ -60,6 +64,30 @@ export async function importVaultEdits(store,basePath) {
     }
   }
   const state=store.overview();
+  for(const goal of state.goals) {
+    const relative=join("01 People and Organizations",`${goal.id}.md`),path=resolve(root,relative);
+    if(!path.startsWith(root+sep)){conflicts.push(relative);continue}
+    try {
+      const folder=await lstat(resolve(root,"01 People and Organizations")),file=await lstat(path);
+      if(folder.isSymbolicLink()||!folder.isDirectory()||file.isSymbolicLink()||!file.isFile()||file.size>65536)
+        throw new Error("Vault goal is not a bounded regular file");
+      const body=await readFile(path,"utf8"),sourceHash=sha256(body),baselineHash=store.projectionHash(relative);
+      if(sourceHash===baselineHash)continue;
+      const expected=goalBody(state,goal),metadata=header(goalMetadata(goal));
+      if(!baselineHash||baselineHash!==sha256(expected))throw new Error("Goal changed since projection");
+      const immutable=`\n\nLinked missions: ${state.missions.filter(m=>m.goal_id===goal.id).map(m=>m.title).join(", ")||"None yet"}.\n`;
+      if(!body.startsWith(metadata)||!body.endsWith(immutable))
+        throw new Error("Goal metadata or linked missions changed");
+      const editable=body.slice(metadata.length,body.length-immutable.length);
+      const parsed=editable.match(/^# ([^\n]+)\n\n([\s\S]+)\n\nMeasure: ([^\n]+)$/);
+      if(!parsed||parsed[1]===goal.title&&parsed[2]===goal.objective&&parsed[3]===goal.measure)
+        throw new Error("Edit only the goal title, objective or measure");
+      store.importGoalBrief({id:goal.id,title:parsed[1],objective:parsed[2],measure:parsed[3],
+        revision:goal.version,parentId:goal.parent_id,hubId:goal.hub_id,projectId:goal.project_id,
+        status:goal.status,path:relative,sourceHash,baselineHash});
+      imported.push(relative);
+    } catch(error) {if(error.code!=="ENOENT")conflicts.push(relative)}
+  }
   for(const mission of state.missions) {
     const relative=join("03 Missions",`${mission.id}.md`),path=resolve(root,relative);
     if(!path.startsWith(root+sep)){conflicts.push(relative);continue}
@@ -125,9 +153,7 @@ export async function projectVault(store, basePath) {
       `# ${project.title}\n\n${project.description}\n\nDev run quota per month: ${project.monthly_run_limit??"not set"}.\n`);
   }
   for (const goal of state.goals) {
-    await managed("01 People and Organizations",`${goal.id}.md`,header({agas_id:`goal:${goal.id}`,type:"goal",parent_id:goal.parent_id,
-      hub_id:goal.hub_id,project_id:goal.project_id,status:goal.status,revision:goal.version,provenance:"agas:goal"})+
-      `# ${goal.title}\n\n${goal.objective}\n\nMeasure: ${goal.measure}\n\nLinked missions: ${state.missions.filter(m=>m.goal_id===goal.id).map(m=>m.title).join(", ")||"None yet"}.\n`);
+    await managed("01 People and Organizations",`${goal.id}.md`,goalBody(state,goal));
   }
   for (const account of state.mediaAccounts) {
     await managed("02 Projects",`${account.id}.md`,header({agas_id:`media-account:${account.id}`,type:"media-account",project_id:account.project_id,platform:account.platform,status:account.status,provenance:"agas:media"})+

@@ -416,6 +416,24 @@ export class Store {
     });
     return this.db.prepare("SELECT * FROM goals WHERE id=?").get(id);
   }
+  importGoalBrief({id,title,objective,measure,revision,parentId,hubId,projectId,status,path,sourceHash,baselineHash}) {
+    const nextTitle=nonempty(title,"title",140),nextObjective=nonempty(objective,"objective",4000);
+    const nextMeasure=nonempty(measure,"measure",500);
+    if(nextTitle!==title||nextObjective!==objective||nextMeasure!==measure||/[\r\n]/.test(nextTitle+nextMeasure))
+      throw new InputError("Goal brief has unsupported whitespace",409);
+    this.transaction(()=>{
+      const goal=this.db.prepare("SELECT * FROM goals WHERE id=?").get(id);
+      if(!goal||goal.version!==revision||goal.parent_id!==parentId||goal.hub_id!==hubId||
+        goal.project_id!==projectId||goal.status!==status||this.projectionHash(path)!==baselineHash||
+        nextTitle===goal.title&&nextObjective===goal.objective&&nextMeasure===goal.measure)
+        throw new InputError("Goal brief changed; resolve the vault conflict in AGAS",409);
+      this.db.prepare("UPDATE goals SET title=?,objective=?,measure=?,version=version+1,updated_at=? WHERE id=?")
+        .run(nextTitle,nextObjective,nextMeasure,now(),id);
+      this.recordProjection(path,sourceHash);
+      this.event("goal.brief-imported",id,hubId,`Owner imported revised goal brief: ${nextTitle}`);
+    });
+    return this.db.prepare("SELECT * FROM goals WHERE id=?").get(id);
+  }
   requireMediaBrand(id) {
     const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(id);
     if(!project||project.hub_id!=="content"||project.kind!=="media-brand")

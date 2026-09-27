@@ -79,3 +79,44 @@ test("a mission brief imports only its title and objective against the exact pro
     assert.equal(await readFile(file,"utf8"),damaged);
   } finally {await new Promise(resolve=>server.close(resolve))}
 });
+
+test("a goal brief imports title, objective and measure while preserving linked work",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"agas-goal-import-")),vault=join(root,"vault");
+  const {server}=createAgasServer({database:join(root,"agas.db"),vault,token:"goal-import",
+    workspaces:join(root,"workspaces"),adapters:{}});
+  await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
+  const base=`http://127.0.0.1:${server.address().port}`;
+  async function request(path,method="GET",data) {
+    const res=await fetch(base+path,{method,headers:{authorization:"Bearer goal-import",
+      ...(data?{"content-type":"application/json"}:{})},body:data?JSON.stringify(data):undefined});
+    return {status:res.status,data:await res.json()};
+  }
+  try {
+    const goal=(await request("/api/goals","POST",{hubId:"dev",title:"Original goal",
+      objective:"Original objective",measure:"One reviewed mission"})).data.goal;
+    const mission=(await request("/api/missions","POST",{hubId:"dev",goalId:goal.id,
+      title:"Linked mission",objective:"Ship reviewed evidence",criteria:["Inspect work"]})).data.mission;
+    assert.equal(mission.goal_id,goal.id);
+    assert.equal((await request("/api/vault/project","POST",{})).status,200);
+    const file=join(vault,"01 People and Organizations",`${goal.id}.md`),initial=await readFile(file,"utf8");
+    const edited=initial.replace("# Original goal\n\nOriginal objective\n\nMeasure: One reviewed mission",
+      "# Revised goal\n\nRevised objective\n\nMeasure: Two reviewed missions");
+    await writeFile(file,edited);
+    const imported=await request("/api/vault/import","POST",{});
+    assert.deepEqual(imported.data.imported,[join("01 People and Organizations",`${goal.id}.md`)]);
+    const updated=(await request("/api/overview")).data.goals.find(item=>item.id===goal.id);
+    assert.equal(updated.title,"Revised goal");
+    assert.equal(updated.objective,"Revised objective");
+    assert.equal(updated.measure,"Two reviewed missions");
+    assert.equal(updated.version,2);
+    const projected=await readFile(file,"utf8");
+    assert.match(projected,/revision: 2/);
+    assert.match(projected,/Linked missions: Linked mission\./);
+    const tampered=projected.replace("Linked missions: Linked mission.","Linked missions: Forged mission.");
+    await writeFile(file,tampered);
+    const rejected=await request("/api/vault/import","POST",{});
+    assert.deepEqual(rejected.data.conflicts,[join("01 People and Organizations",`${goal.id}.md`)]);
+    assert.equal((await request("/api/overview")).data.goals.find(item=>item.id===goal.id).version,2);
+    assert.equal(await readFile(file,"utf8"),tampered);
+  } finally {await new Promise(resolve=>server.close(resolve))}
+});
