@@ -144,9 +144,9 @@ export async function projectVault(store, basePath) {
   for (const campaign of state.mediaCampaigns) {
     const detail=store.mediaCampaignDetail(campaign.id);
     const trail=detail.artifacts.map(item=>`- ${item.stage} · ${item.status} · ${item.title} · SHA-256 ${item.sha256}`).join("\n");
-    const packets=detail.packets.map(item=>`- ${item.account_id} · ${item.status} · SHA-256 ${item.sha256}`).join("\n");
+    const packets=detail.packets.map(item=>`- ${item.account_id} · ${item.status} · SHA-256 ${item.sha256}${item.approved_at?` · owner approval ${item.approved_at}: ${item.approval_note}`:""}`).join("\n");
     await managed("03 Missions",`${campaign.id}.md`,header({agas_id:`media-campaign:${campaign.id}`,type:"media-campaign",project_id:campaign.project_id,stage:campaign.stage,status:campaign.status,provenance:"agas:media"})+
-      `# ${campaign.title}\n\n${campaign.objective}\n\nEditorial pipeline: research → strategy → creation → editing → media → review → local publication packet. Current stage: ${campaign.stage}.\n\n## Reviewed work\n${trail||"No submissions yet."}\n\n## Local publication packets\n${packets||"No packets yet; no external publication is claimed."}\n`);
+      `# ${campaign.title}\n\n${campaign.objective}\n\nEditorial pipeline: research → strategy → creation → editing → media → review → local publication packet → owner approval. Current stage: ${campaign.stage}.\n\n## Reviewed work\n${trail||"No submissions yet."}\n\n## Local publication packets\n${packets||"No packets yet; no external publication is claimed."}\n\nLocal approval does not publish to an external channel.\n`);
   }
   for (const mission of state.missions) {
     await managed("03 Missions",`${mission.id}.md`,missionBody(store,state,mission));

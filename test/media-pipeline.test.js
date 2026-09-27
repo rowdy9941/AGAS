@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { createAgasServer } from "../src/server.js";
 import { Store } from "../src/store.js";
 
-test("a brand campaign requires six reviewed stages before a scoped, hashed local publication packet",async()=>{
+test("a brand campaign needs six reviewed stages and a separate integrity-checked local packet approval",async()=>{
   const root=await mkdtemp(join(tmpdir(),"agas-media-flow-")),db=join(root,"agas.db"),vault=join(root,"vault");
   const {server}=createAgasServer({database:db,vault,token:"media-test",adapters:{}});
   await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
@@ -54,11 +54,30 @@ test("a brand campaign requires six reviewed stages before a scoped, hashed loca
     assert.equal(prepared.data.packet.sha256,createHash("sha256").update(prepared.data.packet.content).digest("hex"));
     assert.equal(JSON.parse(prepared.data.packet.content).artifacts.length,6);
     assert.equal((await request(packetPath,"POST",{accountId:owned.id,expectedVersion:version})).status,409);
+    const approvalPath=`${packetPath}/${prepared.data.packet.id}/approve`;
+    const approval={approvalNote:"Reviewed final text, source links, rights and the exact channel target",expectedVersion:version};
+    assert.equal((await request(approvalPath,"POST",{...approval,expectedVersion:version-1})).status,409);
+    const mutable=new Store(db);
+    mutable.db.prepare("UPDATE media_publication_packets SET content='changed' WHERE id=?").run(prepared.data.packet.id);
+    assert.equal((await request(approvalPath,"POST",approval)).status,409,"changed packet bytes cannot be approved");
+    mutable.db.prepare("UPDATE media_publication_packets SET content=? WHERE id=?")
+      .run(prepared.data.packet.content,prepared.data.packet.id);
+    mutable.close();
+    const approved=await request(approvalPath,"POST",approval);
+    assert.equal(approved.status,200);
+    assert.equal(approved.data.packet.status,"approved-local");
+    assert.equal(approved.data.packet.approval_note,approval.approvalNote);
+    assert(approved.data.packet.approved_at);
+    assert.equal((await request(approvalPath,"POST",approval)).data.packet.approved_at,approved.data.packet.approved_at,
+      "repeating the same approval is idempotent");
+    assert.equal((await request(approvalPath,"POST",{...approval,approvalNote:"Different review"})).status,409);
+    assert.equal((await request(`/api/media/campaigns/${campaign.id}`)).data.campaign.version,version+1);
     assert.equal((await request("/api/vault/project","POST",{})).status,200);
     assert.match(await readFile(join(vault,"03 Missions",`${campaign.id}.md`),"utf8"),new RegExp(prepared.data.packet.sha256));
+    assert.match(await readFile(join(vault,"03 Missions",`${campaign.id}.md`),"utf8"),/approved-local/);
     await new Promise(resolve=>server.close(resolve));
     const restored=new Store(db);
-    assert.equal(restored.mediaCampaignDetail(campaign.id).packets[0].status,"prepared");
+    assert.equal(restored.mediaCampaignDetail(campaign.id).packets[0].status,"approved-local");
     assert.equal(restored.mediaCampaignDetail(campaign.id).campaign.status,"ready-for-publishing");
     restored.close();
   } finally {if(server.listening)await new Promise(resolve=>server.close(resolve))}

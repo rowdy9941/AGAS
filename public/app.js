@@ -106,7 +106,7 @@ function mediaPanels() {
     ${d.mediaAccounts.map(a=>`<div class="row"><span class="avatar-small">◎</span><span class="row-main"><strong>${esc(a.platform)} · ${esc(a.handle)}</strong><small>${esc(a.niche)} · ${esc(a.language)} · planned</small></span></div>`).join("")}
     <button class="secondary" data-action="new-media-account" ${brands.length?"":"disabled"}>+ Add account</button></section>
     <section class="panel"><h3>Campaign pipeline</h3><p class="helper">Source-backed research → strategy → creation → editing → media → editorial and rights review → local publication packet. Each stage needs owner review. External publishing and analytics need a connected channel adapter.</p>
-    ${d.mediaCampaigns.map(c=>{const pending=d.mediaArtifacts.find(a=>a.campaign_id===c.id&&a.stage===c.stage&&a.status==="submitted"),packets=d.mediaPackets.filter(p=>p.campaign_id===c.id);return `<div class="row"><span class="avatar-small">◷</span><span class="row-main"><strong>${esc(c.title)}</strong><small>${esc(d.projects.find(p=>p.id===c.project_id)?.title)} · ${esc(c.stage)} · ${esc(c.status)} · ${packets.length} prepared packets</small></span><span class="work-actions"><button class="ghost" data-action="inspect-media" data-id="${esc(c.id)}">Inspect</button>${pending?`<button class="secondary" data-action="review-media" data-id="${esc(c.id)}" data-artifact="${esc(pending.id)}">Review ${esc(c.stage)}</button>`:c.status==="ready-for-publishing"?`<button class="secondary" data-action="prepare-media" data-id="${esc(c.id)}">Prepare packet</button>`:`<button class="secondary" data-action="submit-media" data-id="${esc(c.id)}">Submit ${esc(c.stage)}</button>`}</span></div>`}).join("")}
+    ${d.mediaCampaigns.map(c=>{const pending=d.mediaArtifacts.find(a=>a.campaign_id===c.id&&a.stage===c.stage&&a.status==="submitted"),packets=d.mediaPackets.filter(p=>p.campaign_id===c.id);return `<div class="row"><span class="avatar-small">◷</span><span class="row-main"><strong>${esc(c.title)}</strong><small>${esc(d.projects.find(p=>p.id===c.project_id)?.title)} · ${esc(c.stage)} · ${esc(c.status)} · ${packets.length} local packets</small></span><span class="work-actions"><button class="ghost" data-action="inspect-media" data-id="${esc(c.id)}">Inspect</button>${pending?`<button class="secondary" data-action="review-media" data-id="${esc(c.id)}" data-artifact="${esc(pending.id)}">Review ${esc(c.stage)}</button>`:c.status==="ready-for-publishing"?`<button class="secondary" data-action="prepare-media" data-id="${esc(c.id)}">Prepare packet</button>`:`<button class="secondary" data-action="submit-media" data-id="${esc(c.id)}">Submit ${esc(c.stage)}</button>`}</span></div>`}).join("")}
     <button class="secondary" data-action="new-media-campaign" ${brands.length?"":"disabled"}>+ Campaign brief</button></section></div>`;
 }
 const rupees=paise=>`₹${(Number(paise)/100).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
@@ -180,7 +180,7 @@ function renderInspector() {
   }
   if(selected?.type==="media") {
     const {campaign,artifacts,packets}=selected.data;
-    $("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">MEDIA · ${esc(campaign.stage)}</span><h3>${esc(campaign.title)}</h3><p>${esc(campaign.objective)}</p><p>${esc(campaign.status)} · revision ${esc(campaign.version)}</p></div><div class="inspector-section"><h3>Stage trail</h3>${artifacts.map(a=>`<p><strong>${esc(a.stage)} · ${esc(a.status)}</strong><br>${esc(a.title)} · SHA-256 ${esc(a.sha256)}<br><span style="white-space:pre-wrap">${esc(a.content)}</span><br>References: ${esc(JSON.parse(a.sources).join(" · ")||"None")}<br>Rights: ${esc(a.rights_note||"Not supplied")}<br>Owner review: ${esc(a.review_note||"Pending")}</p>`).join("")||"<p>Submit a source-backed research brief to begin.</p>"}</div><div class="inspector-section"><h3>Prepared packets</h3>${packets.map(p=>`<p>${esc(p.account_id)} · ${esc(p.status)}<br>SHA-256 ${esc(p.sha256)}<br><span style="white-space:pre-wrap">${esc(p.content)}</span></p>`).join("")||"<p>No packet prepared. Nothing has been published.</p>"}</div>`;
+    $("#inspector-content").innerHTML=`<div class="inspector-section"><span class="eyebrow">MEDIA · ${esc(campaign.stage)}</span><h3>${esc(campaign.title)}</h3><p>${esc(campaign.objective)}</p><p>${esc(campaign.status)} · revision ${esc(campaign.version)}</p></div><div class="inspector-section"><h3>Stage trail</h3>${artifacts.map(a=>`<p><strong>${esc(a.stage)} · ${esc(a.status)}</strong><br>${esc(a.title)} · SHA-256 ${esc(a.sha256)}<br><span style="white-space:pre-wrap">${esc(a.content)}</span><br>References: ${esc(JSON.parse(a.sources).join(" · ")||"None")}<br>Rights: ${esc(a.rights_note||"Not supplied")}<br>Owner review: ${esc(a.review_note||"Pending")}</p>`).join("")||"<p>Submit a source-backed research brief to begin.</p>"}</div><div class="inspector-section"><h3>Local publication packets</h3>${packets.map(p=>`<p>${esc(p.account_id)} · ${esc(p.status)}<br>SHA-256 ${esc(p.sha256)}<br><span style="white-space:pre-wrap">${esc(p.content)}</span><br>${p.approved_at?`Owner approval: ${esc(p.approval_note)} · ${esc(p.approved_at)}`:`<button class="secondary" data-action="approve-media-packet" data-id="${esc(campaign.id)}" data-packet="${esc(p.id)}">Review and approve local packet</button>`}</p>`).join("")||"<p>No packet prepared. Nothing has been published.</p>"}<p>Local approval does not publish to an external channel.</p></div>`;
     return;
   }
   if(selected?.type==="paper") {
@@ -358,6 +358,14 @@ function prepareMediaPacket(id) {
     `<label class="field">Account<select name="accountId">${accounts.map(a=>`<option value="${esc(a.id)}">${esc(a.platform)} · ${esc(a.handle)}</option>`).join("")}</select></label>`,
     data=>api(`/api/media/campaigns/${id}/packets`,{method:"POST",body:JSON.stringify({accountId:data.get("accountId"),expectedVersion:campaign.version})}));
 }
+function approveMediaPacket(id,packetId) {
+  const {campaign,packets}=state.inspected?.type==="media"?state.inspected.data:{};
+  const packet=packets?.find(item=>item.id===packetId);
+  if(!packet||campaign.id!==id||packet.status!=="prepared")return notify("Inspect this campaign's current packet first.",true);
+  openModal("Approve local publication packet","Check the exact account, content, references, rights review and SHA-256 above. This decision permits only a local packet; it does not post to a platform.",
+    `<p class="helper" style="white-space:pre-wrap">Target account ${esc(packet.account_id)} · SHA-256 ${esc(packet.sha256)}<br>${esc(packet.content)}</p><label class="field">What did you verify?<textarea name="approvalNote" required maxlength="2000"></textarea></label>`,
+    async data=>{await api(`/api/media/campaigns/${id}/packets/${packetId}/approve`,{method:"POST",body:JSON.stringify({approvalNote:data.get("approvalNote"),expectedVersion:campaign.version})});state.inspected={type:"media",data:await api(`/api/media/campaigns/${id}`)};});
+}
 async function inspectMediaCampaign(id) {
   try {const detail=await api(`/api/media/campaigns/${id}`);state.inspected={type:"media",data:detail};renderInspector()}
   catch(error){notify(error.message,true)}
@@ -445,6 +453,7 @@ document.addEventListener("click",async event=>{
   else if(type==="submit-media")submitMediaArtifact(id);
   else if(type==="review-media")reviewMediaArtifact(id,action.dataset.artifact);
   else if(type==="prepare-media")prepareMediaPacket(id);
+  else if(type==="approve-media-packet")approveMediaPacket(id,action.dataset.packet);
   else if(type==="inspect-media")inspectMediaCampaign(id);
   else if(type==="new-paper-account")newPaperAccount();
   else if(type==="inspect-paper")inspectPaperAccount(id);

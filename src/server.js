@@ -148,6 +148,8 @@ export function createAgasServer({database="data/agas.db",vault="data/AGAS Vault
           const review=action?.match(/^artifacts\/([\da-f-]{36})\/review$/);
           if(review)return json(res,200,store.reviewMediaArtifact(id,review[1],input));
           if(action==="packets")return json(res,201,{packet:store.prepareMediaPacket(id,input)});
+          const approvePacket=action?.match(/^packets\/([\da-f-]{36})\/approve$/);
+          if(approvePacket)return json(res,200,{packet:store.approveMediaPacket(id,approvePacket[1],input)});
         }
       }
       if(req.method==="POST"&&path==="/api/finance/paper-accounts")

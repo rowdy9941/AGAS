@@ -21,6 +21,16 @@ const nonempty = (value, field, max = 4000) => {
 const MEDIA_STAGES=["research","strategy","creation","editing","media","review"];
 const mediaHash=({stage,title,content,sources,rights_note})=>createHash("sha256")
   .update(JSON.stringify({stage,title,content,sources:JSON.parse(sources),rightsNote:rights_note})).digest("hex");
+function mediaPacketContent(campaign,account,artifacts) {
+  const approved=artifacts.filter(item=>item.status==="accepted");
+  if(approved.length!==MEDIA_STAGES.length||MEDIA_STAGES.some(stage=>!approved.some(item=>item.stage===stage))||
+    approved.some(item=>mediaHash(item)!==item.sha256))
+    throw new InputError("Every content stage needs an accepted, unchanged artifact",409);
+  return JSON.stringify({campaign:{id:campaign.id,title:campaign.title,objective:campaign.objective},
+    account:{id:account.id,platform:account.platform,handle:account.handle,language:account.language},
+    artifacts:approved.map(item=>({stage:item.stage,title:item.title,content:item.content,
+      sources:JSON.parse(item.sources),rightsNote:item.rights_note,sha256:item.sha256,reviewNote:item.review_note}))});
+}
 const boundedInteger=(value,name,min,max)=>{
   if(!Number.isSafeInteger(value)||value<min||value>max)throw new InputError(`${name} must be an integer from ${min} to ${max}`);
   return value;
@@ -201,6 +211,9 @@ export class Store {
     const runColumns=this.db.prepare("PRAGMA table_info(mission_runs)").all().map(column=>column.name);
     if(!runColumns.includes("output_text"))this.db.exec("ALTER TABLE mission_runs ADD COLUMN output_text TEXT");
     if(!runColumns.includes("output_sha256"))this.db.exec("ALTER TABLE mission_runs ADD COLUMN output_sha256 TEXT");
+    const packetColumns=this.db.prepare("PRAGMA table_info(media_publication_packets)").all().map(column=>column.name);
+    if(!packetColumns.includes("approval_note"))this.db.exec("ALTER TABLE media_publication_packets ADD COLUMN approval_note TEXT NOT NULL DEFAULT ''");
+    if(!packetColumns.includes("approved_at"))this.db.exec("ALTER TABLE media_publication_packets ADD COLUMN approved_at TEXT");
     this.seed();
   }
   seed() {
@@ -433,20 +446,39 @@ export class Store {
         throw new InputError("Campaign must pass editorial review and target an account of its own brand",409);
       if(this.db.prepare("SELECT 1 FROM media_publication_packets WHERE campaign_id=? AND account_id=?").get(id,accountId))
         throw new InputError("A packet already exists for this campaign and account",409);
-      const approved=artifacts.filter(item=>item.status==="accepted");
-      if(approved.length!==MEDIA_STAGES.length||MEDIA_STAGES.some(stage=>!approved.some(item=>item.stage===stage))||
-        approved.some(item=>mediaHash(item)!==item.sha256))
-        throw new InputError("Every content stage needs an accepted artifact",409);
-      const content=JSON.stringify({campaign:{id,title:campaign.title,objective:campaign.objective},
-        account:{id:account.id,platform:account.platform,handle:account.handle,language:account.language},
-        artifacts:approved.map(item=>({stage:item.stage,title:item.title,content:item.content,
-          sources:JSON.parse(item.sources),rightsNote:item.rights_note,sha256:item.sha256,reviewNote:item.review_note}))});
+      const content=mediaPacketContent(campaign,account,artifacts);
       packetId=randomUUID();
       this.db.prepare("INSERT INTO media_publication_packets(id,campaign_id,account_id,content,sha256,created_at) VALUES (?,?,?,?,?,?)")
         .run(packetId,id,accountId,content,createHash("sha256").update(content).digest("hex"),now());
       this.event("media.packet.prepared",packetId,"content",`Local publication packet prepared for ${campaign.title} on ${account.platform}`);
     });
     return this.db.prepare("SELECT * FROM media_publication_packets WHERE id=?").get(packetId);
+  }
+  approveMediaPacket(id,packetId,input) {
+    const note=nonempty(input.approvalNote,"approvalNote",2000);
+    let packet;
+    this.transaction(()=>{
+      const {campaign,artifacts}=this.mediaCampaignDetail(id);
+      packet=this.db.prepare("SELECT * FROM media_publication_packets WHERE id=? AND campaign_id=?").get(packetId,id);
+      if(!packet)throw new InputError("Local publication packet not found",404);
+      const account=this.db.prepare("SELECT * FROM media_accounts WHERE id=?").get(packet.account_id);
+      if(!account||account.project_id!==campaign.project_id||campaign.status!=="ready-for-publishing"||
+        mediaPacketContent(campaign,account,artifacts)!==packet.content||
+        createHash("sha256").update(packet.content).digest("hex")!==packet.sha256)
+        throw new InputError("Packet or its reviewed source changed; inspect before approval",409);
+      if(packet.status==="approved-local"){
+        if(note!==packet.approval_note)throw new InputError("Packet was already approved with a different note",409);
+        return;
+      }
+      if(packet.status!=="prepared"||campaign.version!==input.expectedVersion)
+        throw new InputError("Campaign or packet changed; reload before approval",409);
+      this.db.prepare("UPDATE media_publication_packets SET status='approved-local',approval_note=?,approved_at=? WHERE id=?")
+        .run(note,now(),packetId);
+      this.db.prepare("UPDATE media_campaigns SET version=version+1 WHERE id=?").run(id);
+      this.event("media.packet.approved-local",packetId,"content",`Owner approved an unchanged local packet for ${account.platform} · ${account.handle}; no channel publication`);
+      packet=this.db.prepare("SELECT * FROM media_publication_packets WHERE id=?").get(packetId);
+    });
+    return packet;
   }
   createPaperAccount(input) {
     const project=this.db.prepare("SELECT * FROM projects WHERE id=?").get(nonempty(input.projectId,"projectId",120));
